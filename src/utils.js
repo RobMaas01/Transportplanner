@@ -296,13 +296,22 @@ export function aanvraagIsAfgesloten(item) {
   return item.status === 'voltooid' && !aanvraagIsHistorie(item)
 }
 
+export function itemDatum(item) {
+  const basis = item.voltooidOp || item.behandeld || item.bijgewerkt || item.aangemaakt
+  return basis ? new Date(basis) : null
+}
+
+export function isOuderDanMaanden(item, maanden) {
+  const datum = itemDatum(item)
+  if (!datum || Number.isNaN(datum.getTime())) return false
+  const grens = new Date()
+  grens.setMonth(grens.getMonth() - maanden)
+  return datum < grens
+}
+
 export function aanvraagIsHistorie(item) {
   if (item.status !== 'voltooid') return false
-  const basis = item.voltooidOp || item.behandeld || item.bijgewerkt || item.aangemaakt
-  if (!basis) return false
-  const grens = new Date()
-  grens.setMonth(grens.getMonth() - 1)
-  return new Date(basis) < grens
+  return isOuderDanMaanden(item, 1)
 }
 
 export function isDezeMaand(iso) {
@@ -311,12 +320,14 @@ export function isDezeMaand(iso) {
 }
 
 export function aanvraagNietUitgevoerdDezeMaand(item) {
-  return item.status === 'afgewezen' && isDezeMaand(item.nietUitvoerenOp || item.bijgewerkt || item.aangemaakt)
+  if (item.status !== 'afgewezen') return false
+  return !isOuderDanMaanden({ ...item, voltooidOp: item.nietUitvoerenOp || item.behandeld || item.bijgewerkt || item.aangemaakt }, 1)
 }
 
 export function aanvraagZichtbaarVoorAanvrager(item) {
   if (item.prive) return false
   if (item.status === 'verwijderd') return false
+  if (item.status === 'voltooid' && aanvraagIsHistorie(item)) return false
   if (item.status === 'afgewezen') return aanvraagNietUitgevoerdDezeMaand(item)
   return true
 }

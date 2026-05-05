@@ -29,7 +29,6 @@ import { inp } from './uiStyles'
 import { bewaarCentraleState, isLegeState, laadCentraleState, supabaseConfigured } from './dataStore'
 import {
   aanvraagIsAfgesloten,
-  aanvraagIsHistorie,
   aanvraagIsOpen,
   aanvraagMomentLabel,
   aanvraagNietUitgevoerdDezeMaand,
@@ -45,6 +44,7 @@ import {
   getMaandag,
   groepeerTakenPerMaand,
   heeftErrors,
+  isOuderDanMaanden,
   isVerledenDatum,
   isoDag,
   jaarMaanden,
@@ -143,6 +143,8 @@ export default function App() {
   const [toonVerwijderd, setToonVerwijderd] = useState(false)
   const [toonVerwijderdeTaken, setToonVerwijderdeTaken] = useState(false)
   const [taakZoekterm, setTaakZoekterm] = useState('')
+  const [taakJaarFilter, setTaakJaarFilter] = useState('alle')
+  const [taakMaandFilter, setTaakMaandFilter] = useState('alle')
   const [meld, setMeld] = useState(lokaal.meld)
   const [opslagStatus, setOpslagStatus] = useState(supabaseConfigured ? 'Verbinden met centrale opslag...' : 'Lokale opslag')
 
@@ -1105,8 +1107,25 @@ export default function App() {
     return isoDag(d).slice(0, 7) === planningMaand
   })
   const jaarTaken = actieveTaken.filter((taak) => taakDatum(taak).getFullYear() === Number(planningJaar))
-  const gezochteActieveTaken = filterTakenOpZoekterm(actieveTaken.slice().sort(sortTaken), taakZoekterm)
-  const gezochteVerwijderdeTaken = filterTakenOpZoekterm(verwijderdeTaken.slice().sort(sortTaken), taakZoekterm)
+  const taakJaren = Array.from(new Set(taken.map((taak) => String(taakDatum(taak).getFullYear())))).sort((a, b) => Number(b) - Number(a))
+  const taakMaanden = Array.from(
+    new Set(
+      taken
+        .filter((taak) => taakJaarFilter === 'alle' || String(taakDatum(taak).getFullYear()) === taakJaarFilter)
+        .map((taak) => isoDag(taakDatum(taak)).slice(0, 7)),
+    ),
+  ).sort((a, b) => b.localeCompare(a))
+  const filterTakenOpPeriode = (items) =>
+    items.filter((taak) => {
+      const datum = taakDatum(taak)
+      const jaar = String(datum.getFullYear())
+      const maand = isoDag(datum).slice(0, 7)
+      if (taakJaarFilter !== 'alle' && jaar !== taakJaarFilter) return false
+      if (taakMaandFilter !== 'alle' && maand !== taakMaandFilter) return false
+      return true
+    })
+  const gezochteActieveTaken = filterTakenOpPeriode(filterTakenOpZoekterm(actieveTaken.slice().sort(sortTaken), taakZoekterm))
+  const gezochteVerwijderdeTaken = filterTakenOpPeriode(filterTakenOpZoekterm(verwijderdeTaken.slice().sort(sortTaken), taakZoekterm))
   const takenPerMaand = groepeerTakenPerMaand(gezochteActieveTaken)
   const verwijderdeTakenPerMaand = groepeerTakenPerMaand(gezochteVerwijderdeTaken)
   const rappData = tab === 'rapportage' ? maakRapportData(taken, rapp) : null
@@ -1117,7 +1136,7 @@ export default function App() {
     <div
       style={{
         display: 'flex',
-        flexDirection: isMobiel ? 'column' : 'row',
+        flexDirection: isMobiel ? 'column-reverse' : 'row',
         height: '100dvh',
         width: '100%',
         maxWidth: '100vw',
@@ -1131,7 +1150,8 @@ export default function App() {
           width: isMobiel ? '100%' : 210,
           background: '#FFF7ED',
           borderRight: isMobiel ? 'none' : '1px solid #FED7AA',
-          borderBottom: isMobiel ? '1px solid #FED7AA' : 'none',
+          borderTop: isMobiel ? '1px solid #FED7AA' : 'none',
+          borderBottom: 'none',
           display: 'flex',
           flexDirection: isMobiel ? 'row' : 'column',
           flexShrink: 0,
@@ -1173,18 +1193,19 @@ export default function App() {
           )}
         </div>
         {isMobiel ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '8px 10px 8px 4px' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '8px 12px 8px 4px' }}>
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
               style={{
-                background: '#EA6A1F',
-                border: 'none',
-                color: '#fff',
+                minWidth: 136,
+                background: '#FFF7ED',
+                border: '1px solid #EA6A1F',
+                color: '#9A3412',
                 borderRadius: 8,
-                padding: '10px 13px',
+                padding: '10px 18px',
                 fontSize: 13,
-                fontWeight: 700,
+                fontWeight: 800,
                 cursor: 'pointer',
               }}
             >
@@ -1961,7 +1982,6 @@ export default function App() {
                       leeg: 'Geen niet uitgevoerde aanvragen deze maand.',
                       filter: aanvraagNietUitgevoerdDezeMaand,
                     },
-                    { key: 'historie', titel: 'Historie', leeg: 'Geen oudere voltooide aanvragen.', filter: aanvraagIsHistorie },
                   ]
                   const actieveGroep = groepen.find((groep) => groep.key === aanvraagStatusTab) || groepen[0]
                   const items = aanvragen
@@ -2168,16 +2188,12 @@ export default function App() {
                   const zichtbareItemsVoorGroep = (status) =>
                     aanvragen.filter((item) => {
                       if (item.status !== status) return false
+                      if (['voltooid', 'afgewezen'].includes(status) && isOuderDanMaanden(item, 3)) return false
                       if (status !== 'verwijderd' || !item.verwijderdOp) return true
                       return Date.now() - new Date(item.verwijderdOp).getTime() <= 30 * 24 * 60 * 60 * 1000
                     })
                   const actieveGroep = groepen.find((groep) => groep.status === bertAanvragenTab) || groepen[0]
-                  const items = aanvragen
-                    .filter((item) => item.status === actieveGroep.status)
-                    .filter((item) => {
-                      if (actieveGroep.status !== 'verwijderd' || !item.verwijderdOp) return true
-                      return Date.now() - new Date(item.verwijderdOp).getTime() <= 30 * 24 * 60 * 60 * 1000
-                    })
+                  const items = zichtbareItemsVoorGroep(actieveGroep.status)
                     .slice()
                     .sort(sortAanvragen)
                   const ingeklapt = actieveGroep.status === 'verwijderd' && !toonVerwijderd
@@ -3277,6 +3293,33 @@ export default function App() {
                   placeholder="Zoek op taak, vestiging, datum of week..."
                   style={{ ...inp, flex: '1 1 260px', minWidth: 220 }}
                 />
+                <select
+                  value={taakJaarFilter}
+                  onChange={(e) => {
+                    setTaakJaarFilter(e.target.value)
+                    setTaakMaandFilter('alle')
+                  }}
+                  style={{ ...inp, width: 'auto', minWidth: 130 }}
+                >
+                  <option value="alle">Alle jaren</option>
+                  {taakJaren.map((jaar) => (
+                    <option key={jaar} value={jaar}>
+                      {jaar}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={taakMaandFilter}
+                  onChange={(e) => setTaakMaandFilter(e.target.value)}
+                  style={{ ...inp, width: 'auto', minWidth: 150 }}
+                >
+                  <option value="alle">Alle maanden</option>
+                  {taakMaanden.map((maand) => (
+                    <option key={maand} value={maand}>
+                      {maandLabel(maand)}
+                    </option>
+                  ))}
+                </select>
                 {verwijderdeTaken.length > 0 && (
                   <Btn variant="ghost" size="touch" onClick={() => setToonVerwijderdeTaken((prev) => !prev)}>
                     {toonVerwijderdeTaken ? 'Verberg verwijderde taken' : 'Toon verwijderde taken'}
