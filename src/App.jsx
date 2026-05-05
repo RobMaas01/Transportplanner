@@ -836,7 +836,7 @@ export default function App() {
               KopGroep Bibliotheken
             </div>
           </div>
-          <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gap: 18 }}>
             <button
               onClick={startAanvraag}
               style={{
@@ -844,20 +844,15 @@ export default function App() {
                 background: '#EA6A1F',
                 color: '#fff',
                 border: 'none',
-                borderRadius: 12,
-                padding: '15px 16px',
-                fontSize: 15,
+                borderRadius: 10,
+                padding: '16px 18px',
+                fontSize: 16,
                 fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 7px 16px rgba(234, 106, 31, .18)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
+                boxShadow: '0 8px 18px rgba(234, 106, 31, .18)',
               }}
             >
-              <span aria-hidden="true" style={{ fontSize: 18 }}>+</span>
-              <span>Ik wil iets aanvragen</span>
+              Ik wil iets aanvragen
             </button>
             <button
               onClick={() => {
@@ -867,22 +862,18 @@ export default function App() {
               }}
               style={{
                 width: '100%',
-                background: '#F0FDF4',
-                color: '#14532D',
-                border: '1px solid #BBF7D0',
-                borderRadius: 12,
-                padding: '13px 16px',
-                fontSize: 14,
+                background: '#1F7A4D',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                padding: '14px 18px',
+                fontSize: 15,
                 fontWeight: 700,
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
+                boxShadow: '0 7px 16px rgba(31, 122, 77, .14)',
               }}
             >
-              <span aria-hidden="true" style={{ fontSize: 17 }}>B</span>
-              <span>Inloggen als Bert</span>
+              Inloggen als Bert
             </button>
           </div>
         </div>
