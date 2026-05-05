@@ -102,15 +102,15 @@ export default function App() {
   const [opslagStatus, setOpslagStatus] = useState(supabaseConfigured ? 'Verbinden met centrale opslag...' : 'Lokale opslag')
 
   useEffect(() => {
-    const updateScherm = () => setIsMobiel(window.innerWidth < 760)
+    const updateScherm = () => {
+      const mobiel = window.innerWidth < 760
+      setIsMobiel(mobiel)
+      if (mobiel) setTab((huidigeTab) => (huidigeTab === 'rapportage' ? 'planning' : huidigeTab))
+      if (!mobiel) setMenuOpen(false)
+    }
     window.addEventListener('resize', updateScherm)
     return () => window.removeEventListener('resize', updateScherm)
   }, [])
-
-  useEffect(() => {
-    if (isMobiel && tab === 'rapportage') setTab('planning')
-    if (!isMobiel) setMenuOpen(false)
-  }, [isMobiel, tab])
 
   const [nieuw, setNieuw] = useState({
     titel: '',
