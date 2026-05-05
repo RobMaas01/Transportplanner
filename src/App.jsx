@@ -68,9 +68,30 @@ import {
   weekWerkdagen,
   wekenTussen,
 } from './utils'
+
+function laadSessie() {
+  try {
+    const rol = localStorage.getItem('bb_rol')
+    const tab = localStorage.getItem('bb_tab')
+    const veiligeTab =
+      rol === 'aanvrager' && !['aanvraag', 'aanvraagstatus'].includes(tab)
+        ? 'aanvraag'
+        : rol === 'transporteur' && !['planning', 'aanvragen', 'toevoegen', 'alletaken', 'rapportage'].includes(tab)
+          ? 'planning'
+          : tab || 'planning'
+    return {
+      rol: rol === 'aanvrager' || rol === 'transporteur' ? rol : null,
+      tab: veiligeTab,
+    }
+  } catch {
+    return { rol: null, tab: 'planning' }
+  }
+}
+
 export default function App() {
   const WEKEN = maakWeken(vandaag(), 260)
   const lokaal = laadLokaleState()
+  const sessie = laadSessie()
   const lokaleStartState = useRef(lokaal)
   const centraleOpslagActief = useRef(supabaseConfigured)
   const centraleOpslagGeladen = useRef(!supabaseConfigured)
@@ -78,11 +99,11 @@ export default function App() {
   const skipVolgendeCentraleOpslag = useRef(false)
   const [isMobiel, setIsMobiel] = useState(() => window.innerWidth < 760)
 
-  const [rol, setRol] = useState(null)
+  const [rol, setRol] = useState(sessie.rol)
   const [pin, setPin] = useState('')
   const [pinErr, setPinErr] = useState('')
   const [toonBertPin, setToonBertPin] = useState(false)
-  const [tab, setTab] = useState('planning')
+  const [tab, setTab] = useState(sessie.rol === 'aanvrager' && sessie.tab === 'rapportage' ? 'aanvraag' : sessie.tab)
   const [menuOpen, setMenuOpen] = useState(false)
   const [toevoegenTab, setToevoegenTab] = useState('taak')
   const [taken, setTaken] = useState(lokaal.taken)
@@ -113,6 +134,23 @@ export default function App() {
     window.addEventListener('resize', updateScherm)
     return () => window.removeEventListener('resize', updateScherm)
   }, [])
+
+  useEffect(() => {
+    try {
+      if (rol) localStorage.setItem('bb_rol', rol)
+      else localStorage.removeItem('bb_rol')
+    } catch {
+      // Sessie onthouden is gemak; als localStorage blokkeert blijft de app gewoon werken.
+    }
+  }, [rol])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('bb_tab', tab)
+    } catch {
+      // Zie opmerking bij rol-opslag.
+    }
+  }, [tab])
 
   const [nieuw, setNieuw] = useState({
     titel: '',
@@ -1220,6 +1258,12 @@ export default function App() {
               setTab('planning')
               setHelpOpen(false)
               setMenuOpen(false)
+              try {
+                localStorage.removeItem('bb_rol')
+                localStorage.removeItem('bb_tab')
+              } catch {
+                // Geen probleem als de browser dit blokkeert.
+              }
             }}
             style={{
               width: '100%',
@@ -1335,6 +1379,12 @@ export default function App() {
                           setRol(null)
                           setTab('planning')
                           setAanvraagBevestigd(false)
+                          try {
+                            localStorage.removeItem('bb_rol')
+                            localStorage.removeItem('bb_tab')
+                          } catch {
+                            // Geen probleem als de browser dit blokkeert.
+                          }
                         }}
                         style={{
                           background: '#F3F4F6',
