@@ -826,15 +826,30 @@ export default function App() {
           }}
         >
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <img
-              src={logo}
-              alt="KopGroep Bibliotheken"
-              style={{ width: '100%', maxWidth: 255, height: 'auto', marginBottom: 16 }}
-            />
-            <div style={{ fontSize: 20, fontWeight: 600, color: '#3A2A22' }}>Transportplanning</div>
-            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
-              KopGroep Bibliotheken
+            <div
+              aria-label="de Bibliotheek KopGroep Bibliotheken"
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 10,
+                marginBottom: 16,
+              }}
+            >
+              <div style={{ textAlign: 'left', lineHeight: 1 }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#5B5B5B', letterSpacing: 0 }}>de Bibliotheek</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#F26A21', marginTop: 4, letterSpacing: 0 }}>
+                  KopGroep Bibliotheken
+                </div>
+              </div>
+              <img
+                src={logoIcon}
+                alt=""
+                aria-hidden="true"
+                style={{ width: 50, height: 50, objectFit: 'contain' }}
+              />
             </div>
+            <div style={{ fontSize: 20, fontWeight: 600, color: '#3A2A22' }}>Transportplanning</div>
           </div>
           <div style={{ display: 'grid', gap: 24 }}>
             <button
