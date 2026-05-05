@@ -126,6 +126,7 @@ export default function App() {
   const [aanvraagBevestigd, setAanvraagBevestigd] = useState(false)
   const [aanvraagErrors, setAanvraagErrors] = useState({})
   const [aanvraagStatusTab, setAanvraagStatusTab] = useState('open')
+  const [bertAanvragenTab, setBertAanvragenTab] = useState('nieuw')
   const [taakErrors, setTaakErrors] = useState({})
   const [taakEditId, setTaakEditId] = useState(null)
   const [taakMelding, setTaakMelding] = useState('')
@@ -1920,28 +1921,62 @@ export default function App() {
                     Nog geen aanvragen ontvangen.
                   </div>
                 )}
-                {[
-                  { status: 'nieuw', titel: 'Nieuw' },
-                  { status: 'info', titel: 'Meer info nodig' },
-                  { status: 'ingepland', titel: 'Ingepland' },
-                  { status: 'voltooid', titel: 'Voltooid' },
-                  { status: 'afgewezen', titel: 'Niet uitvoeren' },
-                  { status: 'verwijderd', titel: 'Verwijderd' },
-                ].map((groep) => {
+                {(() => {
+                  const groepen = [
+                    { status: 'nieuw', titel: 'Nieuw', leeg: 'Geen nieuwe aanvragen.' },
+                    { status: 'info', titel: 'Meer info nodig', leeg: 'Geen aanvragen waar meer info nodig is.' },
+                    { status: 'ingepland', titel: 'Ingepland', leeg: 'Geen ingeplande aanvragen.' },
+                    { status: 'voltooid', titel: 'Voltooid', leeg: 'Geen voltooide aanvragen.' },
+                    { status: 'afgewezen', titel: 'Niet uitvoeren', leeg: 'Geen niet uitgevoerde aanvragen.' },
+                    { status: 'verwijderd', titel: 'Verwijderd', leeg: 'Geen verwijderde aanvragen.' },
+                  ]
+                  const zichtbareItemsVoorGroep = (status) =>
+                    aanvragen.filter((item) => {
+                      if (item.status !== status) return false
+                      if (status !== 'verwijderd' || !item.verwijderdOp) return true
+                      return Date.now() - new Date(item.verwijderdOp).getTime() <= 30 * 24 * 60 * 60 * 1000
+                    })
+                  const actieveGroep = groepen.find((groep) => groep.status === bertAanvragenTab) || groepen[0]
                   const items = aanvragen
-                    .filter((item) => item.status === groep.status)
+                    .filter((item) => item.status === actieveGroep.status)
                     .filter((item) => {
-                      if (groep.status !== 'verwijderd' || !item.verwijderdOp) return true
+                      if (actieveGroep.status !== 'verwijderd' || !item.verwijderdOp) return true
                       return Date.now() - new Date(item.verwijderdOp).getTime() <= 30 * 24 * 60 * 60 * 1000
                     })
                     .slice()
                     .sort(sortAanvragen)
-                  if (groep.status === 'verwijderd' && items.length === 0) return null
-                  const ingeklapt = groep.status === 'verwijderd' && !toonVerwijderd
+                  const ingeklapt = actieveGroep.status === 'verwijderd' && !toonVerwijderd
 
                   return (
+                    <>
+                    <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3, width: 'fit-content', maxWidth: '100%', flexWrap: 'wrap' }}>
+                      {groepen.map((groep) => {
+                        const aantal = zichtbareItemsVoorGroep(groep.status).length
+                        const actief = bertAanvragenTab === groep.status
+
+                        return (
+                          <button
+                            key={groep.status}
+                            type="button"
+                            onClick={() => setBertAanvragenTab(groep.status)}
+                            style={{
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '7px 12px',
+                              fontSize: 12,
+                              fontWeight: actief ? 700 : 600,
+                              cursor: 'pointer',
+                              background: actief ? '#fff' : 'transparent',
+                              color: actief ? '#111827' : '#6B7280',
+                              boxShadow: actief ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
+                            }}
+                          >
+                            {groep.titel} ({aantal})
+                          </button>
+                        )
+                      })}
+                    </div>
                     <div
-                      key={groep.status}
                       style={{
                         border: '1px solid #E5E9F0',
                         borderRadius: 9,
@@ -1956,13 +1991,13 @@ export default function App() {
                           justifyContent: 'space-between',
                           padding: '9px 12px',
                           borderBottom: '1px solid #E5E9F0',
-                          background: AANVRAAG_STATUS[groep.status]?.bg || '#F8F9FC',
+                          background: AANVRAAG_STATUS[actieveGroep.status]?.bg || '#F8F9FC',
                         }}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 650, color: AANVRAAG_STATUS[groep.status]?.color || '#374151' }}>{groep.titel}</div>
+                        <div style={{ fontSize: 13, fontWeight: 650, color: AANVRAAG_STATUS[actieveGroep.status]?.color || '#374151' }}>{actieveGroep.titel}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ fontSize: 12, color: AANVRAAG_STATUS[groep.status]?.color || '#6B7280', fontWeight: 650 }}>{items.length}</div>
-                          {groep.status === 'verwijderd' && items.length > 0 && (
+                          <div style={{ fontSize: 12, color: AANVRAAG_STATUS[actieveGroep.status]?.color || '#6B7280', fontWeight: 650 }}>{items.length}</div>
+                          {actieveGroep.status === 'verwijderd' && items.length > 0 && (
                             <Btn variant="ghost" onClick={() => setToonVerwijderd((prev) => !prev)}>
                               {toonVerwijderd ? 'Verberg' : 'Toon'}
                             </Btn>
@@ -1981,8 +2016,8 @@ export default function App() {
                           }}
                         >
                           Verwijderde aanvragen van de laatste 30 dagen zijn verborgen. Gebruik Toon om ze terug te halen.
-                        </div>
-                      )}
+                          </div>
+                        )}
                       {!ingeklapt && items.length === 0 && (
                         <div
                           style={{
@@ -1992,7 +2027,7 @@ export default function App() {
                             background: '#fff',
                           }}
                         >
-                          Geen aanvragen in deze groep.
+                          {actieveGroep.leeg}
                         </div>
                       )}
                       {!ingeklapt && <div style={{ display: 'grid', gap: 10, padding: items.length ? 10 : 0 }}>
@@ -2119,8 +2154,9 @@ export default function App() {
                         ))}
                       </div>}
                     </div>
+                    </>
                   )
-                })}
+                })()}
               </div>
             </Card>
           )}
