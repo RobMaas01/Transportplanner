@@ -836,7 +836,7 @@ export default function App() {
               KopGroep Bibliotheken
             </div>
           </div>
-          <div style={{ display: 'grid', gap: 18 }}>
+          <div style={{ display: 'grid', gap: 24 }}>
             <button
               onClick={startAanvraag}
               style={{
@@ -873,7 +873,7 @@ export default function App() {
                 boxShadow: '0 7px 16px rgba(31, 122, 77, .14)',
               }}
             >
-              Inloggen als Bert
+              Naar Bert
             </button>
           </div>
         </div>
