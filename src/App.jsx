@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import logo from './assets/kopgroep-logo-official.png'
+import logoIcon from './assets/kopgroep-logo-icon.jpeg'
 import {
   AANVRAAG_STATUS,
   DAGEN,
@@ -820,7 +821,7 @@ export default function App() {
             borderRadius: 16,
             padding: 34,
             width: '100%',
-            maxWidth: 430,
+            maxWidth: 460,
             boxSizing: 'border-box',
           }}
         >
@@ -835,49 +836,54 @@ export default function App() {
               KopGroep Bibliotheken
             </div>
           </div>
-          <button
-            onClick={startAanvraag}
-            style={{
-              width: '100%',
-              background: '#EA6A1F',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 10,
-              padding: '14px 0',
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: 'pointer',
-              marginBottom: 14,
-              boxShadow: '0 5px 12px rgba(234, 106, 31, .16)',
-            }}
-          >
-            Ik wil iets aanvragen
-          </button>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#3A2A22', marginBottom: 8, marginTop: 12 }}>
-            Bert planning
-          </div>
-          <button
-            onClick={() => {
-              setToonBertPin(true)
-              setPin('')
-              setPinErr('')
-            }}
-            style={{
-              width: '100%',
-              background: '#1F7A4D',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '10px 0',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Inloggen als Bert
-          </button>
-          <div style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center', marginTop: 14, whiteSpace: 'nowrap' }}>
-            Aanvragen kan zonder pincode. Bert beheert de planning.
+          <div style={{ display: 'grid', gap: 12 }}>
+            <button
+              onClick={startAanvraag}
+              style={{
+                width: '100%',
+                background: '#EA6A1F',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 12,
+                padding: '15px 16px',
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 7px 16px rgba(234, 106, 31, .18)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+              }}
+            >
+              <span aria-hidden="true" style={{ fontSize: 18 }}>+</span>
+              <span>Ik wil iets aanvragen</span>
+            </button>
+            <button
+              onClick={() => {
+                setToonBertPin(true)
+                setPin('')
+                setPinErr('')
+              }}
+              style={{
+                width: '100%',
+                background: '#F0FDF4',
+                color: '#14532D',
+                border: '1px solid #BBF7D0',
+                borderRadius: 12,
+                padding: '13px 16px',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+              }}
+            >
+              <span aria-hidden="true" style={{ fontSize: 17 }}>B</span>
+              <span>Inloggen als Bert</span>
+            </button>
           </div>
         </div>
         {toonBertPin && (
@@ -1012,17 +1018,15 @@ export default function App() {
           }}
         >
           {isMobiel ? (
-            <div
-              aria-label="KopGroep Bibliotheken"
-              role="img"
+            <img
+              src={logoIcon}
+              alt="KopGroep Bibliotheken"
               style={{
                 width: 38,
                 height: 38,
                 borderRadius: 10,
-                backgroundImage: `url(${logo})`,
-                backgroundRepeat: 'no-repeat',
-                backgroundSize: '230px auto',
-                backgroundPosition: 'right center',
+                objectFit: 'contain',
+                background: '#fff',
               }}
             />
           ) : (
@@ -1348,43 +1352,47 @@ export default function App() {
                       />
                       <FieldError>{aanvraagErrors.titel}</FieldError>
                     </div>
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        fontSize: 12,
-                        color: '#374151',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        width: 'fit-content',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={Boolean(aanvraag.prive)}
-                        onChange={(e) => setAanvraag((prev) => ({ ...prev, prive: e.target.checked }))}
-                      />
-                      <span>Privé</span>
-                      <span
-                        title="Privé betekent: de aanvraag is alleen zichtbaar voor Bert en staat niet in Alle aanvragen bij de aanvrager."
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 'fit-content' }}>
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          fontSize: 12,
+                          color: '#374151',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(aanvraag.prive)}
+                          onChange={(e) => setAanvraag((prev) => ({ ...prev, prive: e.target.checked }))}
+                        />
+                        <span>Prive</span>
+                      </label>
+                      <button
+                        type="button"
+                        title="Prive betekent: de aanvraag is alleen zichtbaar voor Bert en staat niet in Alle aanvragen bij de aanvrager. Klik hier ook om Prive aan of uit te zetten."
+                        onClick={() => setAanvraag((prev) => ({ ...prev, prive: !prev.prive }))}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: 17,
-                          height: 17,
+                          width: 21,
+                          height: 21,
                           borderRadius: '50%',
-                          border: '1px solid #D1D5DB',
-                          color: '#6B7280',
+                          border: Boolean(aanvraag.prive) ? '1px solid #EA6A1F' : '1px solid #D1D5DB',
+                          color: Boolean(aanvraag.prive) ? '#EA6A1F' : '#6B7280',
                           background: '#fff',
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: 800,
+                          cursor: 'pointer',
                         }}
                       >
                         i
-                      </span>
-                    </label>
+                      </button>
+                    </div>
                     <div>
                       <Label>Van vestiging</Label>
                       <select
