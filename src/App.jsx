@@ -3626,7 +3626,7 @@ export default function App() {
                       'Voeg een taak toe of zet een druktemelding, bijvoorbeeld vakantie, afwezigheid of een drukke week. Aanvragers zien deze waarschuwing bij het kiezen van een datum.',
                     ],
                     ['Alle taken', 'Zoek taken terug, wijzig ze of verwijder ze.'],
-                    ['Rapportage', 'Maak een overzicht per week, maand of jaar.'],
+                    ...(!isMobiel ? [['Rapportage', 'Maak een overzicht per week, maand of jaar.']] : []),
                   ]
               ).map(([titel, tekst]) => (
                 <div
