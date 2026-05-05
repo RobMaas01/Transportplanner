@@ -1173,7 +1173,7 @@ export default function App() {
           )}
         </div>
         {isMobiel ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 4px' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '8px 10px 8px 4px' }}>
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
@@ -3116,7 +3116,7 @@ export default function App() {
                               cursor: 'pointer',
                             }}
                           >
-                            Nu toevoegen als afgerond
+                            Al uitgevoerd
                           </button>
                         )}
                         <MonthNav value={taakMaand} onChange={setTaakMaand} />
