@@ -1136,7 +1136,7 @@ export default function App() {
     <div
       style={{
         display: 'flex',
-        flexDirection: isMobiel ? 'column-reverse' : 'row',
+        flexDirection: isMobiel ? 'column' : 'row',
         height: '100dvh',
         width: '100%',
         maxWidth: '100vw',
@@ -1150,8 +1150,8 @@ export default function App() {
           width: isMobiel ? '100%' : 210,
           background: '#FFF7ED',
           borderRight: isMobiel ? 'none' : '1px solid #FED7AA',
-          borderTop: isMobiel ? '1px solid #FED7AA' : 'none',
-          borderBottom: 'none',
+          borderTop: 'none',
+          borderBottom: isMobiel ? '1px solid #FED7AA' : 'none',
           display: 'flex',
           flexDirection: isMobiel ? 'row' : 'column',
           flexShrink: 0,
