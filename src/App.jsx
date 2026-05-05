@@ -74,6 +74,8 @@ export default function App() {
   const lokaleStartState = useRef(lokaal)
   const centraleOpslagActief = useRef(supabaseConfigured)
   const centraleOpslagGeladen = useRef(!supabaseConfigured)
+  const laatsteCentraleUpdate = useRef(null)
+  const skipVolgendeCentraleOpslag = useRef(false)
   const [isMobiel, setIsMobiel] = useState(() => window.innerWidth < 760)
 
   const [rol, setRol] = useState(null)
@@ -153,6 +155,14 @@ export default function App() {
     jaar: String(new Date().getFullYear()),
   })
 
+  function pasCentraleStateToe(data) {
+    skipVolgendeCentraleOpslag.current = true
+    setTaken(data?.taken || [])
+    setAanvragen(data?.aanvragen || [])
+    setGeblokt(data?.geblokt || [])
+    setMeld(data?.meld || [])
+  }
+
   useEffect(() => {
     if (!supabaseConfigured) return undefined
 
@@ -160,7 +170,7 @@ export default function App() {
 
     async function laad() {
       const lokaalState = lokaleStartState.current
-      const { data, error } = await laadCentraleState()
+      const { data, updatedAt, error } = await laadCentraleState()
       if (!actief) return
 
       if (error) {
@@ -171,12 +181,11 @@ export default function App() {
       }
 
       if (data && !isLegeState(data)) {
-        setTaken(data.taken || [])
-        setAanvragen(data.aanvragen || [])
-        setGeblokt(data.geblokt || [])
-        setMeld(data.meld || [])
+        laatsteCentraleUpdate.current = updatedAt
+        pasCentraleStateToe(data)
       } else if (!isLegeState(lokaalState)) {
-        await bewaarCentraleState(lokaalState)
+        const resultaat = await bewaarCentraleState(lokaalState)
+        if (resultaat.updatedAt) laatsteCentraleUpdate.current = resultaat.updatedAt
       }
 
       centraleOpslagGeladen.current = true
@@ -208,20 +217,58 @@ export default function App() {
 
   useEffect(() => {
     if (!centraleOpslagActief.current || !centraleOpslagGeladen.current) return undefined
+    if (skipVolgendeCentraleOpslag.current) {
+      skipVolgendeCentraleOpslag.current = false
+      return undefined
+    }
 
     const state = { taken, aanvragen, geblokt, meld }
     const timer = setTimeout(async () => {
-      const { error } = await bewaarCentraleState(state)
+      const { updatedAt, error } = await bewaarCentraleState(state)
       if (error) {
         console.error('Centrale opslag kon niet worden opgeslagen.', error)
         setOpslagStatus('Opslaan mislukt, lokaal bewaard')
       } else {
+        if (updatedAt) laatsteCentraleUpdate.current = updatedAt
         setOpslagStatus('Centrale opslag actief')
       }
     }, 500)
 
     return () => clearTimeout(timer)
   }, [taken, aanvragen, geblokt, meld])
+
+  useEffect(() => {
+    if (!supabaseConfigured) return undefined
+
+    let actief = true
+    const timer = setInterval(async () => {
+      if (!centraleOpslagActief.current || !centraleOpslagGeladen.current) return
+      if (document.visibilityState === 'hidden') return
+
+      const { data, updatedAt, error } = await laadCentraleState()
+      if (!actief) return
+      if (error) {
+        console.error('Centrale opslag kon niet worden ververst.', error)
+        return
+      }
+      if (!data || !updatedAt) return
+
+      const vorigeUpdate = laatsteCentraleUpdate.current
+      if (vorigeUpdate && new Date(updatedAt).getTime() <= new Date(vorigeUpdate).getTime()) return
+
+      laatsteCentraleUpdate.current = updatedAt
+      pasCentraleStateToe(data)
+      setOpslagStatus('Centrale opslag bijgewerkt')
+      setTimeout(() => {
+        if (actief) setOpslagStatus('Centrale opslag actief')
+      }, 1600)
+    }, 10000)
+
+    return () => {
+      actief = false
+      clearInterval(timer)
+    }
+  }, [])
 
 
   useEffect(() => {
