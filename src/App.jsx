@@ -978,6 +978,8 @@ export default function App() {
         display: 'flex',
         flexDirection: isMobiel ? 'column' : 'row',
         height: '100dvh',
+        width: '100%',
+        maxWidth: '100vw',
         background: '#F8F9FC',
         fontFamily: "Segoe UI, -apple-system, BlinkMacSystemFont, sans-serif",
         overflow: 'hidden',
@@ -1002,13 +1004,30 @@ export default function App() {
           style={{
             padding: isMobiel ? '10px 10px 8px' : '18px 14px 14px',
             borderBottom: isMobiel ? 'none' : '1px solid #FED7AA',
-            width: isMobiel ? 110 : 'auto',
+            width: isMobiel ? 64 : 'auto',
             flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          <img src={logo} alt="KopGroep Bibliotheken" style={{ width: '100%', height: 'auto', marginBottom: isMobiel ? 4 : 10 }} />
-          {!isMobiel && (
+          {isMobiel ? (
+            <div
+              aria-label="KopGroep Bibliotheken"
+              role="img"
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                backgroundImage: `url(${logo})`,
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: '230px auto',
+                backgroundPosition: 'right center',
+              }}
+            />
+          ) : (
             <>
+              <img src={logo} alt="KopGroep Bibliotheken" style={{ width: '100%', height: 'auto', marginBottom: 10 }} />
               <div style={{ color: '#3A2A22', fontSize: 13, fontWeight: 700 }}>Transportplanning</div>
               <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 3 }}>KopGroep Bibliotheken</div>
             </>
@@ -1035,20 +1054,41 @@ export default function App() {
             {menuOpen && (
               <div
                 style={{
-                  position: 'absolute',
-                  left: 10,
-                  right: 10,
-                  top: 'calc(100% - 2px)',
-                  zIndex: 20,
-                  background: '#fff',
-                  border: '1px solid #FED7AA',
-                  borderRadius: 10,
-                  boxShadow: '0 12px 28px rgba(17, 24, 39, .12)',
-                  padding: 8,
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 50,
+                  background: '#FFF7ED',
+                  padding: 18,
                   display: 'grid',
-                  gap: 4,
+                  gridTemplateRows: 'auto 1fr auto',
+                  gap: 18,
                 }}
               >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#3A2A22' }}>Menu</div>
+                    <div style={{ fontSize: 12, color: '#9A5A2E', marginTop: 2 }}>
+                      {rol === 'aanvrager' ? 'Aanvrager' : 'Bert'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      border: '1px solid #FED7AA',
+                      background: '#fff',
+                      color: '#7C4A2A',
+                      borderRadius: 8,
+                      padding: '9px 12px',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Sluiten
+                  </button>
+                </div>
+                <div style={{ display: 'grid', alignContent: 'start', gap: 8 }}>
                 {zichtbareNavTabs.map((item) => (
                   <button
                     key={item.k}
@@ -1067,11 +1107,14 @@ export default function App() {
                       fontWeight: 600,
                       color: tab === item.k ? '#fff' : '#7C4A2A',
                       background: tab === item.k ? '#EA6A1F' : '#FFF7ED',
+                      boxShadow: tab === item.k ? '0 6px 14px rgba(234, 106, 31, .18)' : 'inset 0 0 0 1px #FED7AA',
                     }}
                   >
                     {item.l}
                   </button>
                 ))}
+                </div>
+                <div style={{ fontSize: 11, color: '#9A5A2E' }}>{opslagStatus}</div>
               </div>
             )}
           </div>
@@ -1135,7 +1178,7 @@ export default function App() {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div
           style={{
             background: '#fff',
@@ -1195,7 +1238,7 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ padding: paginaPadding, flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: paginaPadding, flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden' }}>
           {tab === 'aanvraag' && (rol === 'aanvrager' || rol === 'transporteur') && (
             <div>
               {aanvraagBevestigd && rol === 'aanvrager' ? (
@@ -2366,8 +2409,10 @@ export default function App() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gridTemplateColumns: isMobiel ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(180px, 1fr))',
                   gap: 10,
+                  width: '100%',
+                  maxWidth: '100%',
                 }}
               >
                 {dagData.map((dag, di) => {
