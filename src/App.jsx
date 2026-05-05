@@ -88,11 +88,26 @@ function laadSessie() {
   }
 }
 
+function maakStateSnapshot(state) {
+  try {
+    return JSON.stringify({
+      taken: state?.taken || [],
+      aanvragen: state?.aanvragen || [],
+      geblokt: state?.geblokt || [],
+      meld: state?.meld || [],
+    })
+  } catch {
+    return ''
+  }
+}
+
 export default function App() {
   const WEKEN = maakWeken(vandaag(), 260)
   const lokaal = laadLokaleState()
   const sessie = laadSessie()
   const lokaleStartState = useRef(lokaal)
+  const huidigeStateSnapshot = useRef(maakStateSnapshot(lokaal))
+  const laatsteLokaleWijzigingOp = useRef(0)
   const centraleOpslagActief = useRef(supabaseConfigured)
   const centraleOpslagGeladen = useRef(!supabaseConfigured)
   const laatsteCentraleUpdate = useRef(null)
@@ -195,6 +210,7 @@ export default function App() {
 
   function pasCentraleStateToe(data) {
     skipVolgendeCentraleOpslag.current = true
+    huidigeStateSnapshot.current = maakStateSnapshot(data)
     setTaken(data?.taken || [])
     setAanvragen(data?.aanvragen || [])
     setGeblokt(data?.geblokt || [])
@@ -255,12 +271,14 @@ export default function App() {
 
   useEffect(() => {
     if (!centraleOpslagActief.current || !centraleOpslagGeladen.current) return undefined
+    const state = { taken, aanvragen, geblokt, meld }
+    huidigeStateSnapshot.current = maakStateSnapshot(state)
     if (skipVolgendeCentraleOpslag.current) {
       skipVolgendeCentraleOpslag.current = false
       return undefined
     }
 
-    const state = { taken, aanvragen, geblokt, meld }
+    laatsteLokaleWijzigingOp.current = Date.now()
     const timer = setTimeout(async () => {
       const { updatedAt, error } = await bewaarCentraleState(state)
       if (error) {
@@ -291,8 +309,13 @@ export default function App() {
       }
       if (!data || !updatedAt) return
 
-      const vorigeUpdate = laatsteCentraleUpdate.current
-      if (vorigeUpdate && new Date(updatedAt).getTime() <= new Date(vorigeUpdate).getTime()) return
+      if (Date.now() - laatsteLokaleWijzigingOp.current < 2000) return
+
+      const nieuweSnapshot = maakStateSnapshot(data)
+      if (!nieuweSnapshot || nieuweSnapshot === huidigeStateSnapshot.current) {
+        laatsteCentraleUpdate.current = updatedAt
+        return
+      }
 
       laatsteCentraleUpdate.current = updatedAt
       pasCentraleStateToe(data)
