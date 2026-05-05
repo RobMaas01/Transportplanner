@@ -796,7 +796,7 @@ export default function App() {
   const pagina = {
     planning: 'Weekplanning',
     aanvragen: 'Aanvragen inbox',
-    aanvraag: 'Transportaanvraag',
+    aanvraag: 'Transport aanvragen',
     aanvraagstatus: 'Aanvragen volgen',
     toevoegen: 'Toevoegen',
     alletaken: 'Alle taken',
@@ -851,7 +851,7 @@ export default function App() {
                 style={{ width: 50, height: 50, objectFit: 'contain' }}
               />
             </div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#3A2A22' }}>Boekenbode</div>
+            <div style={{ fontSize: 20, fontWeight: 600, color: '#3A2A22' }}>Transportplanning</div>
           </div>
           <div style={{ display: 'grid', gap: 24 }}>
             <button
@@ -890,7 +890,7 @@ export default function App() {
                 boxShadow: '0 7px 16px rgba(31, 122, 77, .14)',
               }}
             >
-              Naar Bert
+              Boekenbode
             </button>
           </div>
         </div>
@@ -1040,7 +1040,7 @@ export default function App() {
           ) : (
             <>
               <img src={logo} alt="KopGroep Bibliotheken" style={{ width: '100%', height: 'auto', marginBottom: 10 }} />
-              <div style={{ color: '#3A2A22', fontSize: 13, fontWeight: 700 }}>Boekenbode</div>
+              <div style={{ color: '#3A2A22', fontSize: 13, fontWeight: 700 }}>Transportplanning</div>
               <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 3 }}>KopGroep Bibliotheken</div>
             </>
           )}
