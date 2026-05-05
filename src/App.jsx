@@ -73,6 +73,7 @@ export default function App() {
   const lokaleStartState = useRef(lokaal)
   const centraleOpslagActief = useRef(supabaseConfigured)
   const centraleOpslagGeladen = useRef(!supabaseConfigured)
+  const [isMobiel, setIsMobiel] = useState(() => window.innerWidth < 760)
 
   const [rol, setRol] = useState(null)
   const [pin, setPin] = useState('')
@@ -97,6 +98,12 @@ export default function App() {
   const [taakZoekterm, setTaakZoekterm] = useState('')
   const [meld, setMeld] = useState(lokaal.meld)
   const [opslagStatus, setOpslagStatus] = useState(supabaseConfigured ? 'Verbinden met centrale opslag...' : 'Lokale opslag')
+
+  useEffect(() => {
+    const updateScherm = () => setIsMobiel(window.innerWidth < 760)
+    window.addEventListener('resize', updateScherm)
+    return () => window.removeEventListener('resize', updateScherm)
+  }, [])
 
   const [nieuw, setNieuw] = useState({
     titel: '',
@@ -955,12 +962,15 @@ export default function App() {
   const takenPerMaand = groepeerTakenPerMaand(gezochteActieveTaken)
   const verwijderdeTakenPerMaand = groepeerTakenPerMaand(gezochteVerwijderdeTaken)
   const rappData = tab === 'rapportage' ? maakRapportData(taken, rapp) : null
+  const breedFormGrid = isMobiel ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))'
+  const paginaPadding = isMobiel ? 10 : 20
 
   return (
     <div
       style={{
         display: 'flex',
-        height: '100vh',
+        flexDirection: isMobiel ? 'column' : 'row',
+        height: '100dvh',
         background: '#F8F9FC',
         fontFamily: "Segoe UI, -apple-system, BlinkMacSystemFont, sans-serif",
         overflow: 'hidden',
@@ -968,48 +978,79 @@ export default function App() {
     >
       <div
         style={{
-          width: 210,
+          width: isMobiel ? '100%' : 210,
           background: '#FFF7ED',
-          borderRight: '1px solid #FED7AA',
+          borderRight: isMobiel ? 'none' : '1px solid #FED7AA',
+          borderBottom: isMobiel ? '1px solid #FED7AA' : 'none',
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: isMobiel ? 'row' : 'column',
           flexShrink: 0,
-          height: '100vh',
+          height: isMobiel ? 'auto' : '100vh',
+          maxHeight: isMobiel ? 142 : 'none',
           overflow: 'hidden',
         }}
       >
-        <div style={{ padding: '18px 14px 14px', borderBottom: '1px solid #FED7AA' }}>
-          <img src={logo} alt="KopGroep Bibliotheken" style={{ width: '100%', height: 'auto', marginBottom: 10 }} />
-          <div style={{ color: '#3A2A22', fontSize: 13, fontWeight: 700 }}>Transportplanning</div>
-          <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 3 }}>KopGroep Bibliotheken</div>
+        <div
+          style={{
+            padding: isMobiel ? '10px 10px 8px' : '18px 14px 14px',
+            borderBottom: isMobiel ? 'none' : '1px solid #FED7AA',
+            width: isMobiel ? 110 : 'auto',
+            flexShrink: 0,
+          }}
+        >
+          <img src={logo} alt="KopGroep Bibliotheken" style={{ width: '100%', height: 'auto', marginBottom: isMobiel ? 4 : 10 }} />
+          {!isMobiel && (
+            <>
+              <div style={{ color: '#3A2A22', fontSize: 13, fontWeight: 700 }}>Transportplanning</div>
+              <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 3 }}>KopGroep Bibliotheken</div>
+            </>
+          )}
         </div>
-        <nav style={{ padding: '10px 8px', flex: 1, overflowY: 'auto' }}>
+        <nav
+          style={{
+            padding: isMobiel ? '8px 4px' : '10px 8px',
+            flex: 1,
+            overflowY: isMobiel ? 'hidden' : 'auto',
+            overflowX: isMobiel ? 'auto' : 'hidden',
+            display: isMobiel ? 'flex' : 'block',
+            alignItems: isMobiel ? 'center' : 'stretch',
+            gap: isMobiel ? 4 : 0,
+          }}
+        >
           {navTabs.map((item) => (
             <div
               key={item.k}
               onClick={() => setTab(item.k)}
               style={{
-                padding: '9px 12px',
+                padding: isMobiel ? '9px 10px' : '9px 12px',
                 borderRadius: 8,
                 cursor: 'pointer',
-                marginBottom: 2,
-                fontSize: 13,
+                marginBottom: isMobiel ? 0 : 2,
+                fontSize: isMobiel ? 12 : 13,
                 fontWeight: 500,
                 color: tab === item.k ? '#fff' : '#7C4A2A',
                 background: tab === item.k ? '#EA6A1F' : 'transparent',
+                whiteSpace: 'nowrap',
               }}
             >
               {item.l}
             </div>
           ))}
         </nav>
-        <div style={{ padding: '12px 10px', borderTop: '1px solid #FED7AA' }}>
-          <div style={{ background: '#FFE8D1', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
-            <div style={{ color: '#3A2A22', fontSize: 12, fontWeight: 600 }}>
+        <div
+          style={{
+            padding: isMobiel ? '8px 8px 8px 4px' : '12px 10px',
+            borderTop: isMobiel ? 'none' : '1px solid #FED7AA',
+            width: isMobiel ? 112 : 'auto',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ background: '#FFE8D1', borderRadius: 8, padding: isMobiel ? '7px 8px' : '10px 12px', marginBottom: 8 }}>
+            <div style={{ color: '#3A2A22', fontSize: isMobiel ? 11 : 12, fontWeight: 600 }}>
               {rol === 'aanvrager' ? 'Aanvrager' : 'Bert'}
             </div>
-            <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 2 }}>Ingelogd</div>
-            <div style={{ color: '#9A5A2E', fontSize: 10, marginTop: 5 }}>{opslagStatus}</div>
+            {!isMobiel && <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 2 }}>Ingelogd</div>}
+            <div style={{ color: '#9A5A2E', fontSize: isMobiel ? 9 : 10, marginTop: isMobiel ? 3 : 5 }}>{opslagStatus}</div>
           </div>
           <button
             onClick={() => {
@@ -1023,8 +1064,8 @@ export default function App() {
               border: '1px solid #F5C99D',
               color: '#7C4A2A',
               borderRadius: 6,
-              padding: 7,
-              fontSize: 12,
+              padding: isMobiel ? 6 : 7,
+              fontSize: isMobiel ? 11 : 12,
               cursor: 'pointer',
             }}
           >
@@ -1038,21 +1079,23 @@ export default function App() {
           style={{
             background: '#fff',
             borderBottom: '1px solid #E5E9F0',
-            padding: '0 22px',
-            height: 54,
+            padding: isMobiel ? '10px 12px' : '0 22px',
+            minHeight: isMobiel ? 58 : 54,
+            height: isMobiel ? 'auto' : 54,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            gap: 10,
             flexShrink: 0,
           }}
         >
           <div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>{pagina[tab] || ''}</div>
+            <div style={{ fontSize: isMobiel ? 14 : 15, fontWeight: 600, color: '#111827' }}>{pagina[tab] || ''}</div>
             <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }}>
               {tab === 'planning' ? weekRange(week) : 'KopGroep Bibliotheken'}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {nieuweM() > 0 && (
             <button
               onClick={leesM}
@@ -1091,7 +1134,7 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ padding: 20, flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: paginaPadding, flex: 1, overflowY: 'auto' }}>
           {tab === 'aanvraag' && (rol === 'aanvrager' || rol === 'transporteur') && (
             <div>
               {aanvraagBevestigd && rol === 'aanvrager' ? (
@@ -1149,7 +1192,7 @@ export default function App() {
               ) : (
               <Card>
                 <CardHead title={aanvraagEditId ? 'Aanvraag aanvullen' : 'Nieuwe transportaanvraag'} />
-                <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' }}>
+                <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 16, alignItems: 'start' }}>
                   {heeftErrors(aanvraagErrors) && (
                     <div
                       style={{
@@ -2440,7 +2483,7 @@ export default function App() {
               {toevoegenTab === 'taak' && (
               <Card>
                 <CardHead title={taakEditId ? 'Taak wijzigen' : 'Taak toevoegen'} />
-                <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' }}>
+                <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 16, alignItems: 'start' }}>
                   {taakMelding && (
                     <div
                       onClick={() => setTaakMelding('')}
@@ -2908,7 +2951,7 @@ export default function App() {
           )}
 
           {tab === 'toevoegen' && rol === 'transporteur' && toevoegenTab === 'drukte' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 18 }}>
               <Card>
                 <CardHead title="Druktemelding toevoegen" />
                 <div style={{ padding: 18, display: 'grid', gap: 12 }}>
