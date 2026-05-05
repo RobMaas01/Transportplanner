@@ -1,0 +1,21 @@
+{
+  "name": "Transportplanning",
+  "short_name": "Transport",
+  "description": "Transportplanning voor KopGroep Bibliotheken",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF7ED",
+  "theme_color": "#EA6A1F",
+  "icons": [
+    {
+      "src": "/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
