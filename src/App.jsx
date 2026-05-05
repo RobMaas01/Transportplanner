@@ -127,6 +127,7 @@ export default function App() {
   const [aanvragen, setAanvragen] = useState(lokaal.aanvragen)
   const [geblokt, setGeblokt] = useState(lokaal.geblokt)
   const [week, setWeek] = useState(vandaag())
+  const [mobielePlanningDag, setMobielePlanningDag] = useState(vandaagWerkdagIndex())
   const [planningWeergave, setPlanningWeergave] = useState('maand')
   const [planningMaand, setPlanningMaand] = useState(new Date().toISOString().slice(0, 7))
   const [planningJaar, setPlanningJaar] = useState(String(new Date().getFullYear()))
@@ -1099,6 +1100,7 @@ export default function App() {
   const verwijderdeTaken = taken.filter((taak) => taak.status === 'verwijderd')
   const dagData = weekWerkdagen(week)
   const weekTaken = actieveTaken.filter((taak) => taak.week === week)
+  const zichtbareWeekDagen = isMobiel ? dagData.filter((_, di) => di === mobielePlanningDag) : dagData
   const weekBlokkade = blokkadeVoorWeek(week)
   const gebloktNu = Boolean(weekBlokkade)
   const maandData = maandDagen(planningMaand)
@@ -2660,6 +2662,47 @@ export default function App() {
 
               {planningWeergave === 'week' && (
                 <>
+              {isMobiel && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                    gap: 6,
+                    marginBottom: 12,
+                  }}
+                >
+                  {dagData.map((dag, di) => {
+                    const actief = mobielePlanningDag === di
+                    const aantal = weekTaken.filter((taak) => Number(taak.dag) === di).length
+
+                    return (
+                      <button
+                        key={DAGEN_KORT[di]}
+                        type="button"
+                        onClick={() => setMobielePlanningDag(di)}
+                        style={{
+                          border: actief ? '1px solid #EA6A1F' : '1px solid #E5E9F0',
+                          background: actief ? '#FFF7ED' : '#fff',
+                          color: actief ? '#9A3412' : '#374151',
+                          borderRadius: 9,
+                          padding: '8px 4px',
+                          fontSize: 12,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'grid',
+                          gap: 3,
+                          justifyItems: 'center',
+                        }}
+                      >
+                        <span>{DAGEN_KORT[di]}</span>
+                        <span style={{ fontSize: 10, color: actief ? '#C2410C' : '#9CA3AF', fontWeight: 700 }}>
+                          {aantal}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
               {gebloktNu && (
                 <div
                   style={{
@@ -2684,13 +2727,14 @@ export default function App() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobiel ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gridTemplateColumns: isMobiel ? '1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
                   gap: 10,
                   width: '100%',
                   maxWidth: '100%',
                 }}
               >
-                {dagData.map((dag, di) => {
+                {zichtbareWeekDagen.map((dag) => {
+                  const di = dagData.findIndex((item) => isoDag(item) === isoDag(dag))
                   const dt = weekTaken.filter((taak) => Number(taak.dag) === di)
                   const dagWaarschuwing = blokkadeVoorDag(week, di)
 
@@ -2706,7 +2750,7 @@ export default function App() {
                     >
                       <div
                         style={{
-                          padding: '9px 11px',
+                          padding: isMobiel ? '12px 13px' : '9px 11px',
                           background: '#fff',
                           borderBottom: '1px solid #E5E9F0',
                           display: 'flex',
@@ -2715,8 +2759,10 @@ export default function App() {
                         }}
                       >
                         <div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{DAGEN_KORT[di]}</div>
-                          <div style={{ fontSize: 10, color: '#9CA3AF' }}>{fmtS(dag)}</div>
+                          <div style={{ fontSize: isMobiel ? 15 : 12, fontWeight: 700, color: '#374151' }}>
+                            {isMobiel ? DAGEN[di] : DAGEN_KORT[di]}
+                          </div>
+                          <div style={{ fontSize: isMobiel ? 12 : 10, color: '#9CA3AF' }}>{fmtS(dag)}</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                           {dagWaarschuwing && (
@@ -2749,9 +2795,9 @@ export default function App() {
                           </span>
                         </div>
                       </div>
-                      <div style={{ padding: 7, minHeight: 60 }}>
+                      <div style={{ padding: isMobiel ? 10 : 7, minHeight: isMobiel ? 120 : 60 }}>
                         {dt.length === 0 && (
-                          <div style={{ padding: '12px 4px', fontSize: 10, color: '#D1D5DB', textAlign: 'center' }}>
+                          <div style={{ padding: '18px 4px', fontSize: isMobiel ? 12 : 10, color: '#D1D5DB', textAlign: 'center' }}>
                             Leeg
                           </div>
                         )}
@@ -2765,16 +2811,16 @@ export default function App() {
                                 background: '#fff',
                                 border: '1px solid #E5E9F0',
                                 borderRadius: 7,
-                                padding: '8px 9px',
-                                marginBottom: 5,
+                                padding: isMobiel ? '11px 12px' : '8px 9px',
+                                marginBottom: isMobiel ? 8 : 5,
                                 borderLeft: `3px solid ${sm.dot}`,
                               }}
                             >
-                              <div style={{ fontSize: 11, fontWeight: 600, color: '#111827', marginBottom: 2 }}>
+                              <div style={{ fontSize: isMobiel ? 13 : 11, fontWeight: 700, color: '#111827', marginBottom: 2 }}>
                                 {taak.titel}
                               </div>
                               {taak.van && taak.naar && (
-                                <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 4 }}>
+                                <div style={{ fontSize: isMobiel ? 12 : 10, color: '#6B7280', marginBottom: 4 }}>
                                   {taak.van.split(' ').pop()} - {taak.naar.split(' ').pop()}
                                 </div>
                               )}
