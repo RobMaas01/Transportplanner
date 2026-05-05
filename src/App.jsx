@@ -1,837 +1,78 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import logo from './assets/kopgroep-logo-official.png'
-
-const PIN_BERT = '2378'
-
-const VESTIGINGEN = [
-  'Bibliotheek School 7',
-  'Bibliotheek Schagen',
-  'Bibliotheek Tuitjenhorn',
-  "Bibliotheek 't Zand",
-  'Bibliotheek Nieuw Den Helder',
-  'Bibliotheek de Schooten',
-  'Bibliotheek Julianadorp',
-  'Bibliotheek Anna Paulowna',
-  'Bibliotheek Hippolytushoef',
-  'Bibliotheek Middenmeer',
-  'Bibliotheek Nieuwe Niedorp',
-  'Bibliotheek Wieringerwerf',
-  'Bibliotheek Texel',
-  'Jeugdbibliotheek Anna Paulowna',
-  "Jeugdbibliotheek 't Veld",
-  'Jeugdbibliotheek Wieringerwaard',
-  'Jeugdbibliotheek Petten',
-  'Jeugdbibliotheek Callantsoog',
-  'Jeugdbibliotheek Waarland',
-]
-
-const TAAK_SUGGESTIES = [
-  'Plukker',
-  'Eelan',
-  'Extra kratten',
-  'Extra sorteren',
-  'Garage',
-  'Meubel verplaatsen',
-  'CoderDojo',
-  'Boeken ophalen',
-  'Boeken brengen',
-  'Anders',
-]
-
-const STATUS = {
-  gepland: { label: 'Gepland', bg: '#EEF4FF', color: '#2255CC', dot: '#4477EE' },
-  onderweg: { label: 'Onderweg', bg: '#FFF7EC', color: '#B45309', dot: '#F59E0B' },
-  afgerond: { label: 'Afgerond', bg: '#ECFDF5', color: '#065F46', dot: '#10B981' },
-  verplaatst: { label: 'Verplaatst', bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
-  verwijderd: { label: 'Verwijderd', bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
-}
-
-const AANVRAAG_STATUS = {
-  nieuw: { label: 'Nieuw', bg: '#EEF4FF', color: '#2255CC', dot: '#4477EE' },
-  info: { label: 'Meer info nodig', bg: '#FFF7EC', color: '#B45309', dot: '#F59E0B' },
-  ingepland: { label: 'Ingepland', bg: '#ECFDF5', color: '#065F46', dot: '#10B981' },
-  voltooid: { label: 'Voltooid', bg: '#ECFDF5', color: '#065F46', dot: '#10B981' },
-  afgewezen: { label: 'Niet uitvoeren', bg: '#FEF2F2', color: '#991B1B', dot: '#EF4444' },
-  verwijderd: { label: 'Verwijderd', bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
-}
-
-const DAGEN = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag']
-const DAGEN_KORT = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo']
-const WERKDAGEN_KORT = ['Ma', 'Di', 'Wo', 'Do', 'Vr']
-
-const SCHOOLVAKANTIES_NOORD = [
-  { naam: 'Zomervakantie', start: '2026-07-04', eind: '2026-08-16' },
-  { naam: 'Herfstvakantie', start: '2026-10-10', eind: '2026-10-18' },
-  { naam: 'Kerstvakantie', start: '2026-12-19', eind: '2027-01-03' },
-  { naam: 'Voorjaarsvakantie', start: '2027-02-20', eind: '2027-02-28' },
-  { naam: 'Meivakantie', start: '2027-04-24', eind: '2027-05-02' },
-  { naam: 'Zomervakantie', start: '2027-07-10', eind: '2027-08-22' },
-  { naam: 'Herfstvakantie', start: '2027-10-16', eind: '2027-10-24' },
-  { naam: 'Kerstvakantie', start: '2027-12-25', eind: '2028-01-09' },
-  { naam: 'Voorjaarsvakantie', start: '2028-02-19', eind: '2028-02-27' },
-  { naam: 'Meivakantie', start: '2028-04-29', eind: '2028-05-07' },
-  { naam: 'Zomervakantie', start: '2028-07-15', eind: '2028-08-27' },
-  { naam: 'Herfstvakantie', start: '2028-10-14', eind: '2028-10-22' },
-  { naam: 'Kerstvakantie', start: '2028-12-23', eind: '2029-01-07' },
-  { naam: 'Voorjaarsvakantie', start: '2029-02-17', eind: '2029-02-25' },
-  { naam: 'Meivakantie', start: '2029-04-28', eind: '2029-05-06' },
-  { naam: 'Zomervakantie', start: '2029-07-21', eind: '2029-09-02' },
-  { naam: 'Herfstvakantie', start: '2029-10-20', eind: '2029-10-28' },
-  { naam: 'Kerstvakantie', start: '2029-12-22', eind: '2030-01-06' },
-  { naam: 'Voorjaarsvakantie', start: '2030-02-16', eind: '2030-02-24' },
-  { naam: 'Meivakantie', start: '2030-04-27', eind: '2030-05-05' },
-  { naam: 'Zomervakantie', start: '2030-07-20', eind: '2030-09-01' },
-]
-
-function getWeekKey(date) {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() + 4 - (d.getDay() || 7))
-  const y = d.getFullYear()
-  const w = Math.ceil(((d - new Date(y, 0, 1)) / 86400000 + 1) / 7)
-  return `${y}-W${String(w).padStart(2, '0')}`
-}
-
-function getMaandag(wk) {
-  const parts = wk.split('-W')
-  const y = Number(parts[0])
-  const w = Number(parts[1])
-  const d = new Date(y, 0, 1 + (w - 1) * 7)
-  const day = d.getDay()
-  d.setDate(d.getDate() + (day <= 4 ? 1 - day : 8 - day))
-  return d
-}
-
-function fmt(d) {
-  return d.toLocaleDateString('nl-NL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
-function fmtS(d) {
-  return d.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short' })
-}
-
-function isoDag(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-function weekDagen(wk) {
-  const ma = getMaandag(wk)
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(ma)
-    d.setDate(ma.getDate() + i)
-    return d
-  })
-}
-
-function weekWerkdagen(wk) {
-  return weekDagen(wk).slice(0, 5)
-}
-
-function verschuifWeek(wk, stap) {
-  const d = getMaandag(wk)
-  d.setDate(d.getDate() + stap * 7)
-  return getWeekKey(d)
-}
-
-function taakDatum(taak) {
-  const d = getMaandag(taak.week)
-  d.setDate(d.getDate() + Number(taak.dag || 0))
-  return d
-}
-
-function weekNr(wk) {
-  return `Week ${wk.split('-W')[1]}`
-}
-
-function weekRange(wk) {
-  const ma = getMaandag(wk)
-  const vr = new Date(ma)
-  vr.setDate(ma.getDate() + 4)
-  return `${fmt(ma)} - ${fmt(vr)}`
-}
-
-function weekOptieLabel(wk) {
-  const blokkade = automatischeBlokkade(wk)
-  const suffix = blokkade ? ` - let op: ${blokkade.reden.replace('Automatisch: ', '')}` : ''
-  return `${weekNr(wk)} - ${weekRange(wk)}${suffix}`
-}
-
-function aanvraagWeekLabel(wk) {
-  if (wk === 'zsm') return 'Zo snel mogelijk'
-  return weekOptieLabel(wk)
-}
-
-function aanvraagMomentLabel(item) {
-  if (!item || item.week === 'zsm') return 'Zo snel mogelijk'
-  if (Number(item.dag) < 0) return `${aanvraagWeekLabel(item.week)}, dag flexibel`
-  return `${aanvraagWeekLabel(item.week)}, ${dagLabel(item.dag)}`
-}
-
-function dagLabel(dag) {
-  const index = Number(dag)
-  if (index < 0) return 'Maakt niet uit'
-  return DAGEN[index] || 'Nog niet gekozen'
-}
-
-function routeLabel(van, naar) {
-  if (!van && !naar) return 'Geen route gekozen'
-  if (van && naar) return `Van ${van} | Naar ${naar}`
-  if (van) return `Van ${van}`
-  return `Naar ${naar}`
-}
-
-function wekenTussen(start, eind) {
-  if (!start) return []
-  const weken = []
-  const cursor = getMaandag(start)
-  const laatste = getMaandag(eind || start)
-
-  while (cursor <= laatste) {
-    weken.push(getWeekKey(cursor))
-    cursor.setDate(cursor.getDate() + 7)
-  }
-
-  return weken
-}
-
-function datum(iso) {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
-function weekVoorVakantie(iso) {
-  const d = datum(iso)
-  d.setDate(d.getDate() - 1)
-  return getWeekKey(d)
-}
-
-function weekNaVakantie(iso) {
-  const d = datum(iso)
-  d.setDate(d.getDate() + 1)
-  return getWeekKey(d)
-}
-
-function automatischeBlokkade(wk) {
-  for (const vakantie of SCHOOLVAKANTIES_NOORD) {
-    if (weekVoorVakantie(vakantie.start) === wk) {
-      return {
-        week: wk,
-        reden: `Automatisch: drukte rond ${vakantie.naam} regio Noord`,
-        automatisch: true,
-      }
-    }
-    if (weekNaVakantie(vakantie.eind) === wk) {
-      return {
-        week: wk,
-        reden: `Automatisch: drukte rond ${vakantie.naam} regio Noord`,
-        automatisch: true,
-      }
-    }
-  }
-  return null
-}
-
-function automatischeBlokkades() {
-  const map = new Map()
-  SCHOOLVAKANTIES_NOORD.forEach((vakantie) => {
-    const voor = weekVoorVakantie(vakantie.start)
-    const na = weekNaVakantie(vakantie.eind)
-    map.set(voor, {
-      week: voor,
-      reden: `Week voor ${vakantie.naam} regio Noord`,
-    })
-    map.set(na, {
-      week: na,
-      reden: `Week na ${vakantie.naam} regio Noord`,
-    })
-  })
-  return Array.from(map.values()).sort((a, b) => getMaandag(a.week) - getMaandag(b.week))
-}
-
-function bronLabel(bron) {
-  if (bron === 'aanvraag') return 'Aanvraag'
-  if (bron === 'leidinggevende') return 'Opdracht'
-  return 'Bert'
-}
-
-function laadLokaal(key, fallback) {
-  try {
-    const value = localStorage.getItem(key)
-    return value ? JSON.parse(value) : fallback
-  } catch (error) {
-    console.error('Lokale opslag kon niet worden geladen.', error)
-    return fallback
-  }
-}
-
-const LOKALE_KEYS = {
-  taken: 't5',
-  aanvragen: 'a5',
-  geblokt: 'g5',
-  meld: 'm5',
-}
-
-function laadLokaleState() {
-  return {
-    taken: laadLokaal(LOKALE_KEYS.taken, []),
-    aanvragen: laadLokaal(LOKALE_KEYS.aanvragen, []),
-    geblokt: laadLokaal(LOKALE_KEYS.geblokt, []),
-    meld: laadLokaal(LOKALE_KEYS.meld, []),
-  }
-}
-
-function vandaag() {
-  return getWeekKey(new Date())
-}
-
-function vandaagWerkdagIndex() {
-  const dag = new Date().getDay()
-  if (dag === 0 || dag === 6) return 0
-  return dag - 1
-}
-
-function vandaagDagIndex() {
-  return (new Date().getDay() + 6) % 7
-}
-
-function standaardAanvraag() {
-  return {
-    aanvrager: '',
-    titel: '',
-    omschrijving: '',
-    van: '',
-    naar: '',
-    week: 'zsm',
-    dag: -1,
-    prioriteit: 'normaal',
-    prive: false,
-  }
-}
-
-function maakWeken(start, n) {
-  const r = []
-  const d = getMaandag(start)
-  for (let i = 0; i < n; i += 1) {
-    r.push(getWeekKey(d))
-    d.setDate(d.getDate() + 7)
-  }
-  return r
-}
-
-function maandLabel(value) {
-  const [jaar, maand] = value.split('-').map(Number)
-  return new Date(jaar, maand - 1, 1).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })
-}
-
-function verschuifMaand(value, stap) {
-  const [jaar, maand] = value.split('-').map(Number)
-  const d = new Date(jaar, maand - 1 + stap, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-function jaarMaanden(jaar) {
-  return Array.from({ length: 12 }, (_, index) => `${jaar}-${String(index + 1).padStart(2, '0')}`)
-}
-
-function isVerledenDatum(date) {
-  return isoDag(date) < isoDag(new Date())
-}
-
-function MonthNav({ value, onChange, min }) {
-  const vorigeUit = min && value <= min
-
-  return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        border: '1px solid #E5E9F0',
-        borderRadius: 8,
-        overflow: 'hidden',
-        background: '#fff',
-      }}
-    >
-      <button
-        type="button"
-        disabled={vorigeUit}
-        onClick={() => {
-          if (!vorigeUit) onChange(verschuifMaand(value, -1))
-        }}
-        style={{
-          width: 34,
-          minHeight: 34,
-          border: 'none',
-          background: vorigeUit ? '#F9FAFB' : '#fff',
-          color: vorigeUit ? '#D1D5DB' : '#374151',
-          fontSize: 18,
-          cursor: vorigeUit ? 'not-allowed' : 'pointer',
-        }}
-        aria-label="Vorige maand"
-      >
-        {'<'}
-      </button>
-      <div
-        style={{
-          minWidth: 135,
-          textAlign: 'center',
-          borderLeft: '1px solid #E5E9F0',
-          borderRight: '1px solid #E5E9F0',
-          padding: '8px 10px',
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#374151',
-          textTransform: 'capitalize',
-        }}
-      >
-        {maandLabel(value)}
-      </div>
-      <button
-        type="button"
-        onClick={() => onChange(verschuifMaand(value, 1))}
-        style={{
-          width: 34,
-          minHeight: 34,
-          border: 'none',
-          background: '#fff',
-          color: '#374151',
-          fontSize: 18,
-          cursor: 'pointer',
-        }}
-        aria-label="Volgende maand"
-      >
-        {'>'}
-      </button>
-    </div>
-  )
-}
-
-function YearNav({ value, onChange, min }) {
-  const vorigeUit = min && Number(value) <= min
-
-  return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        border: '1px solid #E5E9F0',
-        borderRadius: 8,
-        overflow: 'hidden',
-        background: '#fff',
-      }}
-    >
-      <button
-        type="button"
-        disabled={vorigeUit}
-        onClick={() => {
-          if (!vorigeUit) onChange(String(Number(value) - 1))
-        }}
-        style={{
-          width: 34,
-          minHeight: 34,
-          border: 'none',
-          background: vorigeUit ? '#F9FAFB' : '#fff',
-          color: vorigeUit ? '#D1D5DB' : '#374151',
-          fontSize: 18,
-          cursor: vorigeUit ? 'not-allowed' : 'pointer',
-        }}
-        aria-label="Vorig jaar"
-      >
-        {'<'}
-      </button>
-      <div
-        style={{
-          minWidth: 92,
-          textAlign: 'center',
-          borderLeft: '1px solid #E5E9F0',
-          borderRight: '1px solid #E5E9F0',
-          padding: '8px 10px',
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#374151',
-        }}
-      >
-        {value}
-      </div>
-      <button
-        type="button"
-        onClick={() => onChange(String(Number(value) + 1))}
-        style={{
-          width: 34,
-          minHeight: 34,
-          border: 'none',
-          background: '#fff',
-          color: '#374151',
-          fontSize: 18,
-          cursor: 'pointer',
-        }}
-        aria-label="Volgend jaar"
-      >
-        {'>'}
-      </button>
-    </div>
-  )
-}
-
-function maandDagen(value) {
-  const [jaar, maand] = value.split('-').map(Number)
-  const start = new Date(jaar, maand - 1, 1)
-  const cursor = new Date(start)
-  const offset = (cursor.getDay() + 6) % 7
-  cursor.setDate(cursor.getDate() - offset)
-  const dagen = []
-
-  while (dagen.length < 42) {
-    const d = new Date(cursor)
-    dagen.push({
-      date: d,
-      iso: isoDag(d),
-      inMaand: d.getMonth() === start.getMonth(),
-      isWerkdag: d.getDay() >= 1 && d.getDay() <= 5,
-      week: getWeekKey(d),
-      dagIndex: (d.getDay() + 6) % 7,
-    })
-    cursor.setDate(cursor.getDate() + 1)
-  }
-
-  const lastWeek = dagen.slice(-7)
-  if (!lastWeek.some((dag) => dag.inMaand)) return dagen.slice(0, -7)
-  return dagen
-}
-
-const inp = {
-  width: '100%',
-  border: '1px solid #E5E9F0',
-  borderRadius: 8,
-  padding: '8px 12px',
-  fontSize: 13,
-  color: '#111827',
-  background: '#fff',
-  outline: 'none',
-  boxSizing: 'border-box',
-}
-
-function Pill({ status }) {
-  const m = STATUS[status] || STATUS.gepland
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        fontSize: 10,
-        fontWeight: 500,
-        borderRadius: 12,
-        padding: '2px 8px',
-        background: m.bg,
-        color: m.color,
-      }}
-    >
-      <span style={{ width: 5, height: 5, borderRadius: '50%', background: m.dot }} />
-      {m.label}
-    </span>
-  )
-}
-
-function AanvraagPill({ status }) {
-  const m = AANVRAAG_STATUS[status] || AANVRAAG_STATUS.nieuw
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        fontSize: 10,
-        fontWeight: 500,
-        borderRadius: 12,
-        padding: '2px 8px',
-        background: m.bg,
-        color: m.color,
-      }}
-    >
-      <span style={{ width: 5, height: 5, borderRadius: '50%', background: m.dot }} />
-      {m.label}
-    </span>
-  )
-}
-
-function Btn({ onClick, children, variant, size = 'compact' }) {
-  const v = variant || 'ghost'
-  const styles = {
-    ghost: { background: '#F3F4F6', color: '#374151', border: '1px solid #E5E9F0' },
-    primary: { background: '#2563EB', color: '#fff', border: 'none' },
-    success: { background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' },
-    danger: { background: '#FEF2F2', color: '#991B1B', border: '1px solid #FECACA' },
-  }
-
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        ...styles[v],
-        borderRadius: size === 'touch' ? 9 : 7,
-        padding: size === 'touch' ? '10px 15px' : '5px 11px',
-        fontSize: size === 'touch' ? 13 : 11,
-        fontWeight: size === 'touch' ? 700 : 500,
-        minHeight: size === 'touch' ? 40 : 'auto',
-        cursor: 'pointer',
-      }}
-    >
-      {children}
-    </button>
-  )
-}
-
-function Label({ children, required = false, optional = false }) {
-  return (
-    <label
-      style={{
-        fontSize: 12,
-        fontWeight: 500,
-        color: '#374151',
-        display: 'block',
-        marginBottom: 4,
-      }}
-    >
-      <span>{children}</span>
-      {(required || optional) && (
-        <span
-          style={{
-            marginLeft: 6,
-            fontSize: 10,
-            fontWeight: 700,
-            color: required ? '#B45309' : '#9CA3AF',
-            textTransform: 'uppercase',
-          }}
-        >
-          {required ? 'verplicht' : 'optioneel'}
-        </span>
-      )}
-    </label>
-  )
-}
-
-function FieldError({ children }) {
-  if (!children) return null
-
-  return <div style={{ fontSize: 11, color: '#B91C1C', marginTop: 4 }}>{children}</div>
-}
-
-function DrukteWaarschuwing({ waarschuwing, compact = false }) {
-  if (!waarschuwing) return null
-
-  return (
-    <div
-      style={{
-        background: '#FFF7ED',
-        border: '1px solid #FED7AA',
-        borderRadius: 8,
-        padding: compact ? '7px 9px' : '9px 11px',
-        fontSize: 12,
-        color: '#92400E',
-        fontWeight: compact ? 500 : 600,
-      }}
-    >
-      Let op: {waarschuwing.reden || 'drukke periode'}
-    </div>
-  )
-}
-
-function ZelfdeVestigingWaarschuwing({ van, naar }) {
-  if (!van || !naar || van !== naar) return null
-
-  return (
-    <div
-      style={{
-        fontSize: 12,
-        color: '#92400E',
-        background: '#FFF7ED',
-        border: '1px solid #FED7AA',
-        borderRadius: 8,
-        padding: '8px 10px',
-      }}
-    >
-      Van en Naar zijn hetzelfde. Klopt dit? Vul anders maar een van de twee in.
-    </div>
-  )
-}
-
-function heeftErrors(errors) {
-  return Object.values(errors).some(Boolean)
-}
-
-function aanvraagIsOpen(item) {
-  return ['nieuw', 'info', 'ingepland'].includes(item.status)
-}
-
-function aanvraagIsAfgesloten(item) {
-  return item.status === 'voltooid' && !aanvraagIsHistorie(item)
-}
-
-function aanvraagIsHistorie(item) {
-  if (item.status !== 'voltooid') return false
-  const basis = item.voltooidOp || item.behandeld || item.bijgewerkt || item.aangemaakt
-  if (!basis) return false
-  const grens = new Date()
-  grens.setMonth(grens.getMonth() - 1)
-  return new Date(basis) < grens
-}
-
-function isDezeMaand(iso) {
-  if (!iso) return false
-  return iso.slice(0, 7) === new Date().toISOString().slice(0, 7)
-}
-
-function aanvraagNietUitgevoerdDezeMaand(item) {
-  return item.status === 'afgewezen' && isDezeMaand(item.nietUitvoerenOp || item.bijgewerkt || item.aangemaakt)
-}
-
-function aanvraagZichtbaarVoorAanvrager(item) {
-  if (item.prive) return false
-  if (item.status === 'verwijderd') return false
-  if (item.status === 'afgewezen') return aanvraagNietUitgevoerdDezeMaand(item)
-  return true
-}
-
-function sortAanvragen(a, b) {
-  const prio = { hoog: 0, normaal: 1, laag: 2 }
-  const verschil = (prio[a.prioriteit || 'normaal'] ?? 1) - (prio[b.prioriteit || 'normaal'] ?? 1)
-  if (verschil !== 0) return verschil
-  const tijd = (item) => new Date(item.aangemaakt || item.bijgewerkt || Number(item.id) || 0).getTime() || 0
-  return tijd(b) - tijd(a)
-}
-
-function sortTaken(a, b) {
-  const verschil = taakDatum(b) - taakDatum(a)
-  if (verschil !== 0) return verschil
-  const tijd = (item) => new Date(item.aangemaakt || Number(item.id) || 0).getTime() || 0
-  return tijd(b) - tijd(a)
-}
-
-function taakZoekTekst(taak) {
-  return [
-    taak.titel,
-    taak.omschrijving,
-    taak.van,
-    taak.naar,
-    taak.week,
-    dagLabel(taak.dag),
-    fmt(taakDatum(taak)),
-    bronLabel(taak.bron),
-    STATUS[taak.status]?.label,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-}
-
-function filterTakenOpZoekterm(items, zoekterm) {
-  const zoek = zoekterm.trim().toLowerCase()
-  if (!zoek) return items
-  return items.filter((taak) => taakZoekTekst(taak).includes(zoek))
-}
-
-function groepeerTakenPerMaand(items) {
-  return items.reduce((groepen, taak) => {
-    const key = isoDag(taakDatum(taak)).slice(0, 7)
-    if (!groepen[key]) groepen[key] = []
-    groepen[key].push(taak)
-    return groepen
-  }, {})
-}
-
-function maakRapportData(taken, rapp) {
-  const actieveTaken = taken.filter((taak) => taak.status !== 'verwijderd')
-  let filtered = actieveTaken
-
-  if (rapp.type === 'week') {
-    filtered = actieveTaken.filter((taak) => taak.week === rapp.week)
-  } else if (rapp.type === 'maand') {
-    const [jr, mn] = rapp.maand.split('-').map(Number)
-    filtered = actieveTaken.filter((taak) => {
-      const ma = getMaandag(taak.week)
-      return ma.getFullYear() === jr && ma.getMonth() + 1 === mn
-    })
-  } else {
-    const jaar = Number(rapp.jaar)
-    filtered = actieveTaken.filter((taak) => getMaandag(taak.week).getFullYear() === jaar)
-  }
-
-  const ps = {}
-  Object.keys(STATUS).forEach((status) => {
-    ps[status] = filtered.filter((taak) => taak.status === status).length
-  })
-
-  return {
-    taken: filtered,
-    ps,
-    aanvragen: filtered.filter((taak) => taak.bron === 'aanvraag').length,
-    zelf: filtered.filter((taak) => taak.bron === 'zelf').length,
-    prioriteit: {
-      laag: filtered.filter((taak) => taak.prioriteit === 'laag').length,
-      normaal: filtered.filter((taak) => !taak.prioriteit || taak.prioriteit === 'normaal').length,
-      hoog: filtered.filter((taak) => taak.prioriteit === 'hoog').length,
-    },
-    soorten: topLijst(filtered, 'titel'),
-    van: topLijst(filtered, 'van'),
-    naar: topLijst(filtered, 'naar'),
-    totaal: filtered.length,
-  }
-}
-
-function topLijst(items, veld, max = 5) {
-  const telling = {}
-  items.forEach((item) => {
-    const value = item[veld]
-    if (!value) return
-    telling[value] = (telling[value] || 0) + 1
-  })
-  return Object.entries(telling)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, max)
-    .map(([label, aantal]) => ({ label, aantal }))
-}
-
-function Card({ children, style }) {
-  return (
-    <div
-      style={{
-        background: '#fff',
-        border: '1px solid #E5E9F0',
-        borderRadius: 12,
-        overflow: 'hidden',
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
-function CardHead({ title, sub }) {
-  return (
-    <div
-      style={{
-        padding: '13px 18px',
-        borderBottom: '1px solid #E5E9F0',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}
-    >
-      <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{title}</span>
-      {sub && <span style={{ fontSize: 12, color: '#9CA3AF' }}>{sub}</span>}
-    </div>
-  )
-}
-
+import {
+  AANVRAAG_STATUS,
+  DAGEN,
+  DAGEN_KORT,
+  PIN_BERT,
+  STATUS,
+  TAAK_SUGGESTIES,
+  VESTIGINGEN,
+  WERKDAGEN_KORT,
+} from './constants'
+import {
+  AanvraagPill,
+  Btn,
+  Card,
+  CardHead,
+  DrukteWaarschuwing,
+  FieldError,
+  Label,
+  MonthNav,
+  Pill,
+  YearNav,
+  ZelfdeVestigingWaarschuwing,
+} from './components'
+import { inp } from './uiStyles'
+import { bewaarCentraleState, isLegeState, laadCentraleState, supabaseConfigured } from './dataStore'
+import {
+  aanvraagIsAfgesloten,
+  aanvraagIsHistorie,
+  aanvraagIsOpen,
+  aanvraagMomentLabel,
+  aanvraagNietUitgevoerdDezeMaand,
+  aanvraagWeekLabel,
+  aanvraagZichtbaarVoorAanvrager,
+  automatischeBlokkade,
+  automatischeBlokkades,
+  bronLabel,
+  dagLabel,
+  filterTakenOpZoekterm,
+  fmt,
+  fmtS,
+  getMaandag,
+  groepeerTakenPerMaand,
+  heeftErrors,
+  isVerledenDatum,
+  isoDag,
+  jaarMaanden,
+  laadLokaleState,
+  maakRapportData,
+  maakWeken,
+  maandDagen,
+  maandLabel,
+  routeLabel,
+  sortAanvragen,
+  sortTaken,
+  standaardAanvraag,
+  taakDatum,
+  vandaag,
+  vandaagDagIndex,
+  vandaagWerkdagIndex,
+  verschuifWeek,
+  weekNr,
+  weekOptieLabel,
+  weekRange,
+  weekWerkdagen,
+  wekenTussen,
+} from './utils'
 export default function App() {
   const WEKEN = maakWeken(vandaag(), 260)
   const lokaal = laadLokaleState()
+  const lokaleStartState = useRef(lokaal)
+  const centraleOpslagActief = useRef(supabaseConfigured)
+  const centraleOpslagGeladen = useRef(!supabaseConfigured)
 
   const [rol, setRol] = useState(null)
   const [pin, setPin] = useState('')
@@ -855,6 +96,7 @@ export default function App() {
   const [toonVerwijderdeTaken, setToonVerwijderdeTaken] = useState(false)
   const [taakZoekterm, setTaakZoekterm] = useState('')
   const [meld, setMeld] = useState(lokaal.meld)
+  const [opslagStatus, setOpslagStatus] = useState(supabaseConfigured ? 'Verbinden met centrale opslag...' : 'Lokale opslag')
 
   const [nieuw, setNieuw] = useState({
     titel: '',
@@ -896,6 +138,43 @@ export default function App() {
   })
 
   useEffect(() => {
+    if (!supabaseConfigured) return undefined
+
+    let actief = true
+
+    async function laad() {
+      const lokaalState = lokaleStartState.current
+      const { data, error } = await laadCentraleState()
+      if (!actief) return
+
+      if (error) {
+        console.error('Centrale opslag kon niet worden geladen.', error)
+        centraleOpslagActief.current = false
+        setOpslagStatus('Lokale opslag')
+        return
+      }
+
+      if (data && !isLegeState(data)) {
+        setTaken(data.taken || [])
+        setAanvragen(data.aanvragen || [])
+        setGeblokt(data.geblokt || [])
+        setMeld(data.meld || [])
+      } else if (!isLegeState(lokaalState)) {
+        await bewaarCentraleState(lokaalState)
+      }
+
+      centraleOpslagGeladen.current = true
+      setOpslagStatus('Centrale opslag actief')
+    }
+
+    laad()
+
+    return () => {
+      actief = false
+    }
+  }, [])
+
+  useEffect(() => {
     localStorage.setItem('t5', JSON.stringify(taken))
   }, [taken])
 
@@ -910,6 +189,24 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('m5', JSON.stringify(meld))
   }, [meld])
+
+  useEffect(() => {
+    if (!centraleOpslagActief.current || !centraleOpslagGeladen.current) return undefined
+
+    const state = { taken, aanvragen, geblokt, meld }
+    const timer = setTimeout(async () => {
+      const { error } = await bewaarCentraleState(state)
+      if (error) {
+        console.error('Centrale opslag kon niet worden opgeslagen.', error)
+        setOpslagStatus('Opslaan mislukt, lokaal bewaard')
+      } else {
+        setOpslagStatus('Centrale opslag actief')
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [taken, aanvragen, geblokt, meld])
+
 
   useEffect(() => {
     if (!taakMelding) return undefined
@@ -1712,6 +1009,7 @@ export default function App() {
               {rol === 'aanvrager' ? 'Aanvrager' : 'Bert'}
             </div>
             <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 2 }}>Ingelogd</div>
+            <div style={{ color: '#9A5A2E', fontSize: 10, marginTop: 5 }}>{opslagStatus}</div>
           </div>
           <button
             onClick={() => {
