@@ -2774,7 +2774,7 @@ export default function App() {
                               cursor: 'pointer',
                             }}
                           >
-                            Vandaag toevoegen
+                            Nu toevoegen als afgerond
                           </button>
                         )}
                         <MonthNav value={taakMaand} onChange={setTaakMaand} />
