@@ -101,6 +101,10 @@ function maakStateSnapshot(state) {
   }
 }
 
+function korteWeekLabel(wk) {
+  return `${weekNr(wk)} ${getMaandag(wk).getFullYear()}`
+}
+
 export default function App() {
   const WEKEN = maakWeken(vandaag(), 260)
   const lokaal = laadLokaleState()
@@ -2420,6 +2424,68 @@ export default function App() {
                   <MonthNav value={planningMaand} onChange={setPlanningMaand} min="2026-01" />
                 ) : planningWeergave === 'jaar' ? (
                   <YearNav value={planningJaar} onChange={setPlanningJaar} min={2026} />
+                ) : isMobiel ? (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '42px 1fr 42px',
+                      alignItems: 'center',
+                      gap: 8,
+                      width: '100%',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setWeek(verschuifWeek(week, -1))}
+                      style={{
+                        border: '1px solid #E5E9F0',
+                        borderRadius: 8,
+                        background: '#fff',
+                        color: '#374151',
+                        minHeight: 38,
+                        fontSize: 18,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                      aria-label="Vorige week"
+                    >
+                      {'<'}
+                    </button>
+                    <div
+                      style={{
+                        textAlign: 'center',
+                        border: '1px solid #E5E9F0',
+                        borderRadius: 8,
+                        background: '#fff',
+                        color: '#111827',
+                        minHeight: 38,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 13,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {korteWeekLabel(week)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setWeek(verschuifWeek(week, 1))}
+                      style={{
+                        border: '1px solid #E5E9F0',
+                        borderRadius: 8,
+                        background: '#fff',
+                        color: '#374151',
+                        minHeight: 38,
+                        fontSize: 18,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                      aria-label="Volgende week"
+                    >
+                      {'>'}
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <button
@@ -2696,7 +2762,8 @@ export default function App() {
                       >
                         <span>{DAGEN_KORT[di]}</span>
                         <span style={{ fontSize: 10, color: actief ? '#C2410C' : '#9CA3AF', fontWeight: 700 }}>
-                          {aantal}
+                          {dag.getDate()}
+                          {aantal > 0 ? ` | ${aantal}` : ''}
                         </span>
                       </button>
                     )
