@@ -46,7 +46,6 @@ export const AANVRAAG_STATUS = {
   info: { label: 'Meer info nodig', bg: '#FFF7EC', color: '#B45309', dot: '#F59E0B' },
   ingepland: { label: 'Ingepland', bg: '#ECFDF5', color: '#065F46', dot: '#10B981' },
   voltooid: { label: 'Voltooid', bg: '#ECFDF5', color: '#065F46', dot: '#10B981' },
-  afgewezen: { label: 'Niet uitvoeren', bg: '#FEF2F2', color: '#991B1B', dot: '#EF4444' },
   verwijderd: { label: 'Verwijderd', bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
 }
 

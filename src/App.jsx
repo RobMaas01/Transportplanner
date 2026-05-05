@@ -31,7 +31,6 @@ import {
   aanvraagIsAfgesloten,
   aanvraagIsOpen,
   aanvraagMomentLabel,
-  aanvraagNietUitgevoerdDezeMaand,
   aanvraagWeekLabel,
   aanvraagZichtbaarVoorAanvrager,
   automatischeBlokkade,
@@ -207,11 +206,10 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [vandaagTaakVraag, setVandaagTaakVraag] = useState(false)
   const [bevestigVerwijderen, setBevestigVerwijderen] = useState(null)
+  const [verwijderNotitie, setVerwijderNotitie] = useState('')
   const [planAanvraag, setPlanAanvraag] = useState(null)
   const [infoAanvraag, setInfoAanvraag] = useState(null)
   const [infoNotitie, setInfoNotitie] = useState('')
-  const [nietUitvoerenAanvraag, setNietUitvoerenAanvraag] = useState(null)
-  const [nietUitvoerenReden, setNietUitvoerenReden] = useState('')
   const [verplW, setVerplW] = useState('')
   const [verplD, setVerplD] = useState(0)
   const [planW, setPlanW] = useState('')
@@ -566,7 +564,7 @@ export default function App() {
     setAanvraagBevestigd(false)
   }
 
-  function verwijderAanvraag(id) {
+  function verwijderAanvraag(id, notitie = '') {
     setAanvragen((prev) =>
       prev.map((item) =>
         item.id === id
@@ -574,7 +572,8 @@ export default function App() {
               ...item,
               status: 'verwijderd',
               verwijderdOp: new Date().toISOString(),
-              log: [...item.log, { a: 'verwijderd', d: rol, w: new Date().toISOString() }],
+              verwijderNotitie: notitie.trim(),
+              log: [...item.log, { a: notitie.trim() ? `verwijderd: ${notitie.trim()}` : 'verwijderd', d: rol, w: new Date().toISOString() }],
             }
           : item,
       ),
@@ -589,6 +588,7 @@ export default function App() {
               ...item,
               status: item.geplandeWeek ? 'ingepland' : 'nieuw',
               verwijderdOp: null,
+              verwijderNotitie: '',
               log: [...item.log, { a: 'hersteld', d: rol, w: new Date().toISOString() }],
             }
           : item,
@@ -598,13 +598,15 @@ export default function App() {
 
   function vraagVerwijderAanvraag(item) {
     setBevestigVerwijderen({ type: 'aanvraag', item })
+    setVerwijderNotitie(item.verwijderNotitie || '')
   }
 
   function vraagVerwijderTaak(item) {
     setBevestigVerwijderen({ type: 'taak', item })
+    setVerwijderNotitie(item.verwijderNotitie || '')
   }
 
-  function verwijderTaak(id) {
+  function verwijderTaak(id, notitie = '') {
     setTaken((prev) =>
       prev.map((taak) =>
         taak.id === id
@@ -613,7 +615,8 @@ export default function App() {
               vorigeStatus: taak.status === 'verwijderd' ? taak.vorigeStatus || 'gepland' : taak.status,
               status: 'verwijderd',
               verwijderdOp: new Date().toISOString(),
-              log: [...taak.log, { a: 'verwijderd', d: rol, w: new Date().toISOString() }],
+              verwijderNotitie: notitie.trim(),
+              log: [...taak.log, { a: notitie.trim() ? `verwijderd: ${notitie.trim()}` : 'verwijderd', d: rol, w: new Date().toISOString() }],
             }
           : taak,
       ),
@@ -629,6 +632,7 @@ export default function App() {
               status: taak.vorigeStatus || 'gepland',
               vorigeStatus: null,
               verwijderdOp: null,
+              verwijderNotitie: '',
               log: [...taak.log, { a: 'hersteld', d: rol, w: new Date().toISOString() }],
             }
           : taak,
@@ -640,37 +644,13 @@ export default function App() {
     if (!bevestigVerwijderen) return
 
     if (bevestigVerwijderen.type === 'aanvraag') {
-      verwijderAanvraag(bevestigVerwijderen.item.id)
+      verwijderAanvraag(bevestigVerwijderen.item.id, verwijderNotitie)
     } else {
-      verwijderTaak(bevestigVerwijderen.item.id)
+      verwijderTaak(bevestigVerwijderen.item.id, verwijderNotitie)
     }
 
     setBevestigVerwijderen(null)
-  }
-
-  function openNietUitvoeren(item) {
-    setNietUitvoerenAanvraag(item)
-    setNietUitvoerenReden(item.nietUitvoerenReden || '')
-  }
-
-  function slaNietUitvoerenOp() {
-    if (!nietUitvoerenAanvraag) return
-
-    setAanvragen((prev) =>
-      prev.map((item) =>
-        item.id === nietUitvoerenAanvraag.id
-          ? {
-              ...item,
-              status: 'afgewezen',
-              nietUitvoerenReden: nietUitvoerenReden.trim(),
-              nietUitvoerenOp: new Date().toISOString(),
-              log: [...item.log, { a: 'niet uitvoeren', d: rol, w: new Date().toISOString() }],
-            }
-          : item,
-      ),
-    )
-    setNietUitvoerenAanvraag(null)
-    setNietUitvoerenReden('')
+    setVerwijderNotitie('')
   }
 
   function openInfoNodig(item) {
@@ -1976,12 +1956,6 @@ export default function App() {
                   const groepen = [
                     { key: 'open', titel: 'Open', leeg: 'Geen open aanvragen.', filter: aanvraagIsOpen },
                     { key: 'voltooid', titel: 'Voltooid', leeg: 'Geen voltooide aanvragen.', filter: aanvraagIsAfgesloten },
-                    {
-                      key: 'niet',
-                      titel: 'Niet uitgevoerd',
-                      leeg: 'Geen niet uitgevoerde aanvragen deze maand.',
-                      filter: aanvraagNietUitgevoerdDezeMaand,
-                    },
                   ]
                   const actieveGroep = groepen.find((groep) => groep.key === aanvraagStatusTab) || groepen[0]
                   const items = aanvragen
@@ -2105,21 +2079,6 @@ export default function App() {
                                   Bert vraagt: {item.infoNotitie}
                                 </div>
                               )}
-                              {item.nietUitvoerenReden && (
-                                <div
-                                  style={{
-                                    background: '#FEF2F2',
-                                    border: '1px solid #FECACA',
-                                    borderRadius: 8,
-                                    padding: '9px 11px',
-                                    fontSize: 12,
-                                    color: '#991B1B',
-                                    marginTop: 10,
-                                  }}
-                                >
-                                  Reden niet uitvoeren: {item.nietUitvoerenReden}
-                                </div>
-                              )}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                               <AanvraagPill status={item.status} />
@@ -2182,13 +2141,12 @@ export default function App() {
                     { status: 'info', titel: 'Meer info nodig', leeg: 'Geen aanvragen waar meer info nodig is.' },
                     { status: 'ingepland', titel: 'Ingepland', leeg: 'Geen ingeplande aanvragen.' },
                     { status: 'voltooid', titel: 'Voltooid', leeg: 'Geen voltooide aanvragen.' },
-                    { status: 'afgewezen', titel: 'Niet uitvoeren', leeg: 'Geen niet uitgevoerde aanvragen.' },
                     { status: 'verwijderd', titel: 'Verwijderd', leeg: 'Geen verwijderde aanvragen.' },
                   ]
                   const zichtbareItemsVoorGroep = (status) =>
                     aanvragen.filter((item) => {
                       if (item.status !== status) return false
-                      if (['voltooid', 'afgewezen'].includes(status) && isOuderDanMaanden(item, 3)) return false
+                      if (status === 'voltooid' && isOuderDanMaanden(item, 3)) return false
                       if (status !== 'verwijderd' || !item.verwijderdOp) return true
                       return Date.now() - new Date(item.verwijderdOp).getTime() <= 30 * 24 * 60 * 60 * 1000
                     })
@@ -2358,6 +2316,21 @@ export default function App() {
                                   Info gevraagd: {item.infoNotitie}
                                 </div>
                               )}
+                              {item.verwijderNotitie && (
+                                <div
+                                  style={{
+                                    background: '#F9FAFB',
+                                    border: '1px solid #E5E9F0',
+                                    borderRadius: 8,
+                                    padding: '9px 11px',
+                                    fontSize: 12,
+                                    color: '#4B5563',
+                                    marginTop: 10,
+                                  }}
+                                >
+                                  Verwijdernotitie: {item.verwijderNotitie}
+                                </div>
+                              )}
                             </div>
                             <div
                               style={{
@@ -2370,7 +2343,7 @@ export default function App() {
                                 borderTop: '1px solid #F3F4F6',
                               }}
                             >
-                                {item.status !== 'ingepland' && item.status !== 'afgewezen' && item.status !== 'voltooid' && item.status !== 'verwijderd' && (
+                                {item.status !== 'ingepland' && item.status !== 'voltooid' && item.status !== 'verwijderd' && (
                                   <Btn size="touch" variant="success" onClick={() => openPlanAanvraag(item)}>
                                     Plan in
                                   </Btn>
@@ -2384,11 +2357,6 @@ export default function App() {
                                   <Btn size="touch" variant="ghost" onClick={() => bewerkAanvraag(item)}>
                                     Wijzig
                                   </Btn>
-                                )}
-                                {item.status !== 'afgewezen' && item.status !== 'ingepland' && item.status !== 'voltooid' && item.status !== 'verwijderd' && (
-                                <Btn size="touch" variant="danger" onClick={() => openNietUitvoeren(item)}>
-                                  Niet uitvoeren
-                                </Btn>
                                 )}
                                 {item.status === 'verwijderd' && (
                                   <Btn size="touch" variant="success" onClick={() => herstelAanvraag(item.id)}>
@@ -3473,6 +3441,11 @@ export default function App() {
                                 <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 3 }}>
                                   Verwijderd: {fmt(new Date(taak.verwijderdOp || taak.aangemaakt || Number(taak.id)))}
                                 </div>
+                                {taak.verwijderNotitie && (
+                                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 6 }}>
+                                    Notitie: {taak.verwijderNotitie}
+                                  </div>
+                                )}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                 <Pill status={taak.status} />
@@ -4352,9 +4325,22 @@ export default function App() {
             <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 18 }}>
               "{bevestigVerwijderen.item.titel}" wordt {bevestigVerwijderen.type === 'aanvraag' ? 'naar Verwijderd verplaatst en kan later worden hersteld.' : 'naar Verwijderde taken verplaatst en kan later worden hersteld.'}
             </div>
+            <div style={{ marginBottom: 18 }}>
+              <Label optional>Notitie bij verwijderen</Label>
+              <textarea
+                value={verwijderNotitie}
+                onChange={(e) => setVerwijderNotitie(e.target.value)}
+                placeholder="Bijv. dubbel ingevoerd, foutje of niet meer nodig."
+                rows={3}
+                style={{ ...inp, resize: 'vertical' }}
+              />
+            </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button
-                onClick={() => setBevestigVerwijderen(null)}
+                onClick={() => {
+                  setBevestigVerwijderen(null)
+                  setVerwijderNotitie('')
+                }}
                 style={{
                   flex: 1,
                   background: '#F3F4F6',
@@ -4384,85 +4370,6 @@ export default function App() {
                 }}
               >
                 Verwijder
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {nietUitvoerenAanvraag && (
-        <div
-          onClick={() => setNietUitvoerenAanvraag(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15,23,42,.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 206,
-            padding: 20,
-            boxSizing: 'border-box',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#fff',
-              borderRadius: 14,
-              padding: 24,
-              width: '100%',
-              maxWidth: 420,
-              boxShadow: '0 20px 60px rgba(0,0,0,.15)',
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ fontSize: 16, fontWeight: 800, color: '#111827', marginBottom: 4 }}>
-              Niet uitvoeren
-            </div>
-            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>"{nietUitvoerenAanvraag.titel}"</div>
-            <div style={{ marginBottom: 18 }}>
-              <Label optional>Reden voor de aanvrager</Label>
-              <textarea
-                value={nietUitvoerenReden}
-                onChange={(e) => setNietUitvoerenReden(e.target.value)}
-                placeholder="Bijv. dit valt onder regulier transport, of er is eerst meer afstemming nodig."
-                rows={4}
-                style={{ ...inp, resize: 'vertical' }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={slaNietUitvoerenOp}
-                style={{
-                  flex: 1,
-                  background: '#FEF2F2',
-                  color: '#991B1B',
-                  border: '1px solid #FECACA',
-                  borderRadius: 8,
-                  padding: '9px 0',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                }}
-              >
-                Niet uitvoeren
-              </button>
-              <button
-                onClick={() => setNietUitvoerenAanvraag(null)}
-                style={{
-                  flex: 1,
-                  background: '#F3F4F6',
-                  color: '#374151',
-                  border: '1px solid #E5E9F0',
-                  borderRadius: 8,
-                  padding: '9px 0',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Annuleer
               </button>
             </div>
           </div>

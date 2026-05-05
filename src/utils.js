@@ -314,21 +314,11 @@ export function aanvraagIsHistorie(item) {
   return isOuderDanMaanden(item, 1)
 }
 
-export function isDezeMaand(iso) {
-  if (!iso) return false
-  return iso.slice(0, 7) === new Date().toISOString().slice(0, 7)
-}
-
-export function aanvraagNietUitgevoerdDezeMaand(item) {
-  if (item.status !== 'afgewezen') return false
-  return !isOuderDanMaanden({ ...item, voltooidOp: item.nietUitvoerenOp || item.behandeld || item.bijgewerkt || item.aangemaakt }, 1)
-}
-
 export function aanvraagZichtbaarVoorAanvrager(item) {
   if (item.prive) return false
   if (item.status === 'verwijderd') return false
   if (item.status === 'voltooid' && aanvraagIsHistorie(item)) return false
-  if (item.status === 'afgewezen') return aanvraagNietUitgevoerdDezeMaand(item)
+  if (item.status === 'afgewezen') return false
   return true
 }
 
