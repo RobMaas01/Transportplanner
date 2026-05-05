@@ -309,6 +309,7 @@ function standaardAanvraag() {
     week: 'zsm',
     dag: -1,
     prioriteit: 'normaal',
+    prive: false,
   }
 }
 
@@ -668,7 +669,16 @@ function aanvraagIsOpen(item) {
 }
 
 function aanvraagIsAfgesloten(item) {
-  return ['voltooid'].includes(item.status)
+  return item.status === 'voltooid' && !aanvraagIsHistorie(item)
+}
+
+function aanvraagIsHistorie(item) {
+  if (item.status !== 'voltooid') return false
+  const basis = item.voltooidOp || item.behandeld || item.bijgewerkt || item.aangemaakt
+  if (!basis) return false
+  const grens = new Date()
+  grens.setMonth(grens.getMonth() - 1)
+  return new Date(basis) < grens
 }
 
 function isDezeMaand(iso) {
@@ -681,6 +691,7 @@ function aanvraagNietUitgevoerdDezeMaand(item) {
 }
 
 function aanvraagZichtbaarVoorAanvrager(item) {
+  if (item.prive) return false
   if (item.status === 'verwijderd') return false
   if (item.status === 'afgewezen') return aanvraagNietUitgevoerdDezeMaand(item)
   return true
@@ -825,6 +836,7 @@ export default function App() {
   const [rol, setRol] = useState(null)
   const [pin, setPin] = useState('')
   const [pinErr, setPinErr] = useState('')
+  const [toonBertPin, setToonBertPin] = useState(false)
   const [tab, setTab] = useState('planning')
   const [toevoegenTab, setToevoegenTab] = useState('taak')
   const [taken, setTaken] = useState(lokaal.taken)
@@ -857,6 +869,7 @@ export default function App() {
   const [aanvraagEditId, setAanvraagEditId] = useState(null)
   const [aanvraagBevestigd, setAanvraagBevestigd] = useState(false)
   const [aanvraagErrors, setAanvraagErrors] = useState({})
+  const [aanvraagStatusTab, setAanvraagStatusTab] = useState('open')
   const [taakErrors, setTaakErrors] = useState({})
   const [taakEditId, setTaakEditId] = useState(null)
   const [taakMelding, setTaakMelding] = useState('')
@@ -910,10 +923,11 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [aanvraagMelding])
 
-  function login() {
-    if (pin === PIN_BERT) {
+  function login(code = pin) {
+    if (code === PIN_BERT) {
       setRol('transporteur')
       setPinErr('')
+      setToonBertPin(false)
     } else {
       setPinErr('Onjuiste pincode.')
     }
@@ -930,6 +944,7 @@ export default function App() {
     setTab('aanvraag')
     setPin('')
     setPinErr('')
+    setToonBertPin(false)
   }
 
   function openVandaagTaakVraag() {
@@ -1087,6 +1102,7 @@ export default function App() {
       week: item.week || vandaag(),
       dag: Number(item.dag ?? vandaagWerkdagIndex()),
       prioriteit: item.prioriteit || 'normaal',
+      prive: Boolean(item.prive),
     })
     setAanvraagEditId(item.id)
     setAanvraagBevestigd(false)
@@ -1286,6 +1302,7 @@ export default function App() {
 
   function updStatus(id, status) {
     const taak = taken.find((item) => item.id === id)
+    const vorigeStatus = taak?.status
 
     setTaken((prev) =>
       prev.map((taak) =>
@@ -1308,6 +1325,20 @@ export default function App() {
                 status: 'voltooid',
                 voltooidOp: new Date().toISOString(),
                 log: [...aanvraag.log, { a: 'voltooid', d: rol, w: new Date().toISOString() }],
+              }
+            : aanvraag,
+        ),
+      )
+    }
+    if (vorigeStatus === 'afgerond' && status !== 'afgerond' && taak?.aanvraagId) {
+      setAanvragen((prev) =>
+        prev.map((aanvraag) =>
+          aanvraag.id === taak.aanvraagId
+            ? {
+                ...aanvraag,
+                status: 'ingepland',
+                voltooidOp: null,
+                log: [...aanvraag.log, { a: 'teruggezet naar planning', d: rol, w: new Date().toISOString() }],
               }
             : aanvraag,
         ),
@@ -1514,19 +1545,12 @@ export default function App() {
           <div style={{ fontSize: 13, fontWeight: 700, color: '#3A2A22', marginBottom: 8, marginTop: 12 }}>
             Bert planning
           </div>
-          <input
-            type="password"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') login()
-            }}
-            placeholder="Pincode"
-            style={{ ...inp, marginBottom: 10 }}
-          />
-          {pinErr && <div style={{ fontSize: 12, color: '#DC2626', marginBottom: 8 }}>{pinErr}</div>}
           <button
-            onClick={login}
+            onClick={() => {
+              setToonBertPin(true)
+              setPin('')
+              setPinErr('')
+            }}
             style={{
               width: '100%',
               background: '#1F7A4D',
@@ -1545,6 +1569,74 @@ export default function App() {
             Aanvragen kan zonder pincode. Bert beheert de planning.
           </div>
         </div>
+        {toonBertPin && (
+          <div
+            onClick={() => setToonBertPin(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15,23,42,.35)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 20,
+              boxSizing: 'border-box',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#fff',
+                borderRadius: 14,
+                padding: 24,
+                width: '100%',
+                maxWidth: 320,
+                boxShadow: '0 20px 60px rgba(0,0,0,.15)',
+                boxSizing: 'border-box',
+              }}
+            >
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Bert planning</div>
+              <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14 }}>Vul de 4-cijferige pincode in.</div>
+              <input
+                type="password"
+                inputMode="numeric"
+                autoFocus
+                maxLength={4}
+                value={pin}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/\D/g, '').slice(0, 4)
+                  setPin(next)
+                  setPinErr('')
+                  if (next.length === 4) login(next)
+                }}
+                placeholder="Pincode"
+                style={{ ...inp, textAlign: 'center', letterSpacing: 4, fontSize: 18, marginBottom: 10 }}
+              />
+              {pinErr && <div style={{ fontSize: 12, color: '#DC2626', marginBottom: 10 }}>{pinErr}</div>}
+              <button
+                type="button"
+                onClick={() => {
+                  setToonBertPin(false)
+                  setPin('')
+                  setPinErr('')
+                }}
+                style={{
+                  width: '100%',
+                  background: '#F3F4F6',
+                  color: '#374151',
+                  border: '1px solid #E5E9F0',
+                  borderRadius: 8,
+                  padding: '9px 0',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Annuleer
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -1571,9 +1663,10 @@ export default function App() {
     <div
       style={{
         display: 'flex',
-        minHeight: '100vh',
+        height: '100vh',
         background: '#F8F9FC',
         fontFamily: "Segoe UI, -apple-system, BlinkMacSystemFont, sans-serif",
+        overflow: 'hidden',
       }}
     >
       <div
@@ -1584,6 +1677,8 @@ export default function App() {
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0,
+          height: '100vh',
+          overflow: 'hidden',
         }}
       >
         <div style={{ padding: '18px 14px 14px', borderBottom: '1px solid #FED7AA' }}>
@@ -1591,7 +1686,7 @@ export default function App() {
           <div style={{ color: '#3A2A22', fontSize: 13, fontWeight: 700 }}>Transportplanning</div>
           <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 3 }}>KopGroep Bibliotheken</div>
         </div>
-        <nav style={{ padding: '10px 8px', flex: 1 }}>
+        <nav style={{ padding: '10px 8px', flex: 1, overflowY: 'auto' }}>
           {navTabs.map((item) => (
             <div
               key={item.k}
@@ -1808,6 +1903,43 @@ export default function App() {
                       />
                       <FieldError>{aanvraagErrors.titel}</FieldError>
                     </div>
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        fontSize: 12,
+                        color: '#374151',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        width: 'fit-content',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(aanvraag.prive)}
+                        onChange={(e) => setAanvraag((prev) => ({ ...prev, prive: e.target.checked }))}
+                      />
+                      <span>Privé</span>
+                      <span
+                        title="Privé betekent: de aanvraag is alleen zichtbaar voor Bert en staat niet in Alle aanvragen bij de aanvrager."
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 17,
+                          height: 17,
+                          borderRadius: '50%',
+                          border: '1px solid #D1D5DB',
+                          color: '#6B7280',
+                          background: '#fff',
+                          fontSize: 11,
+                          fontWeight: 800,
+                        }}
+                      >
+                        i
+                      </span>
+                    </label>
                     <div>
                       <Label>Van vestiging</Label>
                       <select
@@ -2124,53 +2256,88 @@ export default function App() {
                     Nog geen aanvragen.
                   </div>
                 )}
-                {[
-                  { titel: 'Open aanvragen', filter: aanvraagIsOpen },
-                  { titel: 'Niet uitgevoerde aanvragen deze maand', filter: aanvraagNietUitgevoerdDezeMaand },
-                  { titel: 'Voltooide aanvragen', filter: aanvraagIsAfgesloten },
-                ].map((groep) => {
+                {(() => {
+                  const groepen = [
+                    { key: 'open', titel: 'Open', leeg: 'Geen open aanvragen.', filter: aanvraagIsOpen },
+                    { key: 'voltooid', titel: 'Voltooid', leeg: 'Geen voltooide aanvragen.', filter: aanvraagIsAfgesloten },
+                    {
+                      key: 'niet',
+                      titel: 'Niet uitgevoerd',
+                      leeg: 'Geen niet uitgevoerde aanvragen deze maand.',
+                      filter: aanvraagNietUitgevoerdDezeMaand,
+                    },
+                    { key: 'historie', titel: 'Historie', leeg: 'Geen oudere voltooide aanvragen.', filter: aanvraagIsHistorie },
+                  ]
+                  const actieveGroep = groepen.find((groep) => groep.key === aanvraagStatusTab) || groepen[0]
                   const items = aanvragen
-                    .filter((item) => aanvraagZichtbaarVoorAanvrager(item) && groep.filter(item))
+                    .filter((item) => aanvraagZichtbaarVoorAanvrager(item) && actieveGroep.filter(item))
                     .slice()
                     .sort(sortAanvragen)
 
                   return (
-                    <div
-                      key={groep.titel}
-                      style={{
-                        border: '1px solid #E5E9F0',
-                        borderRadius: 9,
-                        background: '#FCFCFD',
-                        overflow: 'hidden',
-                      }}
-                    >
+                    <>
+                      <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3, width: 'fit-content', maxWidth: '100%', flexWrap: 'wrap' }}>
+                        {groepen.map((groep) => {
+                          const aantal = aanvragen.filter((item) => aanvraagZichtbaarVoorAanvrager(item) && groep.filter(item)).length
+                          const actief = aanvraagStatusTab === groep.key
+
+                          return (
+                            <button
+                              key={groep.key}
+                              type="button"
+                              onClick={() => setAanvraagStatusTab(groep.key)}
+                              style={{
+                                border: 'none',
+                                borderRadius: 6,
+                                padding: '7px 12px',
+                                fontSize: 12,
+                                fontWeight: actief ? 700 : 600,
+                                cursor: 'pointer',
+                                background: actief ? '#fff' : 'transparent',
+                                color: actief ? '#111827' : '#6B7280',
+                                boxShadow: actief ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
+                              }}
+                            >
+                              {groep.titel} ({aantal})
+                            </button>
+                          )
+                        })}
+                      </div>
                       <div
                         style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '9px 12px',
-                          borderBottom: '1px solid #E5E9F0',
-                          background: '#F8F9FC',
+                          border: '1px solid #E5E9F0',
+                          borderRadius: 9,
+                          background: '#FCFCFD',
+                          overflow: 'hidden',
                         }}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 650, color: '#374151' }}>{groep.titel}</div>
-                        <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 650 }}>{items.length}</div>
-                      </div>
-                      {items.length === 0 && (
                         <div
                           style={{
-                            padding: '14px 16px',
-                            color: '#9CA3AF',
-                            fontSize: 12,
-                            background: '#fff',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '9px 12px',
+                            borderBottom: '1px solid #E5E9F0',
+                            background: '#F8F9FC',
                           }}
                         >
-                          Geen aanvragen in deze groep.
+                          <div style={{ fontSize: 13, fontWeight: 650, color: '#374151' }}>{actieveGroep.titel}</div>
+                          <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 650 }}>{items.length}</div>
                         </div>
-                      )}
-                      <div style={{ display: 'grid', gap: 10, padding: items.length ? 10 : 0 }}>
-                        {items.map((item) => (
+                        {items.length === 0 && (
+                          <div
+                            style={{
+                              padding: '14px 16px',
+                              color: '#9CA3AF',
+                              fontSize: 12,
+                              background: '#fff',
+                            }}
+                          >
+                            {actieveGroep.leeg}
+                          </div>
+                        )}
+                        <div style={{ display: 'grid', gap: 10, padding: items.length ? 10 : 0 }}>
+                          {items.map((item) => (
                           <div
                             key={item.id}
                             style={{
@@ -2256,8 +2423,9 @@ export default function App() {
                         ))}
                       </div>
                     </div>
+                    </>
                   )
-                })}
+                })()}
               </div>
             </Card>
           )}
@@ -2387,6 +2555,22 @@ export default function App() {
                               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{item.titel}</span>
                                 <AanvraagPill status={item.status} />
+                                {item.prive && (
+                                  <span
+                                    title="Alleen zichtbaar voor Bert"
+                                    style={{
+                                      fontSize: 11,
+                                      color: '#374151',
+                                      background: '#F3F4F6',
+                                      border: '1px solid #E5E9F0',
+                                      borderRadius: 999,
+                                      padding: '2px 7px',
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    Privé
+                                  </span>
+                                )}
                                 {item.prioriteit === 'hoog' && (
                                   <span
                                     style={{
@@ -2629,7 +2813,7 @@ export default function App() {
                         const dagTaken = actieveTaken.filter((taak) => taak.week === dag.week && Number(taak.dag) === dag.dagIndex)
                         const waarschuwing = blokkadeVoorDag(dag.week, dag.dagIndex)
                         const gepland = dagTaken.filter((taak) => taak.status !== 'afgerond').length
-                        const hoog = dagTaken.filter((taak) => taak.prioriteit === 'hoog').length
+                        const hoog = dagTaken.filter((taak) => taak.prioriteit === 'hoog' && taak.status !== 'afgerond').length
                         const afgerond = dagTaken.filter((taak) => taak.status === 'afgerond').length
 
                         return (
@@ -2889,6 +3073,11 @@ export default function App() {
                                       Uitvoeren
                                     </Btn>
                                   )}
+                                {rol === 'transporteur' && taak.status === 'afgerond' && (
+                                  <Btn variant="ghost" onClick={() => updStatus(taak.id, 'gepland')}>
+                                    Terugzetten
+                                  </Btn>
+                                )}
                                 {rol === 'transporteur' &&
                                   (taak.status === 'gepland' || taak.status === 'verplaatst') && (
                                     <Btn
@@ -3315,6 +3504,11 @@ export default function App() {
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <Pill status={taak.status} />
+                            {taak.status === 'afgerond' && (
+                              <Btn variant="ghost" onClick={() => updStatus(taak.id, 'gepland')}>
+                                Terugzetten
+                              </Btn>
+                            )}
                             <Btn variant="ghost" onClick={() => bewerkTaak(taak)}>
                               Wijzig
                             </Btn>
