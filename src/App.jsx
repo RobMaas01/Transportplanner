@@ -820,6 +820,9 @@ export default function App() {
             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
               KopGroep Bibliotheken
             </div>
+            <div style={{ fontSize: 11, color: '#9A5A2E', marginTop: 6 }}>
+              Centrale opslag versie
+            </div>
           </div>
           <button
             onClick={startAanvraag}
