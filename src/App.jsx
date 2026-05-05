@@ -108,6 +108,8 @@ export default function App() {
   const lokaleStartState = useRef(lokaal)
   const huidigeStateSnapshot = useRef(maakStateSnapshot(lokaal))
   const laatsteLokaleWijzigingOp = useRef(0)
+  const huidigeAanvragen = useRef(lokaal.aanvragen)
+  const huidigeRol = useRef(sessie.rol)
   const centraleOpslagActief = useRef(supabaseConfigured)
   const centraleOpslagGeladen = useRef(!supabaseConfigured)
   const laatsteCentraleUpdate = useRef(null)
@@ -157,7 +159,12 @@ export default function App() {
     } catch {
       // Sessie onthouden is gemak; als localStorage blokkeert blijft de app gewoon werken.
     }
+    huidigeRol.current = rol
   }, [rol])
+
+  useEffect(() => {
+    huidigeAanvragen.current = aanvragen
+  }, [aanvragen])
 
   useEffect(() => {
     try {
@@ -186,6 +193,7 @@ export default function App() {
   const [taakEditId, setTaakEditId] = useState(null)
   const [taakMelding, setTaakMelding] = useState('')
   const [aanvraagMelding, setAanvraagMelding] = useState('')
+  const [nieuweAanvraagMelding, setNieuweAanvraagMelding] = useState(null)
   const [toonPriveUitleg, setToonPriveUitleg] = useState(false)
   const [blokForm, setBlokForm] = useState({ type: 'week', week: '', eindWeek: '', dag: vandaagDagIndex(), reden: '' })
   const [modal, setModal] = useState(null)
@@ -211,6 +219,7 @@ export default function App() {
   function pasCentraleStateToe(data) {
     skipVolgendeCentraleOpslag.current = true
     huidigeStateSnapshot.current = maakStateSnapshot(data)
+    huidigeAanvragen.current = data?.aanvragen || []
     setTaken(data?.taken || [])
     setAanvragen(data?.aanvragen || [])
     setGeblokt(data?.geblokt || [])
@@ -317,8 +326,20 @@ export default function App() {
         return
       }
 
+      const huidigeNieuweAanvragen = new Set(
+        huidigeAanvragen.current.filter((item) => item.status === 'nieuw').map((item) => item.id),
+      )
+      const binnengekomenAanvragen = (data.aanvragen || []).filter(
+        (item) => item.status === 'nieuw' && !huidigeNieuweAanvragen.has(item.id),
+      )
       laatsteCentraleUpdate.current = updatedAt
       pasCentraleStateToe(data)
+      if (huidigeRol.current === 'transporteur' && binnengekomenAanvragen.length > 0) {
+        setNieuweAanvraagMelding({
+          aantal: binnengekomenAanvragen.length,
+          titel: binnengekomenAanvragen[0].titel || 'Nieuwe aanvraag',
+        })
+      }
       setOpslagStatus('Centrale opslag bijgewerkt')
       setTimeout(() => {
         if (actief) setOpslagStatus('Centrale opslag actief')
@@ -1365,6 +1386,37 @@ export default function App() {
         </div>
 
         <div style={{ padding: paginaPadding, flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+          {rol === 'transporteur' && nieuweAanvraagMelding && (
+            <button
+              type="button"
+              onClick={() => {
+                setTab('aanvragen')
+                setBertAanvragenTab('nieuw')
+                setNieuweAanvraagMelding(null)
+              }}
+              style={{
+                width: '100%',
+                border: '1px solid #FED7AA',
+                background: '#FFF7ED',
+                color: '#92400E',
+                borderRadius: 10,
+                padding: '12px 14px',
+                marginBottom: 14,
+                fontSize: 13,
+                fontWeight: 800,
+                cursor: 'pointer',
+                textAlign: 'left',
+                boxShadow: '0 8px 18px rgba(146, 64, 14, .08)',
+              }}
+            >
+              Nieuwe aanvraag ontvangen
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#B45309', marginTop: 3 }}>
+                {nieuweAanvraagMelding.aantal > 1
+                  ? `${nieuweAanvraagMelding.aantal} nieuwe aanvragen. Klik om te bekijken.`
+                  : `${nieuweAanvraagMelding.titel}. Klik om te bekijken.`}
+              </span>
+            </button>
+          )}
           {tab === 'aanvraag' && (rol === 'aanvrager' || rol === 'transporteur') && (
             <div>
               {aanvraagBevestigd && rol === 'aanvrager' ? (
