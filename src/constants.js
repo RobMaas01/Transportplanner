@@ -27,11 +27,9 @@ export const TAAK_SUGGESTIES = [
   'Eelan',
   'Extra kratten',
   'Extra sorteren',
-  'Garage',
-  'Meubel verplaatsen',
   'CoderDojo',
-  'Boeken ophalen',
-  'Boeken brengen',
+  'Meubel verplaatsen',
+  'Garage',
   'Anders',
 ]
 
