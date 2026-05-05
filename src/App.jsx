@@ -80,6 +80,7 @@ export default function App() {
   const [pinErr, setPinErr] = useState('')
   const [toonBertPin, setToonBertPin] = useState(false)
   const [tab, setTab] = useState('planning')
+  const [menuOpen, setMenuOpen] = useState(false)
   const [toevoegenTab, setToevoegenTab] = useState('taak')
   const [taken, setTaken] = useState(lokaal.taken)
   const [aanvragen, setAanvragen] = useState(lokaal.aanvragen)
@@ -104,6 +105,11 @@ export default function App() {
     window.addEventListener('resize', updateScherm)
     return () => window.removeEventListener('resize', updateScherm)
   }, [])
+
+  useEffect(() => {
+    if (isMobiel && tab === 'rapportage') setTab('planning')
+    if (!isMobiel) setMenuOpen(false)
+  }, [isMobiel, tab])
 
   const [nieuw, setNieuw] = useState({
     titel: '',
@@ -782,6 +788,7 @@ export default function App() {
             { k: 'alletaken', l: 'Alle taken' },
             { k: 'rapportage', l: 'Rapportage' },
           ]
+  const zichtbareNavTabs = isMobiel ? navTabs.filter((item) => item.k !== 'rapportage') : navTabs
 
   const pagina = {
     planning: 'Weekplanning',
@@ -986,8 +993,9 @@ export default function App() {
           flexDirection: isMobiel ? 'row' : 'column',
           flexShrink: 0,
           height: isMobiel ? 'auto' : '100vh',
-          maxHeight: isMobiel ? 142 : 'none',
+          maxHeight: isMobiel ? 'none' : 'none',
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
         <div
@@ -1006,37 +1014,89 @@ export default function App() {
             </>
           )}
         </div>
-        <nav
-          style={{
-            padding: isMobiel ? '8px 4px' : '10px 8px',
-            flex: 1,
-            overflowY: isMobiel ? 'hidden' : 'auto',
-            overflowX: isMobiel ? 'auto' : 'hidden',
-            display: isMobiel ? 'flex' : 'block',
-            alignItems: isMobiel ? 'center' : 'stretch',
-            gap: isMobiel ? 4 : 0,
-          }}
-        >
-          {navTabs.map((item) => (
-            <div
-              key={item.k}
-              onClick={() => setTab(item.k)}
+        {isMobiel ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 4px' }}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
               style={{
-                padding: isMobiel ? '9px 10px' : '9px 12px',
+                background: '#EA6A1F',
+                border: 'none',
+                color: '#fff',
                 borderRadius: 8,
+                padding: '10px 13px',
+                fontSize: 13,
+                fontWeight: 700,
                 cursor: 'pointer',
-                marginBottom: isMobiel ? 0 : 2,
-                fontSize: isMobiel ? 12 : 13,
-                fontWeight: 500,
-                color: tab === item.k ? '#fff' : '#7C4A2A',
-                background: tab === item.k ? '#EA6A1F' : 'transparent',
-                whiteSpace: 'nowrap',
               }}
             >
-              {item.l}
-            </div>
-          ))}
-        </nav>
+              Menu
+            </button>
+            {menuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 10,
+                  right: 10,
+                  top: 'calc(100% - 2px)',
+                  zIndex: 20,
+                  background: '#fff',
+                  border: '1px solid #FED7AA',
+                  borderRadius: 10,
+                  boxShadow: '0 12px 28px rgba(17, 24, 39, .12)',
+                  padding: 8,
+                  display: 'grid',
+                  gap: 4,
+                }}
+              >
+                {zichtbareNavTabs.map((item) => (
+                  <button
+                    key={item.k}
+                    type="button"
+                    onClick={() => {
+                      setTab(item.k)
+                      setMenuOpen(false)
+                    }}
+                    style={{
+                      textAlign: 'left',
+                      padding: '11px 12px',
+                      borderRadius: 8,
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: tab === item.k ? '#fff' : '#7C4A2A',
+                      background: tab === item.k ? '#EA6A1F' : '#FFF7ED',
+                    }}
+                  >
+                    {item.l}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <nav style={{ padding: '10px 8px', flex: 1, overflowY: 'auto' }}>
+            {zichtbareNavTabs.map((item) => (
+              <div
+                key={item.k}
+                onClick={() => setTab(item.k)}
+                style={{
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  marginBottom: 2,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: tab === item.k ? '#fff' : '#7C4A2A',
+                  background: tab === item.k ? '#EA6A1F' : 'transparent',
+                }}
+              >
+                {item.l}
+              </div>
+            ))}
+          </nav>
+        )}
         <div
           style={{
             padding: isMobiel ? '8px 8px 8px 4px' : '12px 10px',
@@ -1057,6 +1117,7 @@ export default function App() {
               setRol(null)
               setTab('planning')
               setHelpOpen(false)
+              setMenuOpen(false)
             }}
             style={{
               width: '100%',
