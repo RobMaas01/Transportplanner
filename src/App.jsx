@@ -1012,7 +1012,7 @@ export default function App() {
             borderBottom: isMobiel ? 'none' : '1px solid #FED7AA',
             width: isMobiel ? 64 : 'auto',
             flexShrink: 0,
-            display: 'flex',
+            display: isMobiel ? 'flex' : 'block',
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -1157,7 +1157,7 @@ export default function App() {
               {rol === 'aanvrager' ? 'Aanvrager' : 'Bert'}
             </div>
             {!isMobiel && <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 2 }}>Ingelogd</div>}
-            <div style={{ color: '#9A5A2E', fontSize: isMobiel ? 9 : 10, marginTop: isMobiel ? 3 : 5 }}>{opslagStatus}</div>
+            {!isMobiel && <div style={{ color: '#9A5A2E', fontSize: 10, marginTop: 5 }}>{opslagStatus}</div>}
           </div>
           <button
             onClick={() => {
