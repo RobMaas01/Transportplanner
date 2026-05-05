@@ -851,14 +851,6 @@ export default function App() {
     return geblokt.find((item) => item.week === wk && Number(item.dag) === Number(dag)) || blokkadeVoorWeek(wk)
   }
 
-  function nieuweM() {
-    return meld.filter((item) => !item.gelezen).length
-  }
-
-  function leesM() {
-    setMeld((prev) => prev.map((item) => ({ ...item, gelezen: true })))
-  }
-
   function csvWaarde(value) {
     const tekst = String(value ?? '')
     return `"${tekst.replaceAll('"', '""')}"`
@@ -1261,7 +1253,36 @@ export default function App() {
                   </button>
                 ))}
                 </div>
-                <div style={{ fontSize: 11, color: '#9A5A2E' }}>{opslagStatus}</div>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRol(null)
+                      setTab('planning')
+                      setHelpOpen(false)
+                      setMenuOpen(false)
+                      try {
+                        localStorage.removeItem('bb_rol')
+                        localStorage.removeItem('bb_tab')
+                      } catch {
+                        // Geen probleem als de browser dit blokkeert.
+                      }
+                    }}
+                    style={{
+                      border: '1px solid #F5C99D',
+                      background: '#fff',
+                      color: '#7C4A2A',
+                      borderRadius: 8,
+                      padding: '11px 12px',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Uitloggen
+                  </button>
+                  <div style={{ fontSize: 11, color: '#9A5A2E' }}>{opslagStatus}</div>
+                </div>
               </div>
             )}
           </div>
@@ -1287,20 +1308,20 @@ export default function App() {
             ))}
           </nav>
         )}
-        <div
+        {!isMobiel && <div
           style={{
-            padding: isMobiel ? '8px 8px 8px 4px' : '12px 10px',
-            borderTop: isMobiel ? 'none' : '1px solid #FED7AA',
-            width: isMobiel ? 112 : 'auto',
+            padding: '12px 10px',
+            borderTop: '1px solid #FED7AA',
+            width: 'auto',
             flexShrink: 0,
           }}
         >
           <div style={{ background: '#FFE8D1', borderRadius: 8, padding: isMobiel ? '7px 8px' : '10px 12px', marginBottom: 8 }}>
-            <div style={{ color: '#3A2A22', fontSize: isMobiel ? 11 : 12, fontWeight: 600 }}>
+            <div style={{ color: '#3A2A22', fontSize: 12, fontWeight: 600 }}>
               {rol === 'aanvrager' ? 'Aanvrager' : 'Bert'}
             </div>
-            {!isMobiel && <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 2 }}>Ingelogd</div>}
-            {!isMobiel && <div style={{ color: '#9A5A2E', fontSize: 10, marginTop: 5 }}>{opslagStatus}</div>}
+            <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 2 }}>Ingelogd</div>
+            <div style={{ color: '#9A5A2E', fontSize: 10, marginTop: 5 }}>{opslagStatus}</div>
           </div>
           <button
             onClick={() => {
@@ -1321,14 +1342,14 @@ export default function App() {
               border: '1px solid #F5C99D',
               color: '#7C4A2A',
               borderRadius: 6,
-              padding: isMobiel ? 6 : 7,
-              fontSize: isMobiel ? 11 : 12,
+              padding: 7,
+              fontSize: 12,
               cursor: 'pointer',
             }}
           >
             Uitloggen
           </button>
-        </div>
+        </div>}
       </div>
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -1353,23 +1374,6 @@ export default function App() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {nieuweM() > 0 && (
-            <button
-              onClick={leesM}
-              style={{
-                background: '#EEF4FF',
-                border: 'none',
-                color: '#2255CC',
-                borderRadius: 20,
-                padding: '5px 14px',
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              {nieuweM()} nieuw bericht{nieuweM() > 1 ? 'en' : ''} gelezen
-            </button>
-          )}
             <button
               type="button"
               onClick={() => setHelpOpen(true)}
