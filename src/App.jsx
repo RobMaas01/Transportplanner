@@ -131,6 +131,7 @@ export default function App() {
   const [taakEditId, setTaakEditId] = useState(null)
   const [taakMelding, setTaakMelding] = useState('')
   const [aanvraagMelding, setAanvraagMelding] = useState('')
+  const [toonPriveUitleg, setToonPriveUitleg] = useState(false)
   const [blokForm, setBlokForm] = useState({ type: 'week', week: '', eindWeek: '', dag: vandaagDagIndex(), reden: '' })
   const [modal, setModal] = useState(null)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -1380,8 +1381,8 @@ export default function App() {
                       </label>
                       <button
                         type="button"
-                        title="Prive betekent: de aanvraag is alleen zichtbaar voor Bert en staat niet in Alle aanvragen bij de aanvrager. Klik hier ook om Prive aan of uit te zetten."
-                        onClick={() => setAanvraag((prev) => ({ ...prev, prive: !prev.prive }))}
+                        title="Uitleg over Prive"
+                        onClick={() => setToonPriveUitleg(true)}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -1389,8 +1390,8 @@ export default function App() {
                           width: 21,
                           height: 21,
                           borderRadius: '50%',
-                          border: Boolean(aanvraag.prive) ? '1px solid #EA6A1F' : '1px solid #D1D5DB',
-                          color: Boolean(aanvraag.prive) ? '#EA6A1F' : '#6B7280',
+                          border: '1px solid #D1D5DB',
+                          color: '#6B7280',
                           background: '#fff',
                           fontSize: 12,
                           fontWeight: 800,
@@ -1399,6 +1400,58 @@ export default function App() {
                       >
                         i
                       </button>
+                      {toonPriveUitleg && (
+                        <div
+                          style={{
+                            position: 'fixed',
+                            inset: 0,
+                            zIndex: 240,
+                            background: 'rgba(15,23,42,.32)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 20,
+                          }}
+                          onClick={() => setToonPriveUitleg(false)}
+                        >
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              background: '#fff',
+                              borderRadius: 12,
+                              padding: 18,
+                              width: '100%',
+                              maxWidth: 360,
+                              boxShadow: '0 20px 60px rgba(0,0,0,.15)',
+                            }}
+                          >
+                            <div style={{ fontSize: 15, fontWeight: 800, color: '#111827', marginBottom: 6 }}>
+                              Prive aanvraag
+                            </div>
+                            <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, marginBottom: 14 }}>
+                              Als je Prive aanvinkt, is de aanvraag alleen zichtbaar voor Bert. De aanvraag komt dan niet in
+                              het overzicht Alle aanvragen bij de aanvrager te staan.
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setToonPriveUitleg(false)}
+                              style={{
+                                width: '100%',
+                                background: '#EA6A1F',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 8,
+                                padding: '10px 12px',
+                                fontSize: 13,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Begrepen
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <Label>Van vestiging</Label>
