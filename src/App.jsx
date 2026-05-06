@@ -68,10 +68,25 @@ import {
   wekenTussen,
 } from './utils'
 
+const BERT_SESSIE_MAX_MS = 8 * 60 * 60 * 1000
+
+function bertSessieVerlopen(loginAt, nu = Date.now()) {
+  const tijd = Number(loginAt)
+  if (!tijd) return true
+  if (nu - tijd > BERT_SESSIE_MAX_MS) return true
+  return new Date(tijd).toDateString() !== new Date(nu).toDateString()
+}
+
 function laadSessie() {
   try {
     const rol = localStorage.getItem('bb_rol')
     const tab = localStorage.getItem('bb_tab')
+    if (rol === 'transporteur' && bertSessieVerlopen(localStorage.getItem('bb_login_at'))) {
+      localStorage.removeItem('bb_rol')
+      localStorage.removeItem('bb_tab')
+      localStorage.removeItem('bb_login_at')
+      return { rol: null, tab: 'planning' }
+    }
     const veiligeTab =
       rol === 'aanvrager' && !['aanvraag', 'aanvraagstatus'].includes(tab)
         ? 'aanvraag'
@@ -162,7 +177,10 @@ export default function App() {
   useEffect(() => {
     try {
       if (rol) localStorage.setItem('bb_rol', rol)
-      else localStorage.removeItem('bb_rol')
+      else {
+        localStorage.removeItem('bb_rol')
+        localStorage.removeItem('bb_login_at')
+      }
     } catch {
       // Sessie onthouden is gemak; als localStorage blokkeert blijft de app gewoon werken.
     }
@@ -222,6 +240,44 @@ export default function App() {
     maand: new Date().toISOString().slice(0, 7),
     jaar: String(new Date().getFullYear()),
   })
+
+  function uitloggen() {
+    setRol(null)
+    setTab('planning')
+    setHelpOpen(false)
+    setMenuOpen(false)
+    try {
+      localStorage.removeItem('bb_rol')
+      localStorage.removeItem('bb_tab')
+      localStorage.removeItem('bb_login_at')
+    } catch {
+      // Geen probleem als de browser dit blokkeert.
+    }
+  }
+
+  useEffect(() => {
+    if (rol !== 'transporteur') return undefined
+
+    const controleerSessie = () => {
+      try {
+        if (bertSessieVerlopen(localStorage.getItem('bb_login_at'))) {
+          uitloggen()
+          setToonBertPin(true)
+        }
+      } catch {
+        // Als opslag niet leesbaar is, laten we de app bruikbaar blijven.
+      }
+    }
+
+    const timer = setInterval(controleerSessie, 60000)
+    window.addEventListener('focus', controleerSessie)
+    document.addEventListener('visibilitychange', controleerSessie)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', controleerSessie)
+      document.removeEventListener('visibilitychange', controleerSessie)
+    }
+  }, [rol])
 
   function pasCentraleStateToe(data) {
     skipVolgendeCentraleOpslag.current = true
@@ -379,6 +435,11 @@ export default function App() {
       if (isMobiel) setPlanningWeergave('week')
       setPinErr('')
       setToonBertPin(false)
+      try {
+        localStorage.setItem('bb_login_at', String(Date.now()))
+      } catch {
+        // Sessie onthouden is gemak; als localStorage blokkeert blijft de app gewoon werken.
+      }
     } else {
       setPinErr('Onjuiste pincode.')
     }
@@ -1342,18 +1403,7 @@ export default function App() {
                 <div style={{ display: 'grid', gap: 10 }}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setRol(null)
-                      setTab('planning')
-                      setHelpOpen(false)
-                      setMenuOpen(false)
-                      try {
-                        localStorage.removeItem('bb_rol')
-                        localStorage.removeItem('bb_tab')
-                      } catch {
-                        // Geen probleem als de browser dit blokkeert.
-                      }
-                    }}
+                    onClick={uitloggen}
                     style={{
                       border: '1px solid #F5C99D',
                       background: '#fff',
@@ -1410,18 +1460,7 @@ export default function App() {
             <div style={{ color: '#9A5A2E', fontSize: 10, marginTop: 5 }}>{opslagStatus}</div>
           </div>
           <button
-            onClick={() => {
-              setRol(null)
-              setTab('planning')
-              setHelpOpen(false)
-              setMenuOpen(false)
-              try {
-                localStorage.removeItem('bb_rol')
-                localStorage.removeItem('bb_tab')
-              } catch {
-                // Geen probleem als de browser dit blokkeert.
-              }
-            }}
+            onClick={uitloggen}
             style={{
               width: '100%',
               background: 'transparent',
@@ -1547,15 +1586,8 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => {
-                          setRol(null)
-                          setTab('planning')
                           setAanvraagBevestigd(false)
-                          try {
-                            localStorage.removeItem('bb_rol')
-                            localStorage.removeItem('bb_tab')
-                          } catch {
-                            // Geen probleem als de browser dit blokkeert.
-                          }
+                          uitloggen()
                         }}
                         style={{
                           background: '#F3F4F6',
