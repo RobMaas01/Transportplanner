@@ -1005,12 +1005,15 @@ export default function App() {
   }
 
   const nieuweAanvragenAantal = aanvragen.filter((item) => item.status === 'nieuw').length
+  const infoNodigAantal = aanvragen.filter(
+    (item) => aanvraagZichtbaarVoorAanvrager(item) && item.status === 'info',
+  ).length
 
   const navTabs =
     rol === 'aanvrager'
         ? [
             { k: 'aanvraag', l: 'Aanvraag indienen' },
-            { k: 'aanvraagstatus', l: 'Alle aanvragen' },
+            { k: 'aanvraagstatus', l: `Alle aanvragen${infoNodigAantal ? ` (!)` : ''}` },
           ]
         : [
             { k: 'planning', l: 'Planning' },
@@ -2154,7 +2157,18 @@ export default function App() {
                 )}
                 {(() => {
                   const groepen = [
-                    { key: 'open', titel: 'Open', leeg: 'Geen open aanvragen.', filter: aanvraagIsOpen },
+                    {
+                      key: 'open',
+                      titel: 'Open',
+                      leeg: 'Geen open aanvragen.',
+                      filter: (item) => aanvraagIsOpen(item) && item.status !== 'info',
+                    },
+                    {
+                      key: 'info',
+                      titel: 'Info nodig',
+                      leeg: 'Geen aanvragen waar meer informatie nodig is.',
+                      filter: (item) => item.status === 'info',
+                    },
                     { key: 'voltooid', titel: 'Voltooid', leeg: 'Geen voltooide aanvragen.', filter: aanvraagIsAfgesloten },
                   ]
                   const actieveGroep = groepen.find((groep) => groep.key === aanvraagStatusTab) || groepen[0]
@@ -2280,13 +2294,14 @@ export default function App() {
                               {item.infoNotitie && (
                                 <div
                                   style={{
-                                    background: '#FFF7ED',
+                                    background: '#FFFBEB',
                                     border: '1px solid #FED7AA',
                                     borderRadius: 8,
-                                    padding: '8px 10px',
+                                    padding: '10px 11px',
                                     fontSize: 12,
                                     color: '#92400E',
-                                    marginTop: 8,
+                                    marginTop: 10,
+                                    fontWeight: 650,
                                   }}
                                 >
                                   Bert vraagt: {item.infoNotitie}
@@ -2297,7 +2312,7 @@ export default function App() {
                               <AanvraagPill status={item.status} />
                               {aanvraagIsOpen(item) && (
                                 <Btn variant="ghost" onClick={() => bewerkAanvraag(item)}>
-                                  Wijzigen
+                                  {item.status === 'info' ? 'Aanvullen' : 'Wijzigen'}
                                 </Btn>
                               )}
                               {aanvraagIsOpen(item) && (
