@@ -1205,6 +1205,9 @@ export default function App() {
 
   const actieveTaken = taken.filter((taak) => taak.status !== 'verwijderd')
   const verwijderdeTaken = taken.filter((taak) => taak.status === 'verwijderd')
+  const openTakenInVerleden = actieveTaken
+    .filter((taak) => taak.status !== 'afgerond' && isVerledenDatum(taakDatum(taak)))
+    .sort((a, b) => taakDatum(a) - taakDatum(b))
   const dagData = weekWerkdagen(week)
   const weekTaken = actieveTaken.filter((taak) => taak.week === week)
   const zichtbareWeekDagen = isMobiel ? dagData.filter((_, di) => di === mobielePlanningDag) : dagData
@@ -2347,11 +2350,7 @@ export default function App() {
             <Card>
               <CardHead
                 title="Aanvragen"
-                sub={`${aanvragen.filter((item) => item.status === 'nieuw').length} nieuw${
-                  aanvragen.filter((item) => item.status === 'verwijderd').length
-                    ? `, ${aanvragen.filter((item) => item.status === 'verwijderd').length} verwijderd onderaan`
-                    : ''
-                }`}
+                sub={`${aanvragen.filter((item) => item.status === 'nieuw').length} nieuw`}
               />
               <div style={{ padding: 14, display: 'grid', gap: 14 }}>
                 {aanvraagMelding && (
@@ -2823,6 +2822,56 @@ export default function App() {
                   })}
                 </div>
               </div>
+
+              {openTakenInVerleden.length > 0 && (
+                <div
+                  style={{
+                    background: '#FFF7ED',
+                    border: '1px solid #FED7AA',
+                    borderRadius: 10,
+                    padding: '11px 13px',
+                    marginBottom: 14,
+                    display: 'grid',
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#92400E' }}>
+                        {openTakenInVerleden.length === 1
+                          ? 'Er staat 1 open taak in het verleden.'
+                          : `Er staan ${openTakenInVerleden.length} open taken in het verleden.`}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#9A5A2E', marginTop: 2 }}>
+                        Controleer of deze nog uitgevoerd of afgerond moeten worden.
+                      </div>
+                    </div>
+                    <Btn
+                      variant="ghost"
+                      onClick={() => {
+                        const eerste = openTakenInVerleden[0]
+                        setWeek(eerste.week)
+                        setPlanningWeergave('week')
+                        if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(4, Number(eerste.dag || 0))))
+                      }}
+                    >
+                      Bekijk
+                    </Btn>
+                  </div>
+                  <div style={{ display: 'grid', gap: 5 }}>
+                    {openTakenInVerleden.slice(0, 3).map((taak) => (
+                      <div key={taak.id} style={{ fontSize: 12, color: '#7C4A2A' }}>
+                        {fmt(taakDatum(taak))} - {taak.titel}
+                      </div>
+                    ))}
+                    {openTakenInVerleden.length > 3 && (
+                      <div style={{ fontSize: 12, color: '#9A5A2E' }}>
+                        En nog {openTakenInVerleden.length - 3}.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {planningWeergave === 'maand' && (
                 <Card>
