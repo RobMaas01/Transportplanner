@@ -202,6 +202,7 @@ export default function App() {
   const [aanvraagMelding, setAanvraagMelding] = useState('')
   const [nieuweAanvraagMelding, setNieuweAanvraagMelding] = useState(null)
   const [toonPriveUitleg, setToonPriveUitleg] = useState(false)
+  const [hoverPriveUitleg, setHoverPriveUitleg] = useState(false)
   const [blokForm, setBlokForm] = useState({ type: 'week', week: '', eindWeek: '', dag: vandaagDagIndex(), reden: '' })
   const [modal, setModal] = useState(null)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -1627,7 +1628,7 @@ export default function App() {
                       />
                       <FieldError>{aanvraagErrors.titel}</FieldError>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 'fit-content' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 'fit-content', position: 'relative' }}>
                       <label
                         style={{
                           display: 'flex',
@@ -1650,6 +1651,14 @@ export default function App() {
                         type="button"
                         title="Uitleg over Privé"
                         onClick={() => setToonPriveUitleg(true)}
+                        onMouseEnter={() => {
+                          if (!isMobiel) setHoverPriveUitleg(true)
+                        }}
+                        onMouseLeave={() => setHoverPriveUitleg(false)}
+                        onFocus={() => {
+                          if (!isMobiel) setHoverPriveUitleg(true)
+                        }}
+                        onBlur={() => setHoverPriveUitleg(false)}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -1667,6 +1676,28 @@ export default function App() {
                       >
                         i
                       </button>
+                      {hoverPriveUitleg && !toonPriveUitleg && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: '100%',
+                            top: '50%',
+                            transform: 'translate(8px, -50%)',
+                            zIndex: 35,
+                            width: 250,
+                            background: '#111827',
+                            color: '#fff',
+                            borderRadius: 8,
+                            padding: '9px 11px',
+                            fontSize: 12,
+                            lineHeight: 1.35,
+                            boxShadow: '0 12px 28px rgba(15,23,42,.18)',
+                            pointerEvents: 'none',
+                          }}
+                        >
+                          Alleen Bert ziet deze aanvraag. De aanvraag komt niet in Alle aanvragen te staan.
+                        </div>
+                      )}
                       {toonPriveUitleg && (
                         <div
                           style={{
