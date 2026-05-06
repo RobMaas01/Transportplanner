@@ -62,6 +62,7 @@ import {
   vandaagWerkdagIndex,
   verschuifWeek,
   weekNr,
+  weekDagen,
   weekOptieLabel,
   weekRange,
   weekWerkdagen,
@@ -229,6 +230,7 @@ export default function App() {
   const [vandaagTaakVraag, setVandaagTaakVraag] = useState(false)
   const [bevestigVerwijderen, setBevestigVerwijderen] = useState(null)
   const [bevestigDefinitiefVerwijderen, setBevestigDefinitiefVerwijderen] = useState(null)
+  const [weekendBevestiging, setWeekendBevestiging] = useState(null)
   const [verwijderNotitie, setVerwijderNotitie] = useState('')
   const [planAanvraag, setPlanAanvraag] = useState(null)
   const [infoAanvraag, setInfoAanvraag] = useState(null)
@@ -288,6 +290,19 @@ export default function App() {
     }
     setTab(nieuweTab)
     setMenuOpen(false)
+  }
+
+  function kiesDagMetWeekendCheck(weekKeuze, dagKeuze, actie) {
+    const dagNummer = Number(dagKeuze)
+    if (dagNummer >= 5) {
+      setWeekendBevestiging({
+        dag: dagNummer,
+        week: weekKeuze,
+        actie,
+      })
+      return
+    }
+    actie()
   }
 
   useEffect(() => {
@@ -496,9 +511,11 @@ export default function App() {
   }
 
   function openVandaagTaakVraag() {
-    setNieuw((prev) => ({ ...prev, week: vandaag(), dag: vandaagDagIndex() }))
-    setTaakMaand(new Date().toISOString().slice(0, 7))
-    setVandaagTaakVraag(true)
+    kiesDagMetWeekendCheck(vandaag(), vandaagDagIndex(), () => {
+      setNieuw((prev) => ({ ...prev, week: vandaag(), dag: vandaagDagIndex() }))
+      setTaakMaand(new Date().toISOString().slice(0, 7))
+      setVandaagTaakVraag(true)
+    })
   }
 
   function voegToe(status = 'gepland', bestemming = null) {
@@ -559,6 +576,7 @@ export default function App() {
     }
     if (bestemming === 'planning') {
       setWeek(taakData.week)
+      if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(6, Number(taakData.dag || 0))))
       setPlanningMaand(isoDag(taakDatum(taakData)).slice(0, 7))
       setPlanningWeergave('week')
       setTab('planning')
@@ -849,6 +867,7 @@ export default function App() {
       ),
     )
     setWeek(planW)
+    if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(6, Number(planD || 0))))
     setPlanningWeergave('week')
     setPlanAanvraag(null)
     setAanvraagMelding('Aanvraag ingepland.')
@@ -927,6 +946,7 @@ export default function App() {
     ])
 
     setWeek(verplW)
+    if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(6, Number(verplD || 0))))
     setPlanningWeergave('week')
     setModal(null)
   }
@@ -1209,9 +1229,13 @@ export default function App() {
   const openTakenInVerleden = actieveTaken
     .filter((taak) => taak.status !== 'afgerond' && isVerledenDatum(taakDatum(taak)))
     .sort((a, b) => taakDatum(a) - taakDatum(b))
-  const dagData = weekWerkdagen(week)
+  const weekHeeftWeekendTaken = actieveTaken.some(
+    (taak) => taak.week === week && Number(taak.dag) >= 5,
+  )
+  const dagData = weekHeeftWeekendTaken ? weekDagen(week) : weekWerkdagen(week)
   const weekTaken = actieveTaken.filter((taak) => taak.week === week)
-  const zichtbareWeekDagen = isMobiel ? dagData.filter((_, di) => di === mobielePlanningDag) : dagData
+  const effectieveMobielePlanningDag = Math.min(mobielePlanningDag, dagData.length - 1)
+  const zichtbareWeekDagen = isMobiel ? dagData.filter((_, di) => di === effectieveMobielePlanningDag) : dagData
   const weekBlokkade = blokkadeVoorWeek(week)
   const gebloktNu = Boolean(weekBlokkade)
   const maandData = maandDagen(planningMaand)
@@ -1247,7 +1271,7 @@ export default function App() {
   const planningNietVandaag =
     planningWeergave !== 'week' ||
     week !== vandaag() ||
-    (isMobiel && mobielePlanningDag !== vandaagWerkdagIndex())
+    (isMobiel && effectieveMobielePlanningDag !== vandaagWerkdagIndex())
   const helpSubtitel = isMobiel
     ? `Hulp bij ${pagina[tab] || 'dit scherm'}.`
     : rol === 'aanvrager'
@@ -3087,13 +3111,13 @@ export default function App() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                    gridTemplateColumns: `repeat(${dagData.length}, minmax(0, 1fr))`,
                     gap: 6,
                     marginBottom: 12,
                   }}
                 >
                   {dagData.map((dag, di) => {
-                    const actief = mobielePlanningDag === di
+                    const actief = effectieveMobielePlanningDag === di
                     const aantal = weekTaken.filter((taak) => Number(taak.dag) === di).length
                     const taakLabel = aantal === 1 ? '1 taak' : `${aantal} taken`
 
@@ -3560,7 +3584,9 @@ export default function App() {
                                 key={`taak-${dag.iso}`}
                                 type="button"
                                 onClick={() => {
-                                  setNieuw((prev) => ({ ...prev, week: dag.week, dag: dag.dagIndex }))
+                                  kiesDagMetWeekendCheck(dag.week, dag.dagIndex, () => {
+                                    setNieuw((prev) => ({ ...prev, week: dag.week, dag: dag.dagIndex }))
+                                  })
                                 }}
                                 style={{
                                   minHeight: 34,
@@ -4687,9 +4713,11 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    setVerplW(vandaag())
-                    setVerplD(vandaagDagIndex())
-                    setVerplaatsMaand(new Date().toISOString().slice(0, 7))
+                    kiesDagMetWeekendCheck(vandaag(), vandaagDagIndex(), () => {
+                      setVerplW(vandaag())
+                      setVerplD(vandaagDagIndex())
+                      setVerplaatsMaand(new Date().toISOString().slice(0, 7))
+                    })
                   }}
                   style={{
                     background: verplW === vandaag() && Number(verplD) === vandaagDagIndex() ? '#EA6A1F' : '#F3F4F6',
@@ -4744,8 +4772,10 @@ export default function App() {
                         key={`verplaats-${dag.iso}`}
                         type="button"
                         onClick={() => {
-                          setVerplW(dag.week)
-                          setVerplD(dag.dagIndex)
+                          kiesDagMetWeekendCheck(dag.week, dag.dagIndex, () => {
+                            setVerplW(dag.week)
+                            setVerplD(dag.dagIndex)
+                          })
                         }}
                         style={{
                           minHeight: 42,
@@ -4980,6 +5010,86 @@ export default function App() {
         </div>
       )}
 
+      {weekendBevestiging && (
+        <div
+          onClick={() => setWeekendBevestiging(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,.38)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 219,
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 14,
+              padding: 24,
+              width: '100%',
+              maxWidth: 390,
+              boxShadow: '0 20px 60px rgba(0,0,0,.16)',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#111827', marginBottom: 6 }}>
+              Weekend gekozen
+            </div>
+            <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, marginBottom: 18 }}>
+              Dit is een {DAGEN[weekendBevestiging.dag].toLowerCase()}. Wil je deze taak of aanvraag toch op deze
+              weekenddag plannen? Dan wordt deze dag ook zichtbaar in de weekplanning.
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setWeekendBevestiging(null)}
+                style={{
+                  flex: 1,
+                  minWidth: 130,
+                  background: '#F3F4F6',
+                  color: '#374151',
+                  border: '1px solid #E5E9F0',
+                  borderRadius: 8,
+                  padding: '10px 0',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Annuleer
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const actie = weekendBevestiging.actie
+                  setWeekendBevestiging(null)
+                  actie()
+                }}
+                style={{
+                  flex: 1,
+                  minWidth: 130,
+                  background: '#EA6A1F',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '10px 0',
+                  fontSize: 13,
+                  fontWeight: 750,
+                  cursor: 'pointer',
+                }}
+              >
+                Toch plannen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {infoAanvraag && (
         <div
           onClick={() => setInfoAanvraag(null)}
@@ -5108,9 +5218,11 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    setPlanW(vandaag())
-                    setPlanD(vandaagDagIndex())
-                    setPlanMaand(new Date().toISOString().slice(0, 7))
+                    kiesDagMetWeekendCheck(vandaag(), vandaagDagIndex(), () => {
+                      setPlanW(vandaag())
+                      setPlanD(vandaagDagIndex())
+                      setPlanMaand(new Date().toISOString().slice(0, 7))
+                    })
                   }}
                   style={{
                     background: planW === vandaag() && Number(planD) === vandaagDagIndex() ? '#EA6A1F' : '#F3F4F6',
@@ -5169,8 +5281,10 @@ export default function App() {
                         key={`plan-${dag.iso}`}
                         type="button"
                         onClick={() => {
-                          setPlanW(dag.week)
-                          setPlanD(dag.dagIndex)
+                          kiesDagMetWeekendCheck(dag.week, dag.dagIndex, () => {
+                            setPlanW(dag.week)
+                            setPlanD(dag.dagIndex)
+                          })
                         }}
                         style={{
                           minHeight: 38,
