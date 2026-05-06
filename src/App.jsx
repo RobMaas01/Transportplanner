@@ -2826,50 +2826,54 @@ export default function App() {
               {openTakenInVerleden.length > 0 && (
                 <div
                   style={{
-                    background: '#FFF7ED',
-                    border: '1px solid #FED7AA',
-                    borderRadius: 10,
-                    padding: '11px 13px',
-                    marginBottom: 14,
-                    display: 'grid',
-                    gap: 8,
+                    background: '#fff',
+                    border: '1px solid #E5E9F0',
+                    borderRadius: 9,
+                    padding: isMobiel ? '8px 10px' : '9px 12px',
+                    marginBottom: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    flexWrap: 'wrap',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#92400E' }}>
-                        {openTakenInVerleden.length === 1
-                          ? 'Er staat 1 open taak in het verleden.'
-                          : `Er staan ${openTakenInVerleden.length} open taken in het verleden.`}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#9A5A2E', marginTop: 2 }}>
-                        Controleer of deze nog uitgevoerd of afgerond moeten worden.
-                      </div>
-                    </div>
-                    <Btn
-                      variant="ghost"
-                      onClick={() => {
-                        const eerste = openTakenInVerleden[0]
-                        setWeek(eerste.week)
-                        setPlanningWeergave('week')
-                        if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(4, Number(eerste.dag || 0))))
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        background: '#F59E0B',
+                        flexShrink: 0,
                       }}
-                    >
-                      Bekijk
-                    </Btn>
+                    />
+                    <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 650 }}>
+                      {openTakenInVerleden.length === 1
+                        ? '1 open taak uit het verleden'
+                        : `${openTakenInVerleden.length} open taken uit het verleden`}
+                    </span>
                   </div>
-                  <div style={{ display: 'grid', gap: 5 }}>
-                    {openTakenInVerleden.slice(0, 3).map((taak) => (
-                      <div key={taak.id} style={{ fontSize: 12, color: '#7C4A2A' }}>
-                        {fmt(taakDatum(taak))} - {taak.titel}
-                      </div>
-                    ))}
-                    {openTakenInVerleden.length > 3 && (
-                      <div style={{ fontSize: 12, color: '#9A5A2E' }}>
-                        En nog {openTakenInVerleden.length - 3}.
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const eerste = openTakenInVerleden[0]
+                      setWeek(eerste.week)
+                      setPlanningWeergave('week')
+                      if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(4, Number(eerste.dag || 0))))
+                    }}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#EA6A1F',
+                      fontSize: 12,
+                      fontWeight: 750,
+                      cursor: 'pointer',
+                      padding: '3px 0',
+                    }}
+                  >
+                    Bekijk
+                  </button>
                 </div>
               )}
 
