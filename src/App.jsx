@@ -1921,7 +1921,7 @@ export default function App() {
                             })
                           }}
                           style={{
-                            background: aanvraag.week === 'zsm' ? '#FFF7ED' : '#F3F4F6',
+                            background: aanvraag.week === 'zsm' ? '#FFE8D1' : '#F3F4F6',
                             color: aanvraag.week === 'zsm' ? '#9A3412' : '#374151',
                             border: aanvraag.week === 'zsm' ? '2px solid #EA6A1F' : '1px solid #E5E9F0',
                             borderRadius: 8,
@@ -1929,6 +1929,7 @@ export default function App() {
                             fontSize: 12,
                             fontWeight: aanvraag.week === 'zsm' ? 750 : 600,
                             cursor: 'pointer',
+                            boxShadow: aanvraag.week === 'zsm' ? '0 2px 6px rgba(234, 106, 31, .16)' : 'none',
                           }}
                         >
                           Zo snel mogelijk
