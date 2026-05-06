@@ -1563,11 +1563,11 @@ export default function App() {
                           checked={Boolean(aanvraag.prive)}
                           onChange={(e) => setAanvraag((prev) => ({ ...prev, prive: e.target.checked }))}
                         />
-                        <span>Prive</span>
+                        <span>Privé</span>
                       </label>
                       <button
                         type="button"
-                        title="Uitleg over Prive"
+                        title="Uitleg over Privé"
                         onClick={() => setToonPriveUitleg(true)}
                         style={{
                           display: 'inline-flex',
@@ -1612,10 +1612,10 @@ export default function App() {
                             }}
                           >
                             <div style={{ fontSize: 15, fontWeight: 800, color: '#111827', marginBottom: 6 }}>
-                              Prive aanvraag
+                              Privé aanvraag
                             </div>
                             <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, marginBottom: 14 }}>
-                              Als je Prive aanvinkt, is de aanvraag alleen zichtbaar voor Bert. De aanvraag komt dan niet in
+                              Als je Privé aanvinkt, is de aanvraag alleen zichtbaar voor Bert. De aanvraag komt dan niet in
                               het overzicht Alle aanvragen bij de aanvrager te staan.
                             </div>
                             <button
@@ -2856,7 +2856,7 @@ export default function App() {
                       <div style={{ padding: isMobiel ? 10 : 7, minHeight: isMobiel ? 120 : 60 }}>
                         {dt.length === 0 && (
                           <div style={{ padding: '18px 4px', fontSize: isMobiel ? 12 : 10, color: '#D1D5DB', textAlign: 'center' }}>
-                            Leeg
+                            Geen extra taken
                           </div>
                         )}
                         {dt.map((taak) => {
