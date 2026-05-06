@@ -889,6 +889,8 @@ export default function App() {
     URL.revokeObjectURL(url)
   }
 
+  const nieuweAanvragenAantal = aanvragen.filter((item) => item.status === 'nieuw').length
+
   const navTabs =
     rol === 'aanvrager'
         ? [
@@ -897,7 +899,7 @@ export default function App() {
           ]
         : [
             { k: 'planning', l: 'Planning' },
-            { k: 'aanvragen', l: `Aanvragen${aanvragen.filter((item) => item.status === 'nieuw').length ? ` (${aanvragen.filter((item) => item.status === 'nieuw').length})` : ''}` },
+            { k: 'aanvragen', l: `Aanvragen${nieuweAanvragenAantal ? ` (${nieuweAanvragenAantal})` : ''}` },
             { k: 'toevoegen', l: 'Toevoegen' },
             { k: 'alletaken', l: 'Alle taken' },
             { k: 'rapportage', l: 'Rapportage' },
@@ -1114,6 +1116,60 @@ export default function App() {
   const rappData = tab === 'rapportage' ? maakRapportData(taken, rapp) : null
   const breedFormGrid = isMobiel ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))'
   const paginaPadding = isMobiel ? 10 : 20
+  const helpSubtitel = isMobiel
+    ? `Hulp bij ${pagina[tab] || 'dit scherm'}.`
+    : rol === 'aanvrager'
+      ? 'Voor aanvragen en status bekijken.'
+      : 'Voor planning en aanvragen beheren.'
+  const helpItems = (() => {
+    if (isMobiel) {
+      const mobieleHelp = {
+        aanvraag: [
+          ['Transportaanvraag', 'Vul in wat er vervoerd moet worden. Kies minimaal een van- of naar-vestiging.'],
+          ['Privé', 'Privé-aanvragen zijn alleen zichtbaar voor Bert en komen niet in Alle aanvragen.'],
+        ],
+        aanvraagstatus: [
+          ['Open', 'Hier staan recente aanvragen die nog lopen.'],
+          ['Voltooid', 'Afgeronde aanvragen blijven tijdelijk zichtbaar en verdwijnen daarna uit dit overzicht.'],
+        ],
+        planning: [
+          ['Weekplanning', 'Gebruik de pijlen om van week te wisselen en kies bovenin de dag die je wilt bekijken.'],
+          ['Taken', 'Geplande taken staan blauw. Afgeronde taken staan groen.'],
+        ],
+        aanvragen: [
+          ['Aanvragen', 'Nieuwe aanvragen staan bovenaan. Open een aanvraag om te plannen of om meer informatie te vragen.'],
+          ['Verwijderen', 'Verwijder alleen dubbele of foutieve aanvragen. Gebruik Meer info nodig als de aanvrager nog iets moet doen.'],
+        ],
+        toevoegen: [
+          ['Taak toevoegen', 'Voeg eigen taken of druktemeldingen toe. Druktemeldingen helpen aanvragers bij het kiezen van een datum.'],
+          ['Meteen uitvoeren', 'Gebruik dit als de taak al gedaan is en alleen nog in de administratie moet komen.'],
+        ],
+        alletaken: [
+          ['Alle taken', 'Zoek taken terug met de zoekbalk of filter op jaar en maand.'],
+          ['Verwijderd', 'Verwijderde taken kun je tijdelijk terugvinden en herstellen.'],
+        ],
+      }
+      return mobieleHelp[tab] || [['Hulp', 'Gebruik Menu om naar de verschillende onderdelen te gaan.']]
+    }
+
+    if (rol === 'aanvrager') {
+      return [
+        ['Aanvraag indienen', 'Maak een nieuwe transportaanvraag voor Bert.'],
+        ['Alle aanvragen', 'Bekijk de status, wijzig open aanvragen of verwijder ze.'],
+      ]
+    }
+
+    return [
+      ['Planning', 'Bekijk taken per week, maand of jaar.'],
+      ['Aanvragen', 'Plan aanvragen in, vraag extra info of verwijder dubbele of foutieve aanvragen.'],
+      [
+        'Toevoegen',
+        'Voeg een taak toe of zet een druktemelding, bijvoorbeeld vakantie, afwezigheid of een drukke week. Aanvragers zien deze waarschuwing bij het kiezen van een datum.',
+      ],
+      ['Alle taken', 'Zoek taken terug, wijzig ze of verwijder ze.'],
+      ['Rapportage', 'Maak een overzicht per week, maand of jaar.'],
+    ]
+  })()
 
   return (
     <div
@@ -1181,6 +1237,7 @@ export default function App() {
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
               style={{
+                position: 'relative',
                 minWidth: 136,
                 background: '#FFF7ED',
                 border: '1px solid #EA6A1F',
@@ -1193,6 +1250,30 @@ export default function App() {
               }}
             >
               Menu
+              {rol === 'transporteur' && nieuweAanvragenAantal > 0 && (
+                <span
+                  aria-label={`${nieuweAanvragenAantal} nieuwe aanvragen`}
+                  style={{
+                    position: 'absolute',
+                    top: -7,
+                    right: -7,
+                    minWidth: 20,
+                    height: 20,
+                    padding: '0 5px',
+                    borderRadius: 999,
+                    background: '#EA6A1F',
+                    color: '#fff',
+                    border: '2px solid #FFF7ED',
+                    fontSize: 11,
+                    fontWeight: 900,
+                    lineHeight: '16px',
+                    boxSizing: 'border-box',
+                    textAlign: 'center',
+                  }}
+                >
+                  {nieuweAanvragenAantal}
+                </span>
+              )}
             </button>
             {menuOpen && (
               <div
@@ -3951,7 +4032,7 @@ export default function App() {
               <div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>Korte hulp</div>
                 <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                  {rol === 'aanvrager' ? 'Voor aanvragen en status bekijken.' : 'Voor planning en aanvragen beheren.'}
+                  {helpSubtitel}
                 </div>
               </div>
               <button
@@ -3973,23 +4054,7 @@ export default function App() {
               </button>
             </div>
             <div style={{ display: 'grid', gap: 10 }}>
-              {(rol === 'aanvrager'
-                ? [
-                    ['Aanvraag indienen', 'Maak een nieuwe transportaanvraag voor Bert.'],
-                    ['Alle aanvragen', 'Bekijk de status, wijzig open aanvragen of verwijder ze.'],
-                    ['Niet uitgevoerd', 'Aanvragen die Bert niet uitvoert blijven deze maand zichtbaar met reden.'],
-                  ]
-                : [
-                    ['Planning', 'Bekijk taken per week, maand of jaar.'],
-                    ['Aanvragen', 'Plan aanvragen in, vraag extra info of zet ze op niet uitvoeren.'],
-                    [
-                      'Toevoegen',
-                      'Voeg een taak toe of zet een druktemelding, bijvoorbeeld vakantie, afwezigheid of een drukke week. Aanvragers zien deze waarschuwing bij het kiezen van een datum.',
-                    ],
-                    ['Alle taken', 'Zoek taken terug, wijzig ze of verwijder ze.'],
-                    ...(!isMobiel ? [['Rapportage', 'Maak een overzicht per week, maand of jaar.']] : []),
-                  ]
-              ).map(([titel, tekst]) => (
+              {helpItems.map(([titel, tekst]) => (
                 <div
                   key={titel}
                   style={{
