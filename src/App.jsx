@@ -226,6 +226,7 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [vandaagTaakVraag, setVandaagTaakVraag] = useState(false)
   const [bevestigVerwijderen, setBevestigVerwijderen] = useState(null)
+  const [bevestigDefinitiefVerwijderen, setBevestigDefinitiefVerwijderen] = useState(null)
   const [verwijderNotitie, setVerwijderNotitie] = useState('')
   const [planAanvraag, setPlanAanvraag] = useState(null)
   const [infoAanvraag, setInfoAanvraag] = useState(null)
@@ -693,6 +694,10 @@ export default function App() {
     )
   }
 
+  function definitiefVerwijderAanvraag(id) {
+    setAanvragen((prev) => prev.filter((item) => item.id !== id))
+  }
+
   function vraagVerwijderAanvraag(item) {
     setBevestigVerwijderen({ type: 'aanvraag', item })
     setVerwijderNotitie(item.verwijderNotitie || '')
@@ -737,6 +742,10 @@ export default function App() {
     )
   }
 
+  function definitiefVerwijderTaak(id) {
+    setTaken((prev) => prev.filter((taak) => taak.id !== id))
+  }
+
   function voerVerwijderenUit() {
     if (!bevestigVerwijderen) return
 
@@ -748,6 +757,18 @@ export default function App() {
 
     setBevestigVerwijderen(null)
     setVerwijderNotitie('')
+  }
+
+  function voerDefinitiefVerwijderenUit() {
+    if (!bevestigDefinitiefVerwijderen) return
+
+    if (bevestigDefinitiefVerwijderen.type === 'aanvraag') {
+      definitiefVerwijderAanvraag(bevestigDefinitiefVerwijderen.item.id)
+    } else {
+      definitiefVerwijderTaak(bevestigDefinitiefVerwijderen.item.id)
+    }
+
+    setBevestigDefinitiefVerwijderen(null)
   }
 
   function openInfoNodig(item) {
@@ -2554,6 +2575,15 @@ export default function App() {
                                     Herstel
                                   </Btn>
                                 )}
+                                {item.status === 'verwijderd' && (
+                                  <Btn
+                                    size="touch"
+                                    variant="danger"
+                                    onClick={() => setBevestigDefinitiefVerwijderen({ type: 'aanvraag', item })}
+                                  >
+                                    Definitief verwijderen
+                                  </Btn>
+                                )}
                               {item.status !== 'verwijderd' && (
                                 <Btn variant="danger" onClick={() => vraagVerwijderAanvraag(item)}>
                                   Verwijder
@@ -3643,6 +3673,12 @@ export default function App() {
                                 <Btn variant="success" onClick={() => herstelTaak(taak.id)}>
                                   Herstel
                                 </Btn>
+                                <Btn
+                                  variant="danger"
+                                  onClick={() => setBevestigDefinitiefVerwijderen({ type: 'taak', item: taak })}
+                                >
+                                  Definitief verwijderen
+                                </Btn>
                               </div>
                             </div>
                           ))}
@@ -4667,6 +4703,80 @@ export default function App() {
                 }}
               >
                 Verwijder
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bevestigDefinitiefVerwijderen && (
+        <div
+          onClick={() => setBevestigDefinitiefVerwijderen(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,.50)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 218,
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 14,
+              padding: 24,
+              width: '100%',
+              maxWidth: 410,
+              boxShadow: '0 20px 60px rgba(0,0,0,.18)',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#991B1B', marginBottom: 6 }}>
+              Definitief verwijderen?
+            </div>
+            <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, marginBottom: 18 }}>
+              "{bevestigDefinitiefVerwijderen.item.titel}" wordt echt verwijderd en kan daarna niet meer worden
+              teruggehaald.
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setBevestigDefinitiefVerwijderen(null)}
+                style={{
+                  flex: 1,
+                  minWidth: 140,
+                  background: '#F3F4F6',
+                  color: '#374151',
+                  border: '1px solid #E5E9F0',
+                  borderRadius: 8,
+                  padding: '10px 0',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Annuleer
+              </button>
+              <button
+                onClick={voerDefinitiefVerwijderenUit}
+                style={{
+                  flex: 1,
+                  minWidth: 140,
+                  background: '#991B1B',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '10px 0',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                Definitief verwijderen
               </button>
             </div>
           </div>
