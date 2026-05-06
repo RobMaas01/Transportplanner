@@ -2992,6 +2992,7 @@ export default function App() {
                   {dagData.map((dag, di) => {
                     const actief = mobielePlanningDag === di
                     const aantal = weekTaken.filter((taak) => Number(taak.dag) === di).length
+                    const taakLabel = aantal === 1 ? '1 taak' : `${aantal} taken`
 
                     return (
                       <button
@@ -3003,20 +3004,34 @@ export default function App() {
                           background: actief ? '#FFF7ED' : '#fff',
                           color: actief ? '#9A3412' : '#374151',
                           borderRadius: 9,
-                          padding: '8px 4px',
+                          padding: '8px 3px',
+                          minHeight: 70,
                           fontSize: 12,
-                          fontWeight: 800,
+                          fontWeight: 700,
                           cursor: 'pointer',
                           display: 'grid',
-                          gap: 3,
+                          gap: 2,
                           justifyItems: 'center',
+                          alignContent: 'center',
                         }}
                       >
-                        <span>{DAGEN_KORT[di]}</span>
-                        <span style={{ fontSize: 10, color: actief ? '#C2410C' : '#9CA3AF', fontWeight: 700 }}>
-                          {dag.getDate()}
-                          {aantal > 0 ? ` | ${aantal}` : ''}
+                        <span style={{ fontSize: 13, fontWeight: 800 }}>{DAGEN_KORT[di]}</span>
+                        <span style={{ fontSize: 10, color: actief ? '#C2410C' : '#9CA3AF', fontWeight: 650 }}>
+                          {fmtS(dag)}
                         </span>
+                        {aantal > 0 && (
+                          <span
+                            style={{
+                              marginTop: 2,
+                              fontSize: 10,
+                              color: actief ? '#9A3412' : '#1F7A4D',
+                              fontWeight: 750,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {taakLabel}
+                          </span>
+                        )}
                       </button>
                     )
                   })}
