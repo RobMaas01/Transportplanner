@@ -208,6 +208,7 @@ export default function App() {
     prioriteit: 'normaal',
   })
   const [aanvraag, setAanvraag] = useState(() => standaardAanvraag())
+  const [zsmBewustGekozen, setZsmBewustGekozen] = useState(false)
   const [aanvraagEditId, setAanvraagEditId] = useState(null)
   const [aanvraagBevestigd, setAanvraagBevestigd] = useState(false)
   const [aanvraagErrors, setAanvraagErrors] = useState({})
@@ -481,6 +482,7 @@ export default function App() {
 
   function startAanvraag() {
     setAanvraag(standaardAanvraag())
+    setZsmBewustGekozen(false)
     setAanvraagMaand(new Date().toISOString().slice(0, 7))
     setAanvraagEditId(null)
     setAanvraagErrors({})
@@ -629,6 +631,7 @@ export default function App() {
     }
 
     setAanvraag(standaardAanvraag())
+    setZsmBewustGekozen(false)
     setAanvraagMaand(new Date().toISOString().slice(0, 7))
     if (!aanvraagEditId && rol !== 'transporteur') setAanvraagBevestigd(true)
     setAanvraagErrors({})
@@ -649,6 +652,7 @@ export default function App() {
       prioriteit: item.prioriteit || 'normaal',
       prive: Boolean(item.prive),
     })
+    setZsmBewustGekozen(false)
     setAanvraagEditId(item.id)
     setAanvraagBevestigd(false)
     setTab('aanvraag')
@@ -658,6 +662,7 @@ export default function App() {
     setAanvraagEditId(null)
     setAanvraagErrors({})
     setAanvraag(standaardAanvraag())
+    setZsmBewustGekozen(false)
     setAanvraagMaand(new Date().toISOString().slice(0, 7))
     setAanvraagBevestigd(false)
   }
@@ -1622,6 +1627,7 @@ export default function App() {
                       <button
                         onClick={() => {
                           setAanvraag(standaardAanvraag())
+                          setZsmBewustGekozen(false)
                           setAanvraagMaand(new Date().toISOString().slice(0, 7))
                           setAanvraagErrors({})
                           setAanvraagBevestigd(false)
@@ -1916,6 +1922,7 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setAanvraag((prev) => ({ ...prev, week: 'zsm', dag: -1 }))
+                            setZsmBewustGekozen(true)
                             setAanvraagMaand(new Date().toISOString().slice(0, 7))
                             setAanvraagErrors((prev) => {
                               const next = { ...prev }
@@ -1924,7 +1931,7 @@ export default function App() {
                             })
                           }}
                           style={{
-                            background: aanvraag.week === 'zsm' ? '#FFE8D1' : '#F3F4F6',
+                            background: aanvraag.week === 'zsm' ? (zsmBewustGekozen ? '#FED7AA' : '#FFF7ED') : '#F3F4F6',
                             color: aanvraag.week === 'zsm' ? '#9A3412' : '#374151',
                             border: aanvraag.week === 'zsm' ? '2px solid #EA6A1F' : '1px solid #E5E9F0',
                             borderRadius: 8,
@@ -1932,7 +1939,7 @@ export default function App() {
                             fontSize: 12,
                             fontWeight: aanvraag.week === 'zsm' ? 750 : 600,
                             cursor: 'pointer',
-                            boxShadow: aanvraag.week === 'zsm' ? '0 2px 6px rgba(234, 106, 31, .16)' : 'none',
+                            boxShadow: aanvraag.week === 'zsm' ? '0 2px 6px rgba(234, 106, 31, .14)' : 'none',
                           }}
                         >
                           Zo snel mogelijk
@@ -1985,6 +1992,7 @@ export default function App() {
                                 onClick={() => {
                                   if (disabled) return
                                   setAanvraag((prev) => ({ ...prev, week: dag.week, dag: dag.dagIndex }))
+                                  setZsmBewustGekozen(false)
                                   setAanvraagErrors((prev) => {
                                     const next = { ...prev }
                                     delete next.wanneer
@@ -2054,6 +2062,7 @@ export default function App() {
                                     : prev.week,
                                 dag: -1,
                               }))
+                              setZsmBewustGekozen(false)
                             } else {
                               setAanvraag((prev) => {
                                 const eersteToekomstigeDag = weekWerkdagen(prev.week)
@@ -2061,6 +2070,7 @@ export default function App() {
                                   .find((item) => !isVerledenDatum(item.dag))
                                 return { ...prev, dag: eersteToekomstigeDag?.index ?? 0 }
                               })
+                              setZsmBewustGekozen(false)
                             }
                             setAanvraagErrors((prev) => {
                               const next = { ...prev }
@@ -4433,6 +4443,7 @@ export default function App() {
                   const doel = verlaatAanvraagTab
                   setVerlaatAanvraagTab(null)
                   setAanvraag(standaardAanvraag())
+                  setZsmBewustGekozen(false)
                   setAanvraagMaand(new Date().toISOString().slice(0, 7))
                   setAanvraagEditId(null)
                   setAanvraagErrors({})
