@@ -2900,10 +2900,10 @@ export default function App() {
               {openTakenInVerleden.length > 0 && (
                 <div
                   style={{
-                    background: '#fff',
-                    border: '1px solid #E5E9F0',
+                    background: isMobiel ? '#fff' : '#FFF7ED',
+                    border: isMobiel ? '1px solid #E5E9F0' : '1px solid #FED7AA',
                     borderRadius: 9,
-                    padding: isMobiel ? '8px 10px' : '9px 12px',
+                    padding: isMobiel ? '8px 10px' : '10px 13px',
                     marginBottom: 12,
                     display: 'flex',
                     alignItems: 'center',
@@ -2922,10 +2922,10 @@ export default function App() {
                         flexShrink: 0,
                       }}
                     />
-                    <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 650 }}>
+                    <span style={{ fontSize: isMobiel ? 12 : 13, color: isMobiel ? '#6B7280' : '#92400E', fontWeight: isMobiel ? 650 : 800 }}>
                       {openTakenInVerleden.length === 1
-                        ? '1 open taak uit het verleden'
-                        : `${openTakenInVerleden.length} open taken uit het verleden`}
+                        ? `${isMobiel ? '' : 'Let op: '}1 open taak uit het verleden`
+                        : `${isMobiel ? '' : 'Let op: '}${openTakenInVerleden.length} open taken uit het verleden`}
                     </span>
                   </div>
                   <button
