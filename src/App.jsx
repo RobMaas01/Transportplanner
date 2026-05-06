@@ -146,6 +146,7 @@ export default function App() {
   const [geblokt, setGeblokt] = useState(lokaal.geblokt)
   const [week, setWeek] = useState(vandaag())
   const [mobielePlanningDag, setMobielePlanningDag] = useState(vandaagWerkdagIndex())
+  const [toonAfgerondMobiel, setToonAfgerondMobiel] = useState(false)
   const [planningWeergave, setPlanningWeergave] = useState(() => (sessie.rol === 'transporteur' ? 'week' : 'maand'))
   const [planningMaand, setPlanningMaand] = useState(new Date().toISOString().slice(0, 7))
   const [planningJaar, setPlanningJaar] = useState(String(new Date().getFullYear()))
@@ -1243,6 +1244,10 @@ export default function App() {
   const rappData = tab === 'rapportage' && rapportZichtbaar ? maakRapportData(taken, rapp) : null
   const breedFormGrid = isMobiel ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))'
   const paginaPadding = isMobiel ? 10 : 20
+  const planningNietVandaag =
+    planningWeergave !== 'week' ||
+    week !== vandaag() ||
+    (isMobiel && mobielePlanningDag !== vandaagWerkdagIndex())
   const helpSubtitel = isMobiel
     ? `Hulp bij ${pagina[tab] || 'dit scherm'}.`
     : rol === 'aanvrager'
@@ -2654,7 +2659,10 @@ export default function App() {
                   ].map((item) => (
                     <button
                       key={item.k}
-                      onClick={() => setPlanningWeergave(item.k)}
+                      onClick={() => {
+                        setPlanningWeergave(item.k)
+                        setToonAfgerondMobiel(false)
+                      }}
                       style={{
                         border: 'none',
                         borderRadius: 6,
@@ -2687,7 +2695,10 @@ export default function App() {
                   >
                     <button
                       type="button"
-                      onClick={() => setWeek(verschuifWeek(week, -1))}
+                      onClick={() => {
+                        setWeek(verschuifWeek(week, -1))
+                        setToonAfgerondMobiel(false)
+                      }}
                       style={{
                         border: '1px solid #E5E9F0',
                         borderRadius: 8,
@@ -2721,7 +2732,10 @@ export default function App() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setWeek(verschuifWeek(week, 1))}
+                      onClick={() => {
+                        setWeek(verschuifWeek(week, 1))
+                        setToonAfgerondMobiel(false)
+                      }}
                       style={{
                         border: '1px solid #E5E9F0',
                         borderRadius: 8,
@@ -2741,7 +2755,10 @@ export default function App() {
                   <>
                     <button
                       type="button"
-                      onClick={() => setWeek(verschuifWeek(week, -1))}
+                      onClick={() => {
+                        setWeek(verschuifWeek(week, -1))
+                        setToonAfgerondMobiel(false)
+                      }}
                       style={{
                         border: '1px solid #E5E9F0',
                         borderRadius: 8,
@@ -2757,7 +2774,10 @@ export default function App() {
                     </button>
                     <select
                       value={week}
-                      onChange={(e) => setWeek(e.target.value)}
+                      onChange={(e) => {
+                        setWeek(e.target.value)
+                        setToonAfgerondMobiel(false)
+                      }}
                       style={{
                         border: '1px solid #E5E9F0',
                         borderRadius: 8,
@@ -2777,7 +2797,10 @@ export default function App() {
                     </select>
                     <button
                       type="button"
-                      onClick={() => setWeek(verschuifWeek(week, 1))}
+                      onClick={() => {
+                        setWeek(verschuifWeek(week, 1))
+                        setToonAfgerondMobiel(false)
+                      }}
                       style={{
                         border: '1px solid #E5E9F0',
                         borderRadius: 8,
@@ -2792,6 +2815,32 @@ export default function App() {
                       {'Volgende week >'}
                     </button>
                   </>
+                )}
+                {planningNietVandaag && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nu = new Date()
+                      setWeek(vandaag())
+                      setPlanningWeergave('week')
+                      setPlanningMaand(nu.toISOString().slice(0, 7))
+                      setPlanningJaar(String(nu.getFullYear()))
+                      setMobielePlanningDag(vandaagWerkdagIndex())
+                      setToonAfgerondMobiel(false)
+                    }}
+                    style={{
+                      border: '1px solid #FED7AA',
+                      background: '#FFF7ED',
+                      color: '#9A3412',
+                      borderRadius: 8,
+                      padding: '6px 10px',
+                      fontSize: 12,
+                      fontWeight: 750,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Vandaag
+                  </button>
                 )}
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {['gepland', 'afgerond'].map((status) => {
@@ -2856,12 +2905,13 @@ export default function App() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      const eerste = openTakenInVerleden[0]
-                      setWeek(eerste.week)
-                      setPlanningWeergave('week')
-                      if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(4, Number(eerste.dag || 0))))
-                    }}
+                      onClick={() => {
+                        const eerste = openTakenInVerleden[0]
+                        setWeek(eerste.week)
+                        setPlanningWeergave('week')
+                        if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(4, Number(eerste.dag || 0))))
+                        setToonAfgerondMobiel(false)
+                      }}
                     style={{
                       border: 'none',
                       background: 'transparent',
@@ -3051,7 +3101,10 @@ export default function App() {
                       <button
                         key={DAGEN_KORT[di]}
                         type="button"
-                        onClick={() => setMobielePlanningDag(di)}
+                        onClick={() => {
+                          setMobielePlanningDag(di)
+                          setToonAfgerondMobiel(false)
+                        }}
                         style={{
                           border: actief ? '1px solid #EA6A1F' : '1px solid #E5E9F0',
                           background: actief ? '#FFF7ED' : '#fff',
@@ -3123,7 +3176,80 @@ export default function App() {
                 {zichtbareWeekDagen.map((dag) => {
                   const di = dagData.findIndex((item) => isoDag(item) === isoDag(dag))
                   const dt = weekTaken.filter((taak) => Number(taak.dag) === di)
+                  const openDt = dt.filter((taak) => taak.status !== 'afgerond')
+                  const afgerondDt = dt.filter((taak) => taak.status === 'afgerond')
+                  const zichtbareTaken = isMobiel ? openDt : [...openDt, ...afgerondDt]
                   const dagWaarschuwing = blokkadeVoorDag(week, di)
+                  const renderTaak = (taak) => {
+                    const sm = STATUS[taak.status] || STATUS.gepland
+
+                    return (
+                      <div
+                        key={taak.id}
+                        style={{
+                          background: taak.status === 'afgerond' ? '#F9FAFB' : '#fff',
+                          border: '1px solid #E5E9F0',
+                          borderRadius: 7,
+                          padding: isMobiel ? '11px 12px' : '8px 9px',
+                          marginBottom: isMobiel ? 8 : 5,
+                          borderLeft: `3px solid ${sm.dot}`,
+                          opacity: taak.status === 'afgerond' ? 0.86 : 1,
+                        }}
+                      >
+                        <div style={{ fontSize: isMobiel ? 13 : 11, fontWeight: 700, color: '#111827', marginBottom: 2 }}>
+                          {taak.titel}
+                        </div>
+                        {taak.van && taak.naar && (
+                          <div style={{ fontSize: isMobiel ? 12 : 10, color: '#6B7280', marginBottom: 4 }}>
+                            {taak.van.split(' ').pop()} - {taak.naar.split(' ').pop()}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <Pill status={taak.status} />
+                          {taak.bron === 'zelf' && <span style={{ fontSize: 9, color: '#9CA3AF' }}>Eigen</span>}
+                          {taak.bron === 'aanvraag' && (
+                            <span style={{ fontSize: 9, color: '#9CA3AF' }}>Aanvraag</span>
+                          )}
+                          {taak.prioriteit === 'hoog' && (
+                            <span style={{ fontSize: 9, color: '#D97706', fontWeight: 700 }}>Hoog</span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
+                          {rol === 'transporteur' &&
+                            (taak.status === 'gepland' || taak.status === 'verplaatst' || taak.status === 'onderweg') && (
+                              <Btn size="touch" variant="success" onClick={() => updStatus(taak.id, 'afgerond')}>
+                                Uitvoeren
+                              </Btn>
+                            )}
+                          {rol === 'transporteur' && taak.status === 'afgerond' && (
+                            <Btn variant="ghost" onClick={() => updStatus(taak.id, 'gepland')}>
+                              Terugzetten
+                            </Btn>
+                          )}
+                          {rol === 'transporteur' &&
+                            (taak.status === 'gepland' || taak.status === 'verplaatst') && (
+                              <Btn
+                                size="touch"
+                                variant="ghost"
+                                onClick={() => {
+                                  setModal(taak)
+                                  setVerplW(week)
+                                  setVerplD(0)
+                                  setVerplaatsMaand(isoDag(getMaandag(week)).slice(0, 7))
+                                }}
+                              >
+                                Verplaats
+                              </Btn>
+                          )}
+                          {rol === 'transporteur' && (
+                            <Btn variant="danger" onClick={() => vraagVerwijderTaak(taak)}>
+                              Verwijder
+                            </Btn>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  }
 
                   return (
                     <div
@@ -3188,75 +3314,34 @@ export default function App() {
                             Geen extra taken
                           </div>
                         )}
-                        {dt.map((taak) => {
-                          const sm = STATUS[taak.status] || STATUS.gepland
-
-                          return (
-                            <div
-                              key={taak.id}
-                              style={{
-                                background: '#fff',
-                                border: '1px solid #E5E9F0',
-                                borderRadius: 7,
-                                padding: isMobiel ? '11px 12px' : '8px 9px',
-                                marginBottom: isMobiel ? 8 : 5,
-                                borderLeft: `3px solid ${sm.dot}`,
-                              }}
-                            >
-                              <div style={{ fontSize: isMobiel ? 13 : 11, fontWeight: 700, color: '#111827', marginBottom: 2 }}>
-                                {taak.titel}
-                              </div>
-                              {taak.van && taak.naar && (
-                                <div style={{ fontSize: isMobiel ? 12 : 10, color: '#6B7280', marginBottom: 4 }}>
-                                  {taak.van.split(' ').pop()} - {taak.naar.split(' ').pop()}
-                                </div>
-                              )}
-                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                                <Pill status={taak.status} />
-                                {taak.bron === 'zelf' && <span style={{ fontSize: 9, color: '#9CA3AF' }}>Eigen</span>}
-                                {taak.bron === 'aanvraag' && (
-                                  <span style={{ fontSize: 9, color: '#9CA3AF' }}>Aanvraag</span>
-                                )}
-                                {taak.prioriteit === 'hoog' && (
-                                  <span style={{ fontSize: 9, color: '#D97706', fontWeight: 700 }}>Hoog</span>
-                                )}
-                              </div>
-                              <div style={{ display: 'flex', gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
-                                {rol === 'transporteur' &&
-                                  (taak.status === 'gepland' || taak.status === 'verplaatst' || taak.status === 'onderweg') && (
-                                    <Btn size="touch" variant="success" onClick={() => updStatus(taak.id, 'afgerond')}>
-                                      Uitvoeren
-                                    </Btn>
-                                  )}
-                                {rol === 'transporteur' && taak.status === 'afgerond' && (
-                                  <Btn variant="ghost" onClick={() => updStatus(taak.id, 'gepland')}>
-                                    Terugzetten
-                                  </Btn>
-                                )}
-                                {rol === 'transporteur' &&
-                                  (taak.status === 'gepland' || taak.status === 'verplaatst') && (
-                                    <Btn
-                                      size="touch"
-                                      variant="ghost"
-                                      onClick={() => {
-                                        setModal(taak)
-                                        setVerplW(week)
-                                        setVerplD(0)
-                                        setVerplaatsMaand(isoDag(getMaandag(week)).slice(0, 7))
-                                      }}
-                                    >
-                                      Verplaats
-                                    </Btn>
-                                )}
-                                {rol === 'transporteur' && (
-                                  <Btn variant="danger" onClick={() => vraagVerwijderTaak(taak)}>
-                                    Verwijder
-                                  </Btn>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })}
+                        {dt.length > 0 && openDt.length === 0 && isMobiel && (
+                          <div style={{ padding: '6px 4px 12px', fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
+                            Geen open taken
+                          </div>
+                        )}
+                        {zichtbareTaken.map(renderTaak)}
+                        {isMobiel && afgerondDt.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setToonAfgerondMobiel((toon) => !toon)}
+                            style={{
+                              width: '100%',
+                              border: '1px solid #E5E9F0',
+                              background: '#fff',
+                              color: '#6B7280',
+                              borderRadius: 8,
+                              padding: '9px 10px',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              marginTop: openDt.length ? 2 : 0,
+                              marginBottom: toonAfgerondMobiel ? 8 : 0,
+                            }}
+                          >
+                            {toonAfgerondMobiel ? 'Verberg afgerond' : `Afgerond (${afgerondDt.length})`}
+                          </button>
+                        )}
+                        {isMobiel && toonAfgerondMobiel && afgerondDt.map(renderTaak)}
                       </div>
                     </div>
                   )
