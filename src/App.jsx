@@ -2128,6 +2128,19 @@ export default function App() {
                           <div style={{ fontSize: 13, fontWeight: 650, color: '#374151' }}>{actieveGroep.titel}</div>
                           <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 650 }}>{items.length}</div>
                         </div>
+                        {actieveGroep.key === 'voltooid' && (
+                          <div
+                            style={{
+                              padding: '9px 12px',
+                              borderBottom: '1px solid #E5E9F0',
+                              background: '#fff',
+                              color: '#6B7280',
+                              fontSize: 12,
+                            }}
+                          >
+                            Voltooide aanvragen blijven ongeveer 1 maand zichtbaar.
+                          </div>
+                        )}
                         {items.length === 0 && (
                           <div
                             style={{
