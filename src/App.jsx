@@ -609,6 +609,7 @@ export default function App() {
                 ...aanvraag,
                 status: 'nieuw',
                 bijgewerkt: new Date().toISOString(),
+                aangevuldOp: new Date().toISOString(),
                 log: [...item.log, { a: 'aangevuld', d: aanvraag.aanvrager, w: new Date().toISOString() }],
               }
             : item,
@@ -1937,7 +1938,7 @@ export default function App() {
                             borderRadius: 8,
                             padding: aanvraag.week === 'zsm' ? '7px 11px' : '8px 12px',
                             fontSize: 12,
-                            fontWeight: aanvraag.week === 'zsm' ? 750 : 600,
+                            fontWeight: aanvraag.week === 'zsm' ? (zsmBewustGekozen ? 750 : 600) : 600,
                             cursor: 'pointer',
                             boxShadow: aanvraag.week === 'zsm' ? '0 2px 6px rgba(234, 106, 31, .14)' : 'none',
                           }}
@@ -2538,6 +2539,22 @@ export default function App() {
                               </div>
                               {item.omschrijving && (
                                 <div style={{ fontSize: 13, color: '#374151', marginTop: 8 }}>{item.omschrijving}</div>
+                              )}
+                              {item.aangevuldOp && (
+                                <div
+                                  style={{
+                                    background: '#ECFDF5',
+                                    border: '1px solid #A7F3D0',
+                                    borderRadius: 8,
+                                    padding: '9px 11px',
+                                    fontSize: 12,
+                                    color: '#065F46',
+                                    marginTop: 10,
+                                    fontWeight: 650,
+                                  }}
+                                >
+                                  Aanvrager heeft aangevuld op {fmt(new Date(item.aangevuldOp))}.
+                                </div>
                               )}
                               {item.infoNotitie && (
                                 <div
