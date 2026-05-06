@@ -1792,7 +1792,7 @@ export default function App() {
                   </div>
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div>
-                      <Label optional>Wanneer</Label>
+                      <Label>Wanneer</Label>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                         <button
                           type="button"
@@ -1806,13 +1806,13 @@ export default function App() {
                             })
                           }}
                           style={{
-                            background: aanvraag.week === 'zsm' ? '#EA6A1F' : '#F3F4F6',
-                            color: aanvraag.week === 'zsm' ? '#fff' : '#374151',
-                            border: aanvraag.week === 'zsm' ? 'none' : '1px solid #E5E9F0',
+                            background: aanvraag.week === 'zsm' ? '#FFF7ED' : '#F3F4F6',
+                            color: aanvraag.week === 'zsm' ? '#9A3412' : '#374151',
+                            border: aanvraag.week === 'zsm' ? '2px solid #EA6A1F' : '1px solid #E5E9F0',
                             borderRadius: 8,
-                            padding: '8px 12px',
+                            padding: aanvraag.week === 'zsm' ? '7px 11px' : '8px 12px',
                             fontSize: 12,
-                            fontWeight: 600,
+                            fontWeight: aanvraag.week === 'zsm' ? 750 : 600,
                             cursor: 'pointer',
                           }}
                         >
@@ -1995,7 +1995,7 @@ export default function App() {
                           borderRadius: 8,
                           padding: '10px 0',
                           fontSize: 13,
-                          fontWeight: 800,
+                          fontWeight: 650,
                           cursor: 'pointer',
                           flex: 1,
                         }}
