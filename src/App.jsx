@@ -520,11 +520,12 @@ export default function App() {
 
   function voegToe(status = 'gepland', bestemming = null) {
     const errors = {}
-    if (!nieuw.titel) errors.titel = 'Kies wat voor taak dit is.'
+    if (!nieuw.titel.trim()) errors.titel = 'Kies een taak of typ zelf een titel.'
     setTaakErrors(errors)
     if (Object.keys(errors).length > 0) return false
     const taakData = {
       ...nieuw,
+      titel: nieuw.titel.trim(),
       omschrijving: nieuw.omschrijving,
     }
 
@@ -586,7 +587,7 @@ export default function App() {
 
   function bewerkTaak(taak) {
     setNieuw({
-      titel: TAAK_SUGGESTIES.includes(taak.titel) ? taak.titel : 'Anders',
+      titel: taak.titel || '',
       omschrijving: taak.omschrijving || '',
       van: taak.van || '',
       naar: taak.naar || '',
@@ -3438,27 +3439,26 @@ export default function App() {
                         fontWeight: 600,
                       }}
                     >
-                      Kies eerst wat voor taak dit is.
+                      Kies een taak of typ zelf een titel.
                     </div>
                   )}
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div>
                       <Label>Wat moet er gebeuren?</Label>
                       <select
-                        value={nieuw.titel}
+                        value={TAAK_SUGGESTIES.includes(nieuw.titel) && nieuw.titel !== 'Anders' ? nieuw.titel : ''}
                         onChange={(e) => {
-                          setNieuw((prev) => ({ ...prev, titel: e.target.value, omschrijving: '' }))
+                          setNieuw((prev) => ({ ...prev, titel: e.target.value }))
                           setTaakErrors((prev) => {
                             const next = { ...prev }
                             delete next.titel
-                            delete next.omschrijving
                             return next
                           })
                         }}
                         style={{ ...inp, borderColor: taakErrors.titel ? '#F87171' : '#E5E9F0' }}
                       >
                         <option value="">Kies taak...</option>
-                        {TAAK_SUGGESTIES.map((suggestie) => (
+                        {TAAK_SUGGESTIES.filter((suggestie) => suggestie !== 'Anders').map((suggestie) => (
                           <option key={suggestie} value={suggestie}>
                             {suggestie}
                           </option>
@@ -3466,18 +3466,22 @@ export default function App() {
                       </select>
                       <FieldError>{taakErrors.titel}</FieldError>
                     </div>
-                    {nieuw.titel === 'Anders' && (
-                      <div>
-                        <Label>Notitie</Label>
-                        <textarea
-                          value={nieuw.omschrijving}
-                          onChange={(e) => setNieuw((prev) => ({ ...prev, omschrijving: e.target.value }))}
-                          placeholder="Bijv. wat er precies anders is, aantallen of bijzonderheden..."
-                          rows={2}
-                          style={{ ...inp, resize: 'vertical' }}
-                        />
-                      </div>
-                    )}
+                    <div>
+                      <Label>Eigen titel</Label>
+                      <input
+                        value={TAAK_SUGGESTIES.includes(nieuw.titel) ? '' : nieuw.titel}
+                        onChange={(e) => {
+                          setNieuw((prev) => ({ ...prev, titel: e.target.value }))
+                          setTaakErrors((prev) => {
+                            const next = { ...prev }
+                            delete next.titel
+                            return next
+                          })
+                        }}
+                        placeholder="Of typ zelf wat er moet gebeuren"
+                        style={{ ...inp, borderColor: taakErrors.titel ? '#F87171' : '#E5E9F0' }}
+                      />
+                    </div>
                     <div>
                       <Label>Van vestiging</Label>
                       <select
@@ -3509,18 +3513,16 @@ export default function App() {
                       </select>
                     </div>
                     <ZelfdeVestigingWaarschuwing van={nieuw.van} naar={nieuw.naar} />
-                    {nieuw.titel !== 'Anders' && (
-                      <div>
-                        <Label>Toelichting</Label>
-                        <textarea
-                          value={nieuw.omschrijving}
-                          onChange={(e) => setNieuw((prev) => ({ ...prev, omschrijving: e.target.value }))}
-                          placeholder="Aantal kratten, bijzonderheden, gewenste tijd..."
-                          rows={2}
-                          style={{ ...inp, resize: 'vertical' }}
-                        />
-                      </div>
-                    )}
+                    <div>
+                      <Label>Toelichting</Label>
+                      <textarea
+                        value={nieuw.omschrijving}
+                        onChange={(e) => setNieuw((prev) => ({ ...prev, omschrijving: e.target.value }))}
+                        placeholder="Aantal kratten, bijzonderheden, gewenste tijd..."
+                        rows={2}
+                        style={{ ...inp, resize: 'vertical' }}
+                      />
+                    </div>
                   </div>
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div>
@@ -4520,7 +4522,7 @@ export default function App() {
                   marginBottom: 12,
                 }}
               >
-                Kies eerst wat voor taak dit is.
+                Kies een taak of typ zelf een titel.
               </div>
             )}
             <div style={{ display: 'grid', gap: 8 }}>
