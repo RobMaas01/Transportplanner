@@ -240,6 +240,7 @@ export default function App() {
     maand: new Date().toISOString().slice(0, 7),
     jaar: String(new Date().getFullYear()),
   })
+  const [rapportZichtbaar, setRapportZichtbaar] = useState(false)
 
   function uitloggen() {
     setRol(null)
@@ -1206,7 +1207,7 @@ export default function App() {
   const gezochteVerwijderdeTaken = filterTakenOpPeriode(filterTakenOpZoekterm(verwijderdeTaken.slice().sort(sortTaken), taakZoekterm))
   const takenPerMaand = groepeerTakenPerMaand(gezochteActieveTaken)
   const verwijderdeTakenPerMaand = groepeerTakenPerMaand(gezochteVerwijderdeTaken)
-  const rappData = tab === 'rapportage' ? maakRapportData(taken, rapp) : null
+  const rappData = tab === 'rapportage' && rapportZichtbaar ? maakRapportData(taken, rapp) : null
   const breedFormGrid = isMobiel ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))'
   const paginaPadding = isMobiel ? 10 : 20
   const helpSubtitel = isMobiel
@@ -3921,7 +3922,10 @@ export default function App() {
                     {['week', 'maand', 'jaar'].map((type) => (
                       <button
                         key={type}
-                        onClick={() => setRapp((prev) => ({ ...prev, type }))}
+                        onClick={() => {
+                          setRapp((prev) => ({ ...prev, type }))
+                          setRapportZichtbaar(false)
+                        }}
                         style={{
                           border: 'none',
                           borderRadius: 6,
@@ -3941,7 +3945,10 @@ export default function App() {
                   {rapp.type === 'week' ? (
                     <select
                       value={rapp.week}
-                      onChange={(e) => setRapp((prev) => ({ ...prev, week: e.target.value }))}
+                      onChange={(e) => {
+                        setRapp((prev) => ({ ...prev, week: e.target.value }))
+                        setRapportZichtbaar(false)
+                      }}
                       style={{ ...inp, width: 'auto', padding: '7px 12px' }}
                     >
                       {WEKEN.map((wk) => (
@@ -3954,7 +3961,10 @@ export default function App() {
                     <input
                       type="month"
                       value={rapp.maand}
-                      onChange={(e) => setRapp((prev) => ({ ...prev, maand: e.target.value }))}
+                      onChange={(e) => {
+                        setRapp((prev) => ({ ...prev, maand: e.target.value }))
+                        setRapportZichtbaar(false)
+                      }}
                       style={{ ...inp, width: 'auto', padding: '7px 12px' }}
                     />
                   ) : (
@@ -3963,10 +3973,39 @@ export default function App() {
                       min="2026"
                       max="2035"
                       value={rapp.jaar}
-                      onChange={(e) => setRapp((prev) => ({ ...prev, jaar: e.target.value }))}
+                      onChange={(e) => {
+                        setRapp((prev) => ({ ...prev, jaar: e.target.value }))
+                        setRapportZichtbaar(false)
+                      }}
                       style={{ ...inp, width: 110, padding: '7px 12px' }}
                     />
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setRapportZichtbaar(true)}
+                    style={{
+                      background: '#EA6A1F',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '9px 16px',
+                      fontSize: 13,
+                      fontWeight: 650,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Toon rapportage
+                  </button>
+                  <div
+                    style={{
+                      flexBasis: '100%',
+                      fontSize: 12,
+                      color: '#6B7280',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    Rapportage is alleen voor overzicht en export. Taken wijzigen of verwijderen kan bij Alle taken.
+                  </div>
                 </div>
               </Card>
 
