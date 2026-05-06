@@ -223,6 +223,7 @@ export default function App() {
   const [hoverPriveUitleg, setHoverPriveUitleg] = useState(false)
   const [blokForm, setBlokForm] = useState({ type: 'week', week: '', eindWeek: '', dag: vandaagDagIndex(), reden: '' })
   const [modal, setModal] = useState(null)
+  const [verlaatAanvraagTab, setVerlaatAanvraagTab] = useState(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [vandaagTaakVraag, setVandaagTaakVraag] = useState(false)
   const [bevestigVerwijderen, setBevestigVerwijderen] = useState(null)
@@ -253,6 +254,37 @@ export default function App() {
     } catch {
       // Geen probleem als de browser dit blokkeert.
     }
+  }
+
+  function aanvraagHeeftInhoud() {
+    const leeg = standaardAanvraag()
+    return (
+      aanvraag.aanvrager.trim() ||
+      aanvraag.titel.trim() ||
+      aanvraag.omschrijving.trim() ||
+      aanvraag.van ||
+      aanvraag.naar ||
+      aanvraag.week !== leeg.week ||
+      Number(aanvraag.dag) !== Number(leeg.dag) ||
+      aanvraag.prioriteit !== leeg.prioriteit ||
+      Boolean(aanvraag.prive) !== Boolean(leeg.prive)
+    )
+  }
+
+  function gaNaarTab(nieuweTab) {
+    if (
+      rol === 'aanvrager' &&
+      tab === 'aanvraag' &&
+      nieuweTab === 'aanvraagstatus' &&
+      !aanvraagBevestigd &&
+      aanvraagHeeftInhoud()
+    ) {
+      setVerlaatAanvraagTab(nieuweTab)
+      setMenuOpen(false)
+      return
+    }
+    setTab(nieuweTab)
+    setMenuOpen(false)
   }
 
   useEffect(() => {
@@ -1380,8 +1412,7 @@ export default function App() {
                     key={item.k}
                     type="button"
                     onClick={() => {
-                      setTab(item.k)
-                      setMenuOpen(false)
+                      gaNaarTab(item.k)
                     }}
                     style={{
                       textAlign: 'left',
@@ -1427,7 +1458,7 @@ export default function App() {
             {zichtbareNavTabs.map((item) => (
               <div
                 key={item.k}
-                onClick={() => setTab(item.k)}
+                onClick={() => gaNaarTab(item.k)}
                 style={{
                   padding: '9px 12px',
                   borderRadius: 8,
@@ -4248,6 +4279,90 @@ export default function App() {
                 }}
               >
                 Annuleer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {verlaatAanvraagTab && (
+        <div
+          onClick={() => setVerlaatAanvraagTab(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,.38)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 245,
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 14,
+              padding: 22,
+              width: '100%',
+              maxWidth: 380,
+              boxShadow: '0 20px 60px rgba(0,0,0,.15)',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 750, color: '#111827', marginBottom: 6 }}>
+              Aanvraag nog niet ingediend
+            </div>
+            <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, marginBottom: 16 }}>
+              Je hebt al iets ingevuld. Als je nu weggaat, wordt deze aanvraag niet bewaard.
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setVerlaatAanvraagTab(null)}
+                style={{
+                  flex: 1,
+                  minWidth: 140,
+                  background: '#EA6A1F',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  fontSize: 13,
+                  fontWeight: 650,
+                  cursor: 'pointer',
+                }}
+              >
+                Blijven invullen
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const doel = verlaatAanvraagTab
+                  setVerlaatAanvraagTab(null)
+                  setAanvraag(standaardAanvraag())
+                  setAanvraagMaand(new Date().toISOString().slice(0, 7))
+                  setAanvraagEditId(null)
+                  setAanvraagErrors({})
+                  setAanvraagBevestigd(false)
+                  setTab(doel)
+                }}
+                style={{
+                  flex: 1,
+                  minWidth: 140,
+                  background: '#F3F4F6',
+                  color: '#374151',
+                  border: '1px solid #E5E9F0',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Toch verlaten
               </button>
             </div>
           </div>
