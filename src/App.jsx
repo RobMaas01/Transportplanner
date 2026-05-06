@@ -146,7 +146,7 @@ export default function App() {
   const [geblokt, setGeblokt] = useState(lokaal.geblokt)
   const [week, setWeek] = useState(vandaag())
   const [mobielePlanningDag, setMobielePlanningDag] = useState(vandaagWerkdagIndex())
-  const [planningWeergave, setPlanningWeergave] = useState(() => (sessie.rol === 'transporteur' && window.innerWidth < 760 ? 'week' : 'maand'))
+  const [planningWeergave, setPlanningWeergave] = useState(() => (sessie.rol === 'transporteur' ? 'week' : 'maand'))
   const [planningMaand, setPlanningMaand] = useState(new Date().toISOString().slice(0, 7))
   const [planningJaar, setPlanningJaar] = useState(String(new Date().getFullYear()))
   const [aanvraagMaand, setAanvraagMaand] = useState(new Date().toISOString().slice(0, 7))
@@ -167,7 +167,6 @@ export default function App() {
       const mobiel = window.innerWidth < 760
       setIsMobiel(mobiel)
       if (mobiel) setTab((huidigeTab) => (huidigeTab === 'rapportage' ? 'planning' : huidigeTab))
-      if (mobiel && huidigeRol.current === 'transporteur') setPlanningWeergave((weergave) => (weergave === 'maand' ? 'week' : weergave))
       if (!mobiel) setMenuOpen(false)
     }
     window.addEventListener('resize', updateScherm)
@@ -464,7 +463,7 @@ export default function App() {
     if (code === PIN_BERT) {
       setRol('transporteur')
       setTab('planning')
-      if (isMobiel) setPlanningWeergave('week')
+      setPlanningWeergave('week')
       setPinErr('')
       setToonBertPin(false)
       try {
