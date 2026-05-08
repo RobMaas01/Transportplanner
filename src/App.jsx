@@ -135,13 +135,20 @@ export default function App() {
   const centraleOpslagGeladen = useRef(!supabaseConfigured)
   const laatsteCentraleUpdate = useRef(null)
   const skipVolgendeCentraleOpslag = useRef(false)
-  const [isMobiel, setIsMobiel] = useState(() => window.innerWidth < 760)
+  const startMobiel = window.innerWidth < 760
+  const [isMobiel, setIsMobiel] = useState(startMobiel)
 
   const [rol, setRol] = useState(sessie.rol)
   const [pin, setPin] = useState('')
   const [pinErr, setPinErr] = useState('')
   const [toonBertPin, setToonBertPin] = useState(false)
-  const [tab, setTab] = useState(sessie.rol === 'aanvrager' && sessie.tab === 'rapportage' ? 'aanvraag' : sessie.tab)
+  const [tab, setTab] = useState(
+    startMobiel && sessie.rol === 'transporteur'
+      ? 'planning'
+      : sessie.rol === 'aanvrager' && sessie.tab === 'rapportage'
+        ? 'aanvraag'
+        : sessie.tab,
+  )
   const [menuOpen, setMenuOpen] = useState(false)
   const [toevoegenTab, setToevoegenTab] = useState('taak')
   const [taken, setTaken] = useState(lokaal.taken)
@@ -196,11 +203,11 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('bb_tab', tab)
+      localStorage.setItem('bb_tab', isMobiel ? 'planning' : tab)
     } catch {
       // Zie opmerking bij rol-opslag.
     }
-  }, [tab])
+  }, [isMobiel, tab])
 
   const [nieuw, setNieuw] = useState({
     titel: '',
@@ -250,6 +257,31 @@ export default function App() {
     jaar: String(new Date().getFullYear()),
   })
   const [rapportZichtbaar, setRapportZichtbaar] = useState(false)
+
+  useEffect(() => {
+    if (!isMobiel || !rol) return undefined
+
+    const resetBijTerugkomen = () => {
+      if (document.visibilityState !== 'visible') return
+      if (rol === 'transporteur') {
+        setTab('planning')
+        setPlanningWeergave('week')
+        setWeek(vandaag())
+        setMobielePlanningDag(vandaagWerkdagIndex())
+      } else if (rol === 'aanvrager') {
+        setTab('aanvraag')
+      }
+      setMenuOpen(false)
+      setHelpOpen(false)
+    }
+
+    document.addEventListener('visibilitychange', resetBijTerugkomen)
+    window.addEventListener('pageshow', resetBijTerugkomen)
+    return () => {
+      document.removeEventListener('visibilitychange', resetBijTerugkomen)
+      window.removeEventListener('pageshow', resetBijTerugkomen)
+    }
+  }, [isMobiel, rol])
 
   function uitloggen() {
     setRol(null)
