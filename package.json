@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:test": "vite --mode test",
+    "export:testdata": "node scripts/export-test-data.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

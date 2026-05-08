@@ -26,7 +26,7 @@ import {
   ZelfdeVestigingWaarschuwing,
 } from './components'
 import { inp } from './uiStyles'
-import { bewaarCentraleState, isLegeState, laadCentraleState, supabaseConfigured } from './dataStore'
+import { bewaarCentraleState, isLegeState, laadCentraleState, localTestMode, supabaseConfigured } from './dataStore'
 import {
   aanvraagIsAfgesloten,
   aanvraagIsOpen,
@@ -132,7 +132,7 @@ export default function App() {
   const huidigeAanvragen = useRef(lokaal.aanvragen)
   const huidigeRol = useRef(sessie.rol)
   const centraleOpslagActief = useRef(supabaseConfigured)
-  const centraleOpslagGeladen = useRef(!supabaseConfigured)
+  const centraleOpslagGeladen = useRef(!supabaseConfigured || localTestMode)
   const laatsteCentraleUpdate = useRef(null)
   const skipVolgendeCentraleOpslag = useRef(false)
   const startMobiel = window.innerWidth < 760
@@ -171,7 +171,9 @@ export default function App() {
   const [taakJaarFilter, setTaakJaarFilter] = useState('alle')
   const [taakMaandFilter, setTaakMaandFilter] = useState('alle')
   const [meld, setMeld] = useState(lokaal.meld)
-  const [opslagStatus, setOpslagStatus] = useState(supabaseConfigured ? 'Verbinden met centrale opslag...' : 'Lokale opslag')
+  const [opslagStatus, setOpslagStatus] = useState(
+    localTestMode ? 'Lokale testkopie' : supabaseConfigured ? 'Verbinden met centrale opslag...' : 'Lokale opslag',
+  )
 
   useEffect(() => {
     const updateScherm = () => {
@@ -374,6 +376,34 @@ export default function App() {
     setGeblokt(data?.geblokt || [])
     setMeld(data?.meld || [])
   }
+
+  useEffect(() => {
+    if (!localTestMode) return undefined
+
+    let actief = true
+
+    async function laadTestkopie() {
+      try {
+        const response = await fetch('/local-test-state.json', { cache: 'no-store' })
+        if (!response.ok) throw new Error('Geen lokale testkopie gevonden.')
+        const data = await response.json()
+        if (!actief) return
+        centraleOpslagActief.current = false
+        centraleOpslagGeladen.current = true
+        pasCentraleStateToe(data)
+        setOpslagStatus('Lokale testkopie')
+      } catch (error) {
+        console.error('Lokale testkopie kon niet worden geladen.', error)
+        if (actief) setOpslagStatus('Lokale testkopie niet gevonden')
+      }
+    }
+
+    laadTestkopie()
+
+    return () => {
+      actief = false
+    }
+  }, [])
 
   useEffect(() => {
     if (!supabaseConfigured) return undefined

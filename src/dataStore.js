@@ -1,8 +1,8 @@
-import { supabase, supabaseConfigured } from './supabaseClient'
+import { localTestMode, supabase, supabaseConfigured } from './supabaseClient'
 
 const STATE_ID = 'main'
 
-export { supabaseConfigured }
+export { localTestMode, supabaseConfigured }
 
 export function isLegeState(state) {
   return (
