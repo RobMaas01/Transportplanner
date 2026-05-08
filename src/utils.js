@@ -340,6 +340,7 @@ export function sortTaken(a, b) {
 export function taakZoekTekst(taak) {
   return [
     taak.titel,
+    taak.aantal,
     taak.omschrijving,
     taak.van,
     taak.naar,

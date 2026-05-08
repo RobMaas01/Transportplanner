@@ -120,6 +120,8 @@ function korteWeekLabel(wk) {
   return `${weekNr(wk)} ${getMaandag(wk).getFullYear()}`
 }
 
+const TAKEN_MET_AANTAL = ['Extra kratten', 'Extra sorteren']
+
 export default function App() {
   const WEKEN = maakWeken(vandaag(), 260)
   const lokaal = laadLokaleState()
@@ -203,6 +205,7 @@ export default function App() {
   const [nieuw, setNieuw] = useState({
     titel: '',
     omschrijving: '',
+    aantal: '',
     van: '',
     naar: '',
     week: vandaag(),
@@ -526,6 +529,7 @@ export default function App() {
     const taakData = {
       ...nieuw,
       titel: nieuw.titel.trim(),
+      aantal: TAKEN_MET_AANTAL.includes(nieuw.titel.trim()) ? String(nieuw.aantal || '').trim() : '',
       omschrijving: nieuw.omschrijving,
     }
 
@@ -559,6 +563,7 @@ export default function App() {
     setNieuw({
       titel: '',
       omschrijving: '',
+      aantal: '',
       van: '',
       naar: '',
       week: vandaag(),
@@ -589,6 +594,7 @@ export default function App() {
     setNieuw({
       titel: taak.titel || '',
       omschrijving: taak.omschrijving || '',
+      aantal: taak.aantal || '',
       van: taak.van || '',
       naar: taak.naar || '',
       week: taak.week || vandaag(),
@@ -998,6 +1004,7 @@ export default function App() {
       'Week',
       'Dag',
       'Taak',
+      'Aantal',
       'Van',
       'Naar',
       'Status',
@@ -1011,6 +1018,7 @@ export default function App() {
       weekNr(taak.week),
       DAGEN[taak.dag] || '',
       taak.titel,
+      taak.aantal || '',
       taak.van || '',
       taak.naar || '',
       STATUS[taak.status]?.label || taak.status,
@@ -3224,6 +3232,11 @@ export default function App() {
                         <div style={{ fontSize: isMobiel ? 13 : 11, fontWeight: 700, color: '#111827', marginBottom: 2 }}>
                           {taak.titel}
                         </div>
+                        {taak.aantal && (
+                          <div style={{ fontSize: isMobiel ? 12 : 10, color: '#374151', marginBottom: 4 }}>
+                            Aantal: {taak.aantal}
+                          </div>
+                        )}
                         {taak.van && taak.naar && (
                           <div style={{ fontSize: isMobiel ? 12 : 10, color: '#6B7280', marginBottom: 4 }}>
                             {taak.van.split(' ').pop()} - {taak.naar.split(' ').pop()}
@@ -3448,7 +3461,11 @@ export default function App() {
                       <select
                         value={TAAK_SUGGESTIES.includes(nieuw.titel) && nieuw.titel !== 'Anders' ? nieuw.titel : ''}
                         onChange={(e) => {
-                          setNieuw((prev) => ({ ...prev, titel: e.target.value }))
+                          setNieuw((prev) => ({
+                            ...prev,
+                            titel: e.target.value,
+                            aantal: TAKEN_MET_AANTAL.includes(e.target.value) ? prev.aantal : '',
+                          }))
                           setTaakErrors((prev) => {
                             const next = { ...prev }
                             delete next.titel
@@ -3471,7 +3488,7 @@ export default function App() {
                       <input
                         value={TAAK_SUGGESTIES.includes(nieuw.titel) ? '' : nieuw.titel}
                         onChange={(e) => {
-                          setNieuw((prev) => ({ ...prev, titel: e.target.value }))
+                          setNieuw((prev) => ({ ...prev, titel: e.target.value, aantal: '' }))
                           setTaakErrors((prev) => {
                             const next = { ...prev }
                             delete next.titel
@@ -3482,6 +3499,21 @@ export default function App() {
                         style={{ ...inp, borderColor: taakErrors.titel ? '#F87171' : '#E5E9F0' }}
                       />
                     </div>
+                    {TAKEN_MET_AANTAL.includes(nieuw.titel) && (
+                      <div>
+                        <Label>Aantal</Label>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          step="1"
+                          value={nieuw.aantal}
+                          onChange={(e) => setNieuw((prev) => ({ ...prev, aantal: e.target.value }))}
+                          placeholder="Bijv. 6"
+                          style={inp}
+                        />
+                      </div>
+                    )}
                     <div>
                       <Label>Van vestiging</Label>
                       <select
@@ -3787,6 +3819,9 @@ export default function App() {
                         >
                           <div style={{ flex: 1, minWidth: 230 }}>
                             <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{taak.titel}</div>
+                            {taak.aantal && (
+                              <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Aantal: {taak.aantal}</div>
+                            )}
                             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
                               {weekNr(taak.week)} | {DAGEN[taak.dag]} | {bronLabel(taak.bron)}
                             </div>
@@ -3880,6 +3915,9 @@ export default function App() {
                             >
                               <div style={{ flex: 1, minWidth: 230 }}>
                                 <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{taak.titel}</div>
+                                {taak.aantal && (
+                                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Aantal: {taak.aantal}</div>
+                                )}
                                 <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
                                   {weekNr(taak.week)} | {DAGEN[taak.dag]} | {bronLabel(taak.bron)}
                                 </div>
@@ -4369,7 +4407,10 @@ export default function App() {
                             flexWrap: 'wrap',
                           }}
                         >
-                          <span style={{ flex: 2, fontWeight: 500, color: '#111827' }}>{taak.titel}</span>
+                          <span style={{ flex: 2, fontWeight: 500, color: '#111827' }}>
+                            {taak.titel}
+                            {taak.aantal ? ` (${taak.aantal})` : ''}
+                          </span>
                           <span style={{ flex: 2, color: '#6B7280' }}>
                             {DAGEN[taak.dag]}
                             {taak.van && taak.naar ? ` | ${taak.van.split(' ').pop()} -> ${taak.naar.split(' ').pop()}` : ''}
