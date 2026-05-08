@@ -89,6 +89,7 @@ export function aanvraagMomentLabel(item) {
 }
 
 export function dagLabel(dag) {
+  if (dag === null || dag === undefined) return 'Alleen week'
   const index = Number(dag)
   if (index < 0) return 'Maakt niet uit'
   return DAGEN[index] || 'Nog niet gekozen'

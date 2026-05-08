@@ -123,7 +123,7 @@ function korteWeekLabel(wk) {
 const TAKEN_MET_AANTAL = ['Extra kratten', 'Extra sorteren']
 
 export default function App() {
-  const WEKEN = maakWeken(vandaag(), 260)
+  const WEKEN = maakWeken('2026-W01', 520)
   const lokaal = laadLokaleState()
   const sessie = laadSessie()
   const lokaleStartState = useRef(lokaal)
@@ -210,6 +210,7 @@ export default function App() {
     naar: '',
     week: vandaag(),
     dag: vandaagDagIndex(),
+    alleenWeek: false,
     prioriteit: 'normaal',
   })
   const [aanvraag, setAanvraag] = useState(() => standaardAanvraag())
@@ -515,7 +516,7 @@ export default function App() {
 
   function openVandaagTaakVraag() {
     kiesDagMetWeekendCheck(vandaag(), vandaagDagIndex(), () => {
-      setNieuw((prev) => ({ ...prev, week: vandaag(), dag: vandaagDagIndex() }))
+      setNieuw((prev) => ({ ...prev, week: vandaag(), dag: vandaagDagIndex(), alleenWeek: false }))
       setTaakMaand(new Date().toISOString().slice(0, 7))
       setVandaagTaakVraag(true)
     })
@@ -530,6 +531,7 @@ export default function App() {
       ...nieuw,
       titel: nieuw.titel.trim(),
       aantal: TAKEN_MET_AANTAL.includes(nieuw.titel.trim()) ? String(nieuw.aantal || '').trim() : '',
+      dag: nieuw.alleenWeek ? null : nieuw.dag,
       omschrijving: nieuw.omschrijving,
     }
 
@@ -568,6 +570,7 @@ export default function App() {
       naar: '',
       week: vandaag(),
       dag: vandaagDagIndex(),
+      alleenWeek: false,
       prioriteit: 'normaal',
     })
     setTaakEditId(null)
@@ -598,7 +601,8 @@ export default function App() {
       van: taak.van || '',
       naar: taak.naar || '',
       week: taak.week || vandaag(),
-      dag: Number(taak.dag ?? vandaagDagIndex()),
+      dag: taak.dag === null || taak.dag === undefined ? vandaagDagIndex() : Number(taak.dag),
+      alleenWeek: taak.dag === null || taak.dag === undefined,
       prioriteit: taak.prioriteit || 'normaal',
     })
     setTaakMaand(isoDag(getMaandag(taak.week || vandaag())).slice(0, 7))
@@ -1016,7 +1020,7 @@ export default function App() {
     const rows = rappData.taken.map((taak) => [
       fmt(taakDatum(taak)),
       weekNr(taak.week),
-      DAGEN[taak.dag] || '',
+      dagLabel(taak.dag),
       taak.titel,
       taak.aantal || '',
       taak.van || '',
@@ -1239,10 +1243,12 @@ export default function App() {
     .filter((taak) => taak.status !== 'afgerond' && isVerledenDatum(taakDatum(taak)))
     .sort((a, b) => taakDatum(a) - taakDatum(b))
   const weekHeeftWeekendTaken = actieveTaken.some(
-    (taak) => taak.week === week && Number(taak.dag) >= 5,
+    (taak) => taak.week === week && taak.dag !== null && taak.dag !== undefined && Number(taak.dag) >= 5,
   )
   const dagData = weekHeeftWeekendTaken ? weekDagen(week) : weekWerkdagen(week)
   const weekTaken = actieveTaken.filter((taak) => taak.week === week)
+  const weekTakenAlleenWeek = weekTaken.filter((taak) => taak.dag === null || taak.dag === undefined)
+  const weekTakenMetDag = weekTaken.filter((taak) => taak.dag !== null && taak.dag !== undefined)
   const effectieveMobielePlanningDag = Math.min(mobielePlanningDag, dagData.length - 1)
   const zichtbareWeekDagen = isMobiel ? dagData.filter((_, di) => di === effectieveMobielePlanningDag) : dagData
   const weekBlokkade = blokkadeVoorWeek(week)
@@ -2986,7 +2992,9 @@ export default function App() {
                       }}
                     >
                       {maandData.filter((dag) => dag.isWerkdag).map((dag) => {
-                        const dagTaken = actieveTaken.filter((taak) => taak.week === dag.week && Number(taak.dag) === dag.dagIndex)
+                        const dagTaken = actieveTaken.filter(
+                          (taak) => taak.dag !== null && taak.dag !== undefined && taak.week === dag.week && Number(taak.dag) === dag.dagIndex,
+                        )
                         const waarschuwing = blokkadeVoorDag(dag.week, dag.dagIndex)
                         const gepland = dagTaken.filter((taak) => taak.status !== 'afgerond').length
                         const hoog = dagTaken.filter((taak) => taak.prioriteit === 'hoog' && taak.status !== 'afgerond').length
@@ -3127,7 +3135,7 @@ export default function App() {
                 >
                   {dagData.map((dag, di) => {
                     const actief = effectieveMobielePlanningDag === di
-                    const aantal = weekTaken.filter((taak) => Number(taak.dag) === di).length
+                    const aantal = weekTakenMetDag.filter((taak) => Number(taak.dag) === di).length
                     const taakLabel = aantal === 1 ? '1 taak' : `${aantal} taken`
 
                     return (
@@ -3197,6 +3205,59 @@ export default function App() {
                 </div>
               )}
 
+              {planningWeergave === 'week' && weekTakenAlleenWeek.length > 0 && (
+                <Card style={{ marginBottom: 10 }}>
+                  <CardHead title="Weektaken" sub={`${weekTakenAlleenWeek.length} zonder vaste dag`} />
+                  <div style={{ padding: isMobiel ? 10 : 12, display: 'grid', gap: 8 }}>
+                    {weekTakenAlleenWeek.map((taak) => {
+                      const sm = STATUS[taak.status] || STATUS.gepland
+
+                      return (
+                        <div
+                          key={taak.id}
+                          style={{
+                            background: taak.status === 'afgerond' ? '#F9FAFB' : '#fff',
+                            border: '1px solid #E5E9F0',
+                            borderRadius: 8,
+                            borderLeft: `3px solid ${sm.dot}`,
+                            padding: '10px 12px',
+                          }}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 750, color: '#111827' }}>{taak.titel}</div>
+                          {taak.aantal && (
+                            <div style={{ fontSize: 12, color: '#374151', marginTop: 3 }}>Aantal: {taak.aantal}</div>
+                          )}
+                          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
+                            <Pill status={taak.status} />
+                            <span style={{ fontSize: 10, color: '#9CA3AF' }}>Alleen week</span>
+                            {taak.prioriteit === 'hoog' && (
+                              <span style={{ fontSize: 10, color: '#D97706', fontWeight: 700 }}>Hoog</span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
+                            {rol === 'transporteur' && taak.status !== 'afgerond' && (
+                              <Btn size="touch" variant="success" onClick={() => updStatus(taak.id, 'afgerond')}>
+                                Uitvoeren
+                              </Btn>
+                            )}
+                            {rol === 'transporteur' && taak.status === 'afgerond' && (
+                              <Btn variant="ghost" onClick={() => updStatus(taak.id, 'gepland')}>
+                                Terugzetten
+                              </Btn>
+                            )}
+                            {rol === 'transporteur' && (
+                              <Btn variant="danger" onClick={() => vraagVerwijderTaak(taak)}>
+                                Verwijder
+                              </Btn>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </Card>
+              )}
+
               <div
                 style={{
                   display: 'grid',
@@ -3208,7 +3269,7 @@ export default function App() {
               >
                 {zichtbareWeekDagen.map((dag) => {
                   const di = dagData.findIndex((item) => isoDag(item) === isoDag(dag))
-                  const dt = weekTaken.filter((taak) => Number(taak.dag) === di)
+                  const dt = weekTakenMetDag.filter((taak) => Number(taak.dag) === di)
                   const openDt = dt.filter((taak) => taak.status !== 'afgerond')
                   const afgerondDt = dt.filter((taak) => taak.status === 'afgerond')
                   const zichtbareTaken = isMobiel ? openDt : [...openDt, ...afgerondDt]
@@ -3560,6 +3621,34 @@ export default function App() {
                     <div>
                       <Label>Wanneer</Label>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                        {[
+                          { k: false, l: 'Dag kiezen' },
+                          { k: true, l: 'Alleen week' },
+                        ].map((item) => (
+                          <button
+                            key={item.l}
+                            type="button"
+                            onClick={() =>
+                              setNieuw((prev) => ({
+                                ...prev,
+                                alleenWeek: item.k,
+                                dag: item.k ? null : prev.dag ?? vandaagDagIndex(),
+                              }))
+                            }
+                            style={{
+                              background: nieuw.alleenWeek === item.k ? '#FFF7ED' : '#F3F4F6',
+                              color: nieuw.alleenWeek === item.k ? '#9A3412' : '#374151',
+                              border: nieuw.alleenWeek === item.k ? '1px solid #EA6A1F' : '1px solid #E5E9F0',
+                              borderRadius: 8,
+                              padding: '8px 12px',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {item.l}
+                          </button>
+                        ))}
                         {!taakEditId && (
                           <button
                             type="button"
@@ -3578,85 +3667,99 @@ export default function App() {
                             Al uitgevoerd
                           </button>
                         )}
-                        <MonthNav value={taakMaand} onChange={setTaakMaand} />
+                        {!nieuw.alleenWeek && <MonthNav value={taakMaand} onChange={setTaakMaand} />}
                       </div>
-                      <div
-                        style={{
-                          border: '1px solid #E5E9F0',
-                          borderRadius: 8,
-                          padding: 10,
-                          background: '#F8F9FC',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                            gap: 5,
-                            marginBottom: 5,
-                          }}
+                      {nieuw.alleenWeek ? (
+                        <select
+                          value={nieuw.week}
+                          onChange={(e) => setNieuw((prev) => ({ ...prev, week: e.target.value, dag: null }))}
+                          style={inp}
                         >
-                          {DAGEN_KORT.map((dag) => (
-                            <div key={dag} style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textAlign: 'center' }}>
-                              {dag}
-                            </div>
+                          {WEKEN.map((wk) => (
+                            <option key={wk} value={wk}>
+                              {weekOptieLabel(wk)}
+                            </option>
                           ))}
-                        </div>
+                        </select>
+                      ) : (
                         <div
                           style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                            gap: 5,
+                            border: '1px solid #E5E9F0',
+                            borderRadius: 8,
+                            padding: 10,
+                            background: '#F8F9FC',
                           }}
                         >
-                          {maandDagen(taakMaand).map((dag) => {
-                            const selected = nieuw.week === dag.week && Number(nieuw.dag) === dag.dagIndex
-                            const waarschuwing = blokkadeVoorDag(dag.week, dag.dagIndex)
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                              gap: 5,
+                              marginBottom: 5,
+                            }}
+                          >
+                            {DAGEN_KORT.map((dag) => (
+                              <div key={dag} style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textAlign: 'center' }}>
+                                {dag}
+                              </div>
+                            ))}
+                          </div>
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                              gap: 5,
+                            }}
+                          >
+                            {maandDagen(taakMaand).map((dag) => {
+                              const selected = nieuw.week === dag.week && Number(nieuw.dag) === dag.dagIndex
+                              const waarschuwing = blokkadeVoorDag(dag.week, dag.dagIndex)
 
-                            return (
-                              <button
-                                key={`taak-${dag.iso}`}
-                                type="button"
-                                onClick={() => {
-                                  kiesDagMetWeekendCheck(dag.week, dag.dagIndex, () => {
-                                    setNieuw((prev) => ({ ...prev, week: dag.week, dag: dag.dagIndex }))
-                                  })
-                                }}
-                                style={{
-                                  minHeight: 34,
-                                  border: selected ? '1px solid #EA6A1F' : '1px solid #E5E9F0',
-                                  borderRadius: 7,
-                                  background: selected ? '#FFF7ED' : dag.inMaand ? '#fff' : '#F8F9FC',
-                                  color: '#111827',
-                                  opacity: dag.inMaand ? 1 : 0.55,
-                                  cursor: 'pointer',
-                                  fontSize: 12,
-                                  fontWeight: selected ? 800 : 600,
-                                  position: 'relative',
-                                }}
-                              >
-                                {dag.date.getDate()}
-                                {waarschuwing && (
-                                  <span
-                                    title={`Let op: ${waarschuwing.reden || 'drukke periode'}`}
-                                    style={{
-                                      position: 'absolute',
-                                      right: 4,
-                                      top: 4,
-                                      width: 5,
-                                      height: 5,
-                                      borderRadius: '50%',
-                                      background: '#F59E0B',
-                                    }}
-                                  />
-                                )}
-                              </button>
-                            )
-                          })}
+                              return (
+                                <button
+                                  key={`taak-${dag.iso}`}
+                                  type="button"
+                                  onClick={() => {
+                                    kiesDagMetWeekendCheck(dag.week, dag.dagIndex, () => {
+                                      setNieuw((prev) => ({ ...prev, week: dag.week, dag: dag.dagIndex, alleenWeek: false }))
+                                    })
+                                  }}
+                                  style={{
+                                    minHeight: 34,
+                                    border: selected ? '1px solid #EA6A1F' : '1px solid #E5E9F0',
+                                    borderRadius: 7,
+                                    background: selected ? '#FFF7ED' : dag.inMaand ? '#fff' : '#F8F9FC',
+                                    color: '#111827',
+                                    opacity: dag.inMaand ? 1 : 0.55,
+                                    cursor: 'pointer',
+                                    fontSize: 12,
+                                    fontWeight: selected ? 800 : 600,
+                                    position: 'relative',
+                                  }}
+                                >
+                                  {dag.date.getDate()}
+                                  {waarschuwing && (
+                                    <span
+                                      title={`Let op: ${waarschuwing.reden || 'drukke periode'}`}
+                                      style={{
+                                        position: 'absolute',
+                                        right: 4,
+                                        top: 4,
+                                        width: 5,
+                                        height: 5,
+                                        borderRadius: '50%',
+                                        background: '#F59E0B',
+                                      }}
+                                    />
+                                  )}
+                                </button>
+                              )
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div style={{ fontSize: 11, color: '#6B7280', marginTop: 6 }}>
-                        Gekozen: {aanvraagWeekLabel(nieuw.week)} | {dagLabel(nieuw.dag)}
+                        Gekozen: {aanvraagWeekLabel(nieuw.week)}{nieuw.alleenWeek ? '' : ` | ${dagLabel(nieuw.dag)}`}
                       </div>
                     </div>
                     <div>
@@ -3695,10 +3798,12 @@ export default function App() {
                             setNieuw({
                               titel: '',
                               omschrijving: '',
+                              aantal: '',
                               van: '',
                               naar: '',
                               week: vandaag(),
                               dag: vandaagDagIndex(),
+                              alleenWeek: false,
                               prioriteit: 'normaal',
                             })
                             setTaakErrors({})
@@ -3823,7 +3928,7 @@ export default function App() {
                               <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Aantal: {taak.aantal}</div>
                             )}
                             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                              {weekNr(taak.week)} | {DAGEN[taak.dag]} | {bronLabel(taak.bron)}
+                              {weekNr(taak.week)} | {dagLabel(taak.dag)} | {bronLabel(taak.bron)}
                             </div>
                             {(taak.van || taak.naar) && (
                               <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{routeLabel(taak.van, taak.naar)}</div>
@@ -3919,7 +4024,7 @@ export default function App() {
                                   <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Aantal: {taak.aantal}</div>
                                 )}
                                 <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                                  {weekNr(taak.week)} | {DAGEN[taak.dag]} | {bronLabel(taak.bron)}
+                                  {weekNr(taak.week)} | {dagLabel(taak.dag)} | {bronLabel(taak.bron)}
                                 </div>
                                 <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 3 }}>
                                   Verwijderd: {fmt(new Date(taak.verwijderdOp || taak.aangemaakt || Number(taak.id)))}
@@ -4412,7 +4517,7 @@ export default function App() {
                             {taak.aantal ? ` (${taak.aantal})` : ''}
                           </span>
                           <span style={{ flex: 2, color: '#6B7280' }}>
-                            {DAGEN[taak.dag]}
+                            {dagLabel(taak.dag)}
                             {taak.van && taak.naar ? ` | ${taak.van.split(' ').pop()} -> ${taak.naar.split(' ').pop()}` : ''}
                           </span>
                           <span style={{ flex: 1, color: '#6B7280' }}>
