@@ -1321,16 +1321,7 @@ export default function App() {
           },
         ].filter((groep) => groep.tabs.length > 0)
       : rol === 'educatie'
-        ? [
-            {
-              titel: 'Educatie',
-              tint: '#ECFDF5',
-              border: '#BBF7D0',
-              active: '#1F7A4D',
-              color: '#166534',
-              tabs: zichtbareNavTabs,
-            },
-          ]
+        ? [{ titel: '', tabs: zichtbareNavTabs }]
       : [{ titel: '', tabs: zichtbareNavTabs }]
 
   const pagina = {
