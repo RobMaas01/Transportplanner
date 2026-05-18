@@ -2661,6 +2661,18 @@ export default function App() {
                     </div>
                       </>
                     )}
+                    <div>
+                      <Label>Prioriteit</Label>
+                      <select
+                        value={aanvraag.prioriteit}
+                        onChange={(e) => setAanvraag((prev) => ({ ...prev, prioriteit: e.target.value }))}
+                        style={inp}
+                      >
+                        <option value="laag">Laag</option>
+                        <option value="normaal">Normaal</option>
+                        <option value="hoog">Hoog</option>
+                      </select>
+                    </div>
                   </div>
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div>
@@ -2849,18 +2861,6 @@ export default function App() {
                         </div>
                       )}
                       <FieldError>{aanvraagErrors.wanneer}</FieldError>
-                    </div>
-                    <div>
-                      <Label>Prioriteit</Label>
-                      <select
-                        value={aanvraag.prioriteit}
-                        onChange={(e) => setAanvraag((prev) => ({ ...prev, prioriteit: e.target.value }))}
-                        style={inp}
-                      >
-                        <option value="laag">Laag</option>
-                        <option value="normaal">Normaal</option>
-                        <option value="hoog">Hoog</option>
-                      </select>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
@@ -4537,6 +4537,18 @@ export default function App() {
                         {renderTaakToelichtingVeld()}
                       </>
                     )}
+                    <div>
+                      <Label>Prioriteit</Label>
+                      <select
+                        value={nieuw.prioriteit}
+                        onChange={(e) => setNieuw((prev) => ({ ...prev, prioriteit: e.target.value }))}
+                        style={inp}
+                      >
+                        <option value="laag">Laag</option>
+                        <option value="normaal">Normaal</option>
+                        <option value="hoog">Hoog</option>
+                      </select>
+                    </div>
                   </div>
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div>
@@ -4682,18 +4694,6 @@ export default function App() {
                       <div style={{ fontSize: 11, color: '#6B7280', marginTop: 6 }}>
                         Gekozen: {aanvraagWeekLabel(nieuw.week)}{nieuw.alleenWeek ? '' : ` | ${dagLabel(nieuw.dag)}`}
                       </div>
-                    </div>
-                    <div>
-                      <Label>Prioriteit</Label>
-                      <select
-                        value={nieuw.prioriteit}
-                        onChange={(e) => setNieuw((prev) => ({ ...prev, prioriteit: e.target.value }))}
-                        style={inp}
-                      >
-                        <option value="laag">Laag</option>
-                        <option value="normaal">Normaal</option>
-                        <option value="hoog">Hoog</option>
-                      </select>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
