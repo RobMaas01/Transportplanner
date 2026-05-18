@@ -1183,8 +1183,16 @@ export default function App() {
   const zichtbareNavGroepen =
     rol === 'transporteur'
       ? [
-          { titel: 'Bert', tabs: zichtbareNavTabs.filter((item) => ['planning', 'aanvragen'].includes(item.k)) },
-          { titel: 'Registratie', tabs: zichtbareNavTabs.filter((item) => ['toevoegen', 'alletaken', 'rapportage'].includes(item.k)) },
+          { titel: 'Bert', tint: '#FFF7ED', color: '#9A3412', tabs: zichtbareNavTabs.filter((item) => ['planning', 'aanvragen', 'toevoegen'].includes(item.k)) },
+          {
+            titel: 'Registratie',
+            tint: '#ECFDF5',
+            color: '#166534',
+            tabs: [
+              { k: 'aanvraag', l: 'Aanvraag invoeren' },
+              ...zichtbareNavTabs.filter((item) => ['alletaken', 'rapportage'].includes(item.k)),
+            ],
+          },
         ].filter((groep) => groep.tabs.length > 0)
       : [{ titel: '', tabs: zichtbareNavTabs }]
 
@@ -1613,7 +1621,17 @@ export default function App() {
                 {zichtbareNavGroepen.map((groep) => (
                   <div key={groep.titel || 'aanvrager'} style={{ display: 'grid', gap: 6 }}>
                     {groep.titel && (
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#9A5A2E', textTransform: 'uppercase', padding: '0 3px' }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 650,
+                          color: groep.color || '#7C4A2A',
+                          background: groep.tint || '#FFF7ED',
+                          border: '1px solid #E5E9F0',
+                          borderRadius: 7,
+                          padding: '6px 9px',
+                        }}
+                      >
                         {groep.titel}
                       </div>
                     )}
@@ -1670,7 +1688,18 @@ export default function App() {
             {zichtbareNavGroepen.map((groep) => (
               <div key={groep.titel || 'aanvrager'} style={{ marginBottom: groep.titel ? 12 : 0 }}>
                 {groep.titel && (
-                  <div style={{ fontSize: 10, fontWeight: 800, color: '#9A5A2E', textTransform: 'uppercase', padding: '8px 12px 5px' }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 650,
+                      color: groep.color || '#7C4A2A',
+                      background: groep.tint || '#FFF7ED',
+                      border: '1px solid #E5E9F0',
+                      borderRadius: 7,
+                      padding: '6px 9px',
+                      margin: '8px 4px 6px',
+                    }}
+                  >
                     {groep.titel}
                   </div>
                 )}
