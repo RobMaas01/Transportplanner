@@ -123,7 +123,8 @@ const STANDAARD_TAAK_NAAM = 'Bert'
 const SCHOOL7 = 'Bibliotheek School 7'
 const TUITJENHORN = 'Bibliotheek Tuitjenhorn'
 const TAKEN_MET_AANTAL = ['Plukker', 'Extra kratten', 'Extra sorteren']
-const TAKEN_MET_TIJD = ['Extra sorteren', 'Garage']
+const TAKEN_MET_TIJD = ['Extra sorteren']
+const TAKEN_MET_SPECIFIEKE_VELDEN = ['Plukker', 'Eelan', 'Extra kratten', 'Extra sorteren', 'CoderDojo', 'Stort', 'Garage']
 const CODERDOJO_VESTIGINGEN = [SCHOOL7, 'Bibliotheek Anna Paulowna', 'Bibliotheek Schagen']
 const OVERIG_OPTIE = 'Overig'
 
@@ -624,6 +625,7 @@ export default function App() {
       naar: vorigeTaak.naar || '',
     }
     if (titel === 'Plukker' || titel === 'Eelan') return { van: '', naar: basis.naar || SCHOOL7 }
+    if (titel === 'Extra kratten') return { van: '', naar: '' }
     if (titel === 'Extra sorteren') return { van: basis.van || TUITJENHORN, naar: '' }
     if (titel === 'Stort') return { van: basis.van, naar: '' }
     if (titel === 'Garage') return { van: '', naar: '' }
@@ -641,6 +643,14 @@ export default function App() {
     if (titel === 'Extra sorteren' || titel === 'Stort') return { van: taak.van || '', naar: '' }
     if (titel === 'Garage') return { van: '', naar: '' }
     return { van: taak.van || '', naar: taak.naar || '' }
+  }
+
+  function taakHeeftAantalVeld(titel) {
+    return TAKEN_MET_AANTAL.includes(titel) || Boolean(titel && !TAKEN_MET_SPECIFIEKE_VELDEN.includes(titel))
+  }
+
+  function taakHeeftTijdVeld(titel) {
+    return TAKEN_MET_TIJD.includes(titel) || Boolean(titel && !TAKEN_MET_SPECIFIEKE_VELDEN.includes(titel))
   }
 
   function openVandaagTaakVraag() {
@@ -661,8 +671,8 @@ export default function App() {
       naam: String(nieuw.naam || STANDAARD_TAAK_NAAM).trim() || STANDAARD_TAAK_NAAM,
       titel: nieuw.titel.trim(),
       ...taakRouteVoorOpslag(nieuw.titel.trim(), nieuw),
-      aantal: TAKEN_MET_AANTAL.includes(nieuw.titel.trim()) ? String(nieuw.aantal || '').trim() : '',
-      tijd: TAKEN_MET_TIJD.includes(nieuw.titel.trim()) ? String(nieuw.tijd || '').trim() : '',
+      aantal: taakHeeftAantalVeld(nieuw.titel.trim()) ? String(nieuw.aantal || '').trim() : '',
+      tijd: taakHeeftTijdVeld(nieuw.titel.trim()) ? String(nieuw.tijd || '').trim() : '',
       dag: nieuw.alleenWeek ? null : nieuw.dag,
       omschrijving: nieuw.omschrijving,
       reden: nieuw.reden || '',
@@ -780,8 +790,8 @@ export default function App() {
       const aanvraagData = {
         ...aanvraag,
         ...taakRouteVoorOpslag(aanvraag.titel.trim(), aanvraag),
-        aantal: TAKEN_MET_AANTAL.includes(aanvraag.titel.trim()) ? String(aanvraag.aantal || '').trim() : '',
-        tijd: [...TAKEN_MET_TIJD, 'Garage'].includes(aanvraag.titel.trim()) ? String(aanvraag.tijd || '').trim() : '',
+        aantal: taakHeeftAantalVeld(aanvraag.titel.trim()) ? String(aanvraag.aantal || '').trim() : '',
+        tijd: taakHeeftTijdVeld(aanvraag.titel.trim()) ? String(aanvraag.tijd || '').trim() : '',
         prive: rol === 'transporteur' ? false : Boolean(aanvraag.prive),
       }
       setAanvragen((prev) =>
@@ -805,8 +815,8 @@ export default function App() {
       const aanvraagData = {
         ...aanvraag,
         ...taakRouteVoorOpslag(aanvraag.titel.trim(), aanvraag),
-        aantal: TAKEN_MET_AANTAL.includes(aanvraag.titel.trim()) ? String(aanvraag.aantal || '').trim() : '',
-        tijd: [...TAKEN_MET_TIJD, 'Garage'].includes(aanvraag.titel.trim()) ? String(aanvraag.tijd || '').trim() : '',
+        aantal: taakHeeftAantalVeld(aanvraag.titel.trim()) ? String(aanvraag.aantal || '').trim() : '',
+        tijd: taakHeeftTijdVeld(aanvraag.titel.trim()) ? String(aanvraag.tijd || '').trim() : '',
         prive: rol === 'transporteur' ? false : Boolean(aanvraag.prive),
       }
       setAanvragen((prev) => [
@@ -2244,9 +2254,9 @@ export default function App() {
                           setAanvraag((prev) => ({
                             ...prev,
                             titel: isOverig ? '' : gekozen,
-                            aantal: TAKEN_MET_AANTAL.includes(gekozen) ? prev.aantal || '' : '',
-                            tijd: TAKEN_MET_TIJD.includes(gekozen) ? prev.tijd || '' : '',
-                            reden: gekozen === 'Garage' ? prev.reden || '' : '',
+                            aantal: taakHeeftAantalVeld(gekozen) ? prev.aantal || '' : '',
+                            tijd: taakHeeftTijdVeld(gekozen) ? prev.tijd || '' : '',
+                            reden: '',
                             ...taakRouteVoorTitel(gekozen, prev),
                           }))
                           setAanvraagOverigVestiging({ van: false, naar: false })
@@ -2458,16 +2468,6 @@ export default function App() {
                     )}
                     {aanvraag.titel === 'Garage' && (
                       <>
-                        <div>
-                          <Label>Reden</Label>
-                          <input
-                            value={aanvraag.reden || ''}
-                            onChange={(e) => setAanvraag((prev) => ({ ...prev, reden: e.target.value }))}
-                            placeholder="Bijv. onderhoud, reparatie..."
-                            style={inp}
-                          />
-                        </div>
-                        {renderAanvraagTijdVeld()}
                         {renderAanvraagToelichtingVeld()}
                       </>
                     )}
@@ -2582,6 +2582,8 @@ export default function App() {
                       </div>
                     )}
                     <ZelfdeVestigingWaarschuwing van={aanvraag.van} naar={aanvraag.naar} />
+                    {renderAanvraagAantalVeld()}
+                    {renderAanvraagTijdVeld()}
                     <div>
                       <Label optional>Toelichting</Label>
                       <textarea
@@ -4192,9 +4194,9 @@ export default function App() {
                           setNieuw((prev) => ({
                             ...prev,
                             titel: isOverig ? '' : gekozen,
-                            aantal: TAKEN_MET_AANTAL.includes(gekozen) ? prev.aantal : '',
-                            tijd: TAKEN_MET_TIJD.includes(gekozen) ? prev.tijd : '',
-                            reden: gekozen === 'Garage' ? prev.reden || '' : '',
+                            aantal: taakHeeftAantalVeld(gekozen) ? prev.aantal : '',
+                            tijd: taakHeeftTijdVeld(gekozen) ? prev.tijd : '',
+                            reden: '',
                             ...taakRouteVoorTitel(gekozen, prev),
                           }))
                           setTaakOverigVestiging({ van: false, naar: false })
@@ -4280,16 +4282,6 @@ export default function App() {
                     )}
                     {nieuw.titel === 'Garage' && (
                       <>
-                        <div>
-                          <Label>Reden</Label>
-                          <input
-                            value={nieuw.reden || ''}
-                            onChange={(e) => setNieuw((prev) => ({ ...prev, reden: e.target.value }))}
-                            placeholder="Bijv. onderhoud, reparatie..."
-                            style={inp}
-                          />
-                        </div>
-                        {renderTaakTijdVeld()}
                         {renderTaakToelichtingVeld()}
                       </>
                     )}
@@ -4298,6 +4290,8 @@ export default function App() {
                         {renderTaakVestigingVeld('van', 'Van vestiging')}
                         {renderTaakVestigingVeld('naar', 'Naar vestiging')}
                         <ZelfdeVestigingWaarschuwing van={nieuw.van} naar={nieuw.naar} />
+                        {renderTaakAantalVeld()}
+                        {renderTaakTijdVeld()}
                         {renderTaakToelichtingVeld()}
                       </>
                     )}
