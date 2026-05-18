@@ -4361,10 +4361,10 @@ export default function App() {
                       fontSize: 12,
                       color: '#92400E',
                       lineHeight: 1.4,
-                      fontWeight: 650,
+                      fontWeight: 400,
                     }}
                   >
-                    ! Deze taak komt meteen in de planning. Gebruik Aanvraag invoeren als iets eerst nog beoordeeld of ingepland moet worden.
+                    <span style={{ fontWeight: 600 }}>!</span> Deze taak komt meteen in de planning. Gebruik Aanvraag invoeren als iets eerst nog beoordeeld of ingepland moet worden.
                   </div>
                   {taakMelding && (
                     <div
