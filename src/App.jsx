@@ -90,7 +90,7 @@ function laadSessie() {
     const veiligeTab =
       rol === 'aanvrager' && !['aanvraag', 'aanvraagstatus'].includes(tab)
         ? 'aanvraag'
-        : rol === 'transporteur' && !['planning', 'aanvragen', 'toevoegen', 'alletaken', 'rapportage'].includes(tab)
+        : rol === 'transporteur' && !['planning', 'aanvragen', 'toevoegen', 'drukte', 'aanvraag', 'alletaken', 'rapportage'].includes(tab)
           ? 'planning'
           : tab || 'planning'
     return {
@@ -123,7 +123,7 @@ const STANDAARD_TAAK_NAAM = 'Bert'
 const SCHOOL7 = 'Bibliotheek School 7'
 const TUITJENHORN = 'Bibliotheek Tuitjenhorn'
 const TAKEN_MET_AANTAL = ['Plukker', 'Extra kratten', 'Extra sorteren']
-const TAKEN_MET_TIJD = ['Extra sorteren']
+const TAKEN_MET_TIJD = ['Extra sorteren', 'Garage']
 const CODERDOJO_VESTIGINGEN = [SCHOOL7, 'Bibliotheek Anna Paulowna', 'Bibliotheek Schagen']
 const OVERIG_OPTIE = 'Overig'
 
@@ -220,6 +220,7 @@ export default function App() {
     naam: STANDAARD_TAAK_NAAM,
     titel: '',
     omschrijving: '',
+    reden: '',
     aantal: '',
     tijd: '',
     van: '',
@@ -235,7 +236,7 @@ export default function App() {
   const [aanvraagBevestigd, setAanvraagBevestigd] = useState(false)
   const [aanvraagErrors, setAanvraagErrors] = useState({})
   const [aanvraagOverigVestiging, setAanvraagOverigVestiging] = useState({ van: false, naar: false })
-  const [aanvraagInvoerTab, setAanvraagInvoerTab] = useState('aanvraag')
+  const [aanvraagEigenTitelActief, setAanvraagEigenTitelActief] = useState(false)
   const [aanvraagStatusTab, setAanvraagStatusTab] = useState('open')
   const [bertAanvragenTab, setBertAanvragenTab] = useState('nieuw')
   const [taakErrors, setTaakErrors] = useState({})
@@ -323,6 +324,9 @@ export default function App() {
       aanvraag.aanvrager.trim() ||
       aanvraag.titel.trim() ||
       aanvraag.omschrijving.trim() ||
+      String(aanvraag.reden || '').trim() ||
+      String(aanvraag.aantal || '').trim() ||
+      String(aanvraag.tijd || '').trim() ||
       aanvraag.van ||
       aanvraag.naar ||
       aanvraag.week !== leeg.week ||
@@ -344,7 +348,6 @@ export default function App() {
       setMenuOpen(false)
       return
     }
-    if (rol === 'transporteur' && nieuweTab === 'aanvraag') setAanvraagInvoerTab('aanvraag')
     setTab(nieuweTab)
     setMenuOpen(false)
   }
@@ -588,6 +591,7 @@ export default function App() {
     setAanvraagEditId(null)
     setAanvraagErrors({})
     setAanvraagOverigVestiging({ van: false, naar: false })
+    setAanvraagEigenTitelActief(false)
     setAanvraagBevestigd(false)
     setRol('aanvrager')
     setTab('aanvraag')
@@ -608,6 +612,12 @@ export default function App() {
     return TAAK_SUGGESTIES.includes(value) && value !== OVERIG_OPTIE ? value : OVERIG_OPTIE
   }
 
+  function aanvraagTaakSelectWaarde(value) {
+    if (aanvraagEigenTitelActief) return OVERIG_OPTIE
+    if (!value) return ''
+    return TAAK_SUGGESTIES.includes(value) && value !== OVERIG_OPTIE ? value : OVERIG_OPTIE
+  }
+
   function taakRouteVoorTitel(titel, vorigeTaak) {
     const basis = {
       van: vorigeTaak.van || '',
@@ -616,6 +626,7 @@ export default function App() {
     if (titel === 'Plukker' || titel === 'Eelan') return { van: '', naar: basis.naar || SCHOOL7 }
     if (titel === 'Extra sorteren') return { van: basis.van || TUITJENHORN, naar: '' }
     if (titel === 'Stort') return { van: basis.van, naar: '' }
+    if (titel === 'Garage') return { van: '', naar: '' }
     if (titel === 'CoderDojo') {
       return {
         van: CODERDOJO_VESTIGINGEN.includes(basis.van) ? basis.van : '',
@@ -628,6 +639,7 @@ export default function App() {
   function taakRouteVoorOpslag(titel, taak) {
     if (titel === 'Plukker' || titel === 'Eelan') return { van: '', naar: taak.naar || '' }
     if (titel === 'Extra sorteren' || titel === 'Stort') return { van: taak.van || '', naar: '' }
+    if (titel === 'Garage') return { van: '', naar: '' }
     return { van: taak.van || '', naar: taak.naar || '' }
   }
 
@@ -653,6 +665,7 @@ export default function App() {
       tijd: TAKEN_MET_TIJD.includes(nieuw.titel.trim()) ? String(nieuw.tijd || '').trim() : '',
       dag: nieuw.alleenWeek ? null : nieuw.dag,
       omschrijving: nieuw.omschrijving,
+      reden: nieuw.reden || '',
     }
 
     if (taakEditId) {
@@ -686,6 +699,7 @@ export default function App() {
       naam: STANDAARD_TAAK_NAAM,
       titel: '',
       omschrijving: '',
+      reden: '',
       aantal: '',
       tijd: '',
       van: '',
@@ -722,6 +736,7 @@ export default function App() {
       naam: taak.naam || STANDAARD_TAAK_NAAM,
       titel: taak.titel || '',
       omschrijving: taak.omschrijving || '',
+      reden: taak.reden || '',
       aantal: taak.aantal || '',
       tijd: taak.tijd || '',
       van: taak.van || '',
@@ -747,7 +762,7 @@ export default function App() {
     const errors = {}
     if (!aanvraag.aanvrager.trim()) errors.aanvrager = 'Vul de naam van de aanvrager in.'
     if (!aanvraag.titel.trim()) errors.titel = 'Vul in wat er moet gebeuren.'
-    if (!aanvraag.van && !aanvraag.naar) errors.route = 'Kies minimaal een van de vestigingen bij van of naar.'
+    if (aanvraag.titel !== 'Garage' && !aanvraag.van && !aanvraag.naar) errors.route = 'Kies minimaal een van de vestigingen bij van of naar.'
     if (aanvraag.week !== 'zsm') {
       if (Number(aanvraag.dag) >= 0) {
         const gekozenDatum = getMaandag(aanvraag.week)
@@ -762,12 +777,19 @@ export default function App() {
     if (Object.keys(errors).length > 0) return
 
     if (aanvraagEditId) {
+      const aanvraagData = {
+        ...aanvraag,
+        ...taakRouteVoorOpslag(aanvraag.titel.trim(), aanvraag),
+        aantal: TAKEN_MET_AANTAL.includes(aanvraag.titel.trim()) ? String(aanvraag.aantal || '').trim() : '',
+        tijd: [...TAKEN_MET_TIJD, 'Garage'].includes(aanvraag.titel.trim()) ? String(aanvraag.tijd || '').trim() : '',
+        prive: rol === 'transporteur' ? false : Boolean(aanvraag.prive),
+      }
       setAanvragen((prev) =>
         prev.map((item) =>
           item.id === aanvraagEditId
             ? {
                 ...item,
-                ...aanvraag,
+                ...aanvraagData,
                 status: 'nieuw',
                 bijgewerkt: new Date().toISOString(),
                 aangevuldOp: new Date().toISOString(),
@@ -780,11 +802,18 @@ export default function App() {
       setTab(rol === 'transporteur' ? 'aanvragen' : 'aanvraagstatus')
     } else {
       const id = Date.now().toString()
+      const aanvraagData = {
+        ...aanvraag,
+        ...taakRouteVoorOpslag(aanvraag.titel.trim(), aanvraag),
+        aantal: TAKEN_MET_AANTAL.includes(aanvraag.titel.trim()) ? String(aanvraag.aantal || '').trim() : '',
+        tijd: [...TAKEN_MET_TIJD, 'Garage'].includes(aanvraag.titel.trim()) ? String(aanvraag.tijd || '').trim() : '',
+        prive: rol === 'transporteur' ? false : Boolean(aanvraag.prive),
+      }
       setAanvragen((prev) => [
         ...prev,
         {
         id,
-        ...aanvraag,
+        ...aanvraagData,
         status: 'nieuw',
         aangemaakt: new Date().toISOString(),
         log: [{ a: 'ingediend', d: aanvraag.aanvrager, w: new Date().toISOString() }],
@@ -794,6 +823,7 @@ export default function App() {
 
     setAanvraag(standaardAanvraag())
     setAanvraagOverigVestiging({ van: false, naar: false })
+    setAanvraagEigenTitelActief(false)
     setZsmBewustGekozen(false)
     setAanvraagMaand(new Date().toISOString().slice(0, 7))
     if (!aanvraagEditId && rol !== 'transporteur') setAanvraagBevestigd(true)
@@ -808,6 +838,9 @@ export default function App() {
       aanvrager: item.aanvrager || '',
       titel: item.titel || '',
       omschrijving: item.omschrijving || '',
+      reden: item.reden || '',
+      aantal: item.aantal || '',
+      tijd: item.tijd || '',
       van: item.van || '',
       naar: item.naar || '',
       week: item.week || vandaag(),
@@ -819,6 +852,7 @@ export default function App() {
       van: Boolean(item.van && !VESTIGINGEN.includes(item.van)),
       naar: Boolean(item.naar && !VESTIGINGEN.includes(item.naar)),
     })
+    setAanvraagEigenTitelActief(!TAAK_SUGGESTIES.includes(item.titel || ''))
     setZsmBewustGekozen(false)
     setAanvraagEditId(item.id)
     setAanvraagBevestigd(false)
@@ -830,6 +864,7 @@ export default function App() {
     setAanvraagErrors({})
     setAanvraag(standaardAanvraag())
     setAanvraagOverigVestiging({ van: false, naar: false })
+    setAanvraagEigenTitelActief(false)
     setZsmBewustGekozen(false)
     setAanvraagMaand(new Date().toISOString().slice(0, 7))
     setAanvraagBevestigd(false)
@@ -986,6 +1021,9 @@ export default function App() {
         id: Date.now().toString(),
         titel: item.titel,
         omschrijving: item.omschrijving,
+        reden: item.reden || '',
+        aantal: item.aantal || '',
+        tijd: item.tijd || '',
         van: item.van,
         naar: item.naar,
         week: planW,
@@ -1165,6 +1203,7 @@ export default function App() {
       'Dag',
       'Naam',
       'Taak',
+      'Reden',
       'Aantal',
       'Tijd in minuten',
       'Van',
@@ -1181,6 +1220,7 @@ export default function App() {
       dagLabel(taak.dag),
       taak.naam || taak.door || '',
       taak.titel,
+      taak.reden || '',
       taak.aantal || '',
       taak.tijd || '',
       taak.van || '',
@@ -1219,6 +1259,7 @@ export default function App() {
             { k: 'planning', l: 'Planning' },
             { k: 'aanvragen', l: `Aanvragen${nieuweAanvragenAantal ? ` (${nieuweAanvragenAantal})` : ''}` },
             { k: 'toevoegen', l: 'Taak toevoegen' },
+            { k: 'drukte', l: 'Druktemelding' },
             { k: 'alletaken', l: 'Overzicht' },
             { k: 'rapportage', l: 'Rapportage' },
           ]
@@ -1232,10 +1273,10 @@ export default function App() {
             border: '#FED7AA',
             active: '#EA6A1F',
             color: '#9A3412',
-            tabs: zichtbareNavTabs.filter((item) => ['planning', 'aanvragen', 'toevoegen'].includes(item.k)),
+            tabs: zichtbareNavTabs.filter((item) => ['planning', 'aanvragen', 'toevoegen', 'drukte'].includes(item.k)),
           },
           {
-            titel: 'Registratie',
+            titel: 'Registratie en beheer',
             tint: '#ECFDF5',
             border: '#BBF7D0',
             active: '#1F7A4D',
@@ -1252,6 +1293,7 @@ export default function App() {
     planning: 'Weekplanning',
     aanvragen: 'Aanvragen',
     aanvraag: 'Transport aanvragen',
+    drukte: 'Druktemelding',
     aanvraagstatus: 'Aanvragen volgen',
     toevoegen: 'Taak toevoegen',
     alletaken: 'Overzicht',
@@ -1345,7 +1387,7 @@ export default function App() {
                 boxShadow: '0 7px 16px rgba(31, 122, 77, .14)',
               }}
             >
-              Registratie & beheer
+              Registratie en beheer
             </button>
           </div>
         </div>
@@ -1375,7 +1417,7 @@ export default function App() {
                 boxSizing: 'border-box',
               }}
             >
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Registratie & beheer</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Registratie en beheer</div>
               <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14 }}>
                 Voor Boekenbode, leidinggevende en administratie.
               </div>
@@ -1487,7 +1529,7 @@ export default function App() {
             : ['Transportaanvraag', 'Geef door wat vervoerd moet worden.'],
           rol === 'transporteur'
             ? ['Druktemelding', 'Geef drukte of afwezigheid door.']
-            : ['Prive', 'Alleen zichtbaar voor Registratie & beheer.'],
+            : ['Prive', 'Alleen zichtbaar voor Registratie en beheer.'],
         ],
         aanvraagstatus: [
           ['Alle aanvragen', 'Volg recente aanvragen en open acties.'],
@@ -1504,6 +1546,10 @@ export default function App() {
         toevoegen: [
           ['Taak toevoegen', 'Zet een taak direct in de planning.'],
           ['Meteen uitvoeren', 'Gebruik dit als de taak al gedaan is.'],
+        ],
+        drukte: [
+          ['Druktemelding', 'Geef drukte of afwezigheid door.'],
+          ['Week of dag', 'Kies een hele week of een losse dag.'],
         ],
         alletaken: [
           ['Overzicht', 'Zoek, wijzig of herstel taken.'],
@@ -1524,7 +1570,8 @@ export default function App() {
       ['Planning', 'Bekijk de geplande taken.'],
       ['Aanvragen', 'Plan aanvragen in of vraag meer info.'],
       ['Taak toevoegen', 'Zet een taak direct in de planning.'],
-      ['Aanvraag invoeren', 'Voer een aanvraag in of zet een druktemelding.'],
+      ['Druktemelding', 'Geef drukte of afwezigheid door.'],
+      ['Aanvraag invoeren', 'Voer een aanvraag in namens iemand.'],
       ['Overzicht', 'Zoek, wijzig of herstel taken.'],
       ['Rapportage', 'Maak een overzicht voor administratie.'],
     ]
@@ -1618,6 +1665,105 @@ export default function App() {
           value={nieuw.omschrijving}
           onChange={(e) => setNieuw((prev) => ({ ...prev, omschrijving: e.target.value }))}
           placeholder={taakToelichtingPlaceholder}
+          rows={2}
+          style={{ ...inp, resize: 'vertical' }}
+        />
+      </div>
+    )
+  }
+
+  function renderAanvraagVestigingVeld(veld, label, opties = aanvraag.titel === 'CoderDojo' ? CODERDOJO_VESTIGINGEN : VESTIGINGEN) {
+    return (
+      <div>
+        <Label>{label}</Label>
+        <select
+          value={vestigingSelectWaarde(aanvraag[veld], aanvraagOverigVestiging[veld])}
+          onChange={(e) => {
+            const waarde = e.target.value
+            setAanvraagOverigVestiging((prev) => ({ ...prev, [veld]: waarde === OVERIG_OPTIE }))
+            setAanvraag((prev) => ({
+              ...prev,
+              [veld]: waarde === OVERIG_OPTIE ? (opties.includes(prev[veld]) ? '' : prev[veld]) : waarde,
+            }))
+            setAanvraagErrors((prev) => {
+              const next = { ...prev }
+              delete next.route
+              return next
+            })
+          }}
+          style={{ ...inp, borderColor: aanvraagErrors.route ? '#F87171' : '#E5E9F0' }}
+        >
+          <option value="">Kies...</option>
+          {opties.map((vestiging) => (
+            <option key={vestiging} value={vestiging}>
+              {vestiging}
+            </option>
+          ))}
+          <option value={OVERIG_OPTIE}>Overig</option>
+        </select>
+        {vestigingSelectWaarde(aanvraag[veld], aanvraagOverigVestiging[veld]) === OVERIG_OPTIE && (
+          <input
+            value={aanvraag[veld]}
+            onChange={(e) => {
+              setAanvraag((prev) => ({ ...prev, [veld]: e.target.value }))
+              setAanvraagErrors((prev) => {
+                const next = { ...prev }
+                delete next.route
+                return next
+              })
+            }}
+            placeholder="Vul zelf in"
+            style={{ ...inp, marginTop: 7, borderColor: aanvraagErrors.route ? '#F87171' : '#E5E9F0' }}
+          />
+        )}
+      </div>
+    )
+  }
+
+  function renderAanvraagAantalVeld() {
+    return (
+      <div>
+        <Label>Aantal</Label>
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          step="1"
+          value={aanvraag.aantal || ''}
+          onChange={(e) => setAanvraag((prev) => ({ ...prev, aantal: e.target.value }))}
+          placeholder="Bijv. 6"
+          style={inp}
+        />
+      </div>
+    )
+  }
+
+  function renderAanvraagTijdVeld() {
+    return (
+      <div>
+        <Label>Tijd in minuten</Label>
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          step="1"
+          value={aanvraag.tijd || ''}
+          onChange={(e) => setAanvraag((prev) => ({ ...prev, tijd: e.target.value }))}
+          placeholder="Bijv. 30"
+          style={inp}
+        />
+      </div>
+    )
+  }
+
+  function renderAanvraagToelichtingVeld() {
+    return (
+      <div>
+        <Label optional>Toelichting</Label>
+        <textarea
+          value={aanvraag.omschrijving}
+          onChange={(e) => setAanvraag((prev) => ({ ...prev, omschrijving: e.target.value }))}
+          placeholder={aanvraag.titel === 'Extra sorteren' || aanvraag.titel === 'Plukker' ? 'Eventuele opmerkingen' : 'Bijzonderheden, gewenste tijd...'}
           rows={2}
           style={{ ...inp, resize: 'vertical' }}
         />
@@ -1996,35 +2142,6 @@ export default function App() {
           )}
           {tab === 'aanvraag' && (rol === 'aanvrager' || rol === 'transporteur') && (
             <div>
-              {rol === 'transporteur' && (
-                <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3, marginBottom: 14, width: 'fit-content' }}>
-                  {[
-                    { k: 'aanvraag', l: 'Aanvraag invoeren' },
-                    { k: 'drukte', l: 'Druktemelding' },
-                  ].map((item) => (
-                    <button
-                      key={item.k}
-                      type="button"
-                      onClick={() => setAanvraagInvoerTab(item.k)}
-                      style={{
-                        border: 'none',
-                        borderRadius: 6,
-                        padding: '7px 14px',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        background: aanvraagInvoerTab === item.k ? '#fff' : 'transparent',
-                        color: aanvraagInvoerTab === item.k ? '#111827' : '#6B7280',
-                        boxShadow: aanvraagInvoerTab === item.k ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
-                      }}
-                    >
-                      {item.l}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {(rol !== 'transporteur' || aanvraagInvoerTab === 'aanvraag') && (
-                <>
               {aanvraagBevestigd && rol === 'aanvrager' ? (
                 <Card>
                   <div style={{ padding: 24, textAlign: 'center' }}>
@@ -2041,6 +2158,7 @@ export default function App() {
                           setZsmBewustGekozen(false)
                           setAanvraagMaand(new Date().toISOString().slice(0, 7))
                           setAanvraagErrors({})
+                          setAanvraagEigenTitelActief(false)
                           setAanvraagBevestigd(false)
                         }}
                         style={{
@@ -2117,21 +2235,59 @@ export default function App() {
                     </div>
                     <div>
                       <Label>Wat moet er gebeuren?</Label>
-                      <input
-                        value={aanvraag.titel}
+                      <select
+                        value={aanvraagTaakSelectWaarde(aanvraag.titel)}
                         onChange={(e) => {
-                          setAanvraag((prev) => ({ ...prev, titel: e.target.value }))
+                          const gekozen = e.target.value
+                          const isOverig = gekozen === OVERIG_OPTIE
+                          setAanvraagEigenTitelActief(isOverig)
+                          setAanvraag((prev) => ({
+                            ...prev,
+                            titel: isOverig ? '' : gekozen,
+                            aantal: TAKEN_MET_AANTAL.includes(gekozen) ? prev.aantal || '' : '',
+                            tijd: TAKEN_MET_TIJD.includes(gekozen) ? prev.tijd || '' : '',
+                            reden: gekozen === 'Garage' ? prev.reden || '' : '',
+                            ...taakRouteVoorTitel(gekozen, prev),
+                          }))
+                          setAanvraagOverigVestiging({ van: false, naar: false })
                           setAanvraagErrors((prev) => {
                             const next = { ...prev }
                             delete next.titel
+                            delete next.route
                             return next
                           })
                         }}
-                        placeholder="Bijv. Kratten ophalen"
                         style={{ ...inp, borderColor: aanvraagErrors.titel ? '#F87171' : '#E5E9F0' }}
-                      />
+                      >
+                        <option value="">Kies taak...</option>
+                        {TAAK_SUGGESTIES.map((suggestie) => (
+                          <option key={suggestie} value={suggestie}>
+                            {suggestie}
+                          </option>
+                        ))}
+                      </select>
                       <FieldError>{aanvraagErrors.titel}</FieldError>
                     </div>
+                    {aanvraagEigenTitelActief && (
+                      <div>
+                        <Label>Eigen titel</Label>
+                        <input
+                          value={aanvraag.titel}
+                          onChange={(e) => {
+                            setAanvraag((prev) => ({ ...prev, titel: e.target.value, aantal: '', tijd: '' }))
+                            setAanvraagEigenTitelActief(true)
+                            setAanvraagErrors((prev) => {
+                              const next = { ...prev }
+                              delete next.titel
+                              return next
+                            })
+                          }}
+                          placeholder="Of typ zelf wat er moet gebeuren"
+                          style={{ ...inp, borderColor: aanvraagErrors.titel ? '#F87171' : '#E5E9F0' }}
+                        />
+                      </div>
+                    )}
+                    {rol !== 'transporteur' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 'fit-content', position: 'relative' }}>
                       <label
                         style={{
@@ -2199,7 +2355,7 @@ export default function App() {
                             pointerEvents: 'none',
                           }}
                         >
-                          Alleen Registratie & beheer ziet deze aanvraag. De aanvraag komt niet in Alle aanvragen te staan.
+                          Alleen Registratie en beheer ziet deze aanvraag. De aanvraag komt niet in Alle aanvragen te staan.
                         </div>
                       )}
                       {toonPriveUitleg && (
@@ -2231,7 +2387,7 @@ export default function App() {
                               Privé aanvraag
                             </div>
                             <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, marginBottom: 14 }}>
-                              Als je Privé aanvinkt, is de aanvraag alleen zichtbaar in Registratie & beheer. De aanvraag komt dan niet in
+                              Als je Privé aanvinkt, is de aanvraag alleen zichtbaar in Registratie en beheer. De aanvraag komt dan niet in
                               het overzicht Alle aanvragen bij de aanvrager te staan.
                             </div>
                             <button
@@ -2255,6 +2411,82 @@ export default function App() {
                         </div>
                       )}
                     </div>
+                    )}
+                    {aanvraag.titel === 'Plukker' && (
+                      <>
+                        {renderAanvraagVestigingVeld('naar', 'Naar vestiging')}
+                        {renderAanvraagAantalVeld()}
+                        {renderAanvraagToelichtingVeld()}
+                      </>
+                    )}
+                    {aanvraag.titel === 'Eelan' && (
+                      <>
+                        {renderAanvraagVestigingVeld('naar', 'Naar vestiging')}
+                        {renderAanvraagToelichtingVeld()}
+                      </>
+                    )}
+                    {aanvraag.titel === 'Extra kratten' && (
+                      <>
+                        {renderAanvraagVestigingVeld('van', 'Van vestiging')}
+                        {renderAanvraagVestigingVeld('naar', 'Naar vestiging')}
+                        <ZelfdeVestigingWaarschuwing van={aanvraag.van} naar={aanvraag.naar} />
+                        {renderAanvraagAantalVeld()}
+                        {renderAanvraagToelichtingVeld()}
+                      </>
+                    )}
+                    {aanvraag.titel === 'Extra sorteren' && (
+                      <>
+                        {renderAanvraagVestigingVeld('van', 'Vestiging')}
+                        {renderAanvraagAantalVeld()}
+                        {renderAanvraagTijdVeld()}
+                        {renderAanvraagToelichtingVeld()}
+                      </>
+                    )}
+                    {aanvraag.titel === 'CoderDojo' && (
+                      <>
+                        {renderAanvraagVestigingVeld('van', 'Van vestiging', CODERDOJO_VESTIGINGEN)}
+                        {renderAanvraagVestigingVeld('naar', 'Naar vestiging', CODERDOJO_VESTIGINGEN)}
+                        <ZelfdeVestigingWaarschuwing van={aanvraag.van} naar={aanvraag.naar} />
+                        {renderAanvraagToelichtingVeld()}
+                      </>
+                    )}
+                    {aanvraag.titel === 'Stort' && (
+                      <>
+                        {renderAanvraagVestigingVeld('van', 'Van vestiging')}
+                        {renderAanvraagToelichtingVeld()}
+                      </>
+                    )}
+                    {aanvraag.titel === 'Garage' && (
+                      <>
+                        <div>
+                          <Label>Reden</Label>
+                          <input
+                            value={aanvraag.reden || ''}
+                            onChange={(e) => setAanvraag((prev) => ({ ...prev, reden: e.target.value }))}
+                            placeholder="Bijv. onderhoud, reparatie..."
+                            style={inp}
+                          />
+                        </div>
+                        {renderAanvraagTijdVeld()}
+                        {renderAanvraagToelichtingVeld()}
+                      </>
+                    )}
+                    {aanvraagErrors.route && ['Plukker', 'Eelan', 'Extra kratten', 'Extra sorteren', 'CoderDojo', 'Stort'].includes(aanvraag.titel) && (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: '#991B1B',
+                          background: '#FEF2F2',
+                          border: '1px solid #FECACA',
+                          borderRadius: 8,
+                          padding: '8px 10px',
+                        }}
+                      >
+                        Kies bij Van of Naar minimaal een vestiging.
+                      </div>
+                    )}
+                    {aanvraag.titel && !['Plukker', 'Eelan', 'Extra kratten', 'Extra sorteren', 'CoderDojo', 'Stort', 'Garage'].includes(aanvraag.titel) && (
+                      <>
                     <div>
                       <Label>Van vestiging</Label>
                       <select
@@ -2360,6 +2592,8 @@ export default function App() {
                         style={{ ...inp, resize: 'vertical' }}
                       />
                     </div>
+                      </>
+                    )}
                   </div>
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div>
@@ -2600,8 +2834,6 @@ export default function App() {
                 </div>
                 </Card>
               )}
-                </>
-              )}
             </div>
           )}
 
@@ -2729,9 +2961,19 @@ export default function App() {
                           >
                             <div style={{ flex: 1, minWidth: 220 }}>
                               <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{item.titel}</div>
-                              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                                Locatie: {routeLabel(item.van, item.naar)}
-                              </div>
+                              {(item.van || item.naar) && (
+                                <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                                  Locatie: {routeLabel(item.van, item.naar)}
+                                </div>
+                              )}
+                              {item.reden && (
+                                <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Reden: {item.reden}</div>
+                              )}
+                              {(item.aantal || item.tijd) && (
+                                <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                                  {[item.aantal ? `Aantal: ${item.aantal}` : '', item.tijd ? `Tijd: ${item.tijd} min` : ''].filter(Boolean).join(' | ')}
+                                </div>
+                              )}
                               <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
                                 Wanneer: {aanvraagMomentLabel(item)}
                               </div>
@@ -2975,7 +3217,13 @@ export default function App() {
                               </div>
                               <div style={{ display: 'grid', gap: 3, fontSize: 12, color: '#6B7280' }}>
                                 <div>Aanvrager: {item.aanvrager || 'Onbekend'}</div>
-                                <div>Locatie: {routeLabel(item.van, item.naar)}</div>
+                                {(item.van || item.naar) && <div>Locatie: {routeLabel(item.van, item.naar)}</div>}
+                                {item.reden && <div>Reden: {item.reden}</div>}
+                                {(item.aantal || item.tijd) && (
+                                  <div>
+                                    {[item.aantal ? `Aantal: ${item.aantal}` : '', item.tijd ? `Tijd: ${item.tijd} min` : ''].filter(Boolean).join(' | ')}
+                                  </div>
+                                )}
                                 <div>Wanneer: {aanvraagMomentLabel(item)}</div>
                                 <div style={{ fontSize: 11, color: '#9CA3AF' }}>
                                   Ingediend: {fmt(new Date(item.aangemaakt || Number(item.id)))}
@@ -3625,6 +3873,9 @@ export default function App() {
                           }}
                         >
                           <div style={{ fontSize: 13, fontWeight: 750, color: '#111827' }}>{taak.titel}</div>
+                          {taak.reden && (
+                            <div style={{ fontSize: 12, color: '#374151', marginTop: 3 }}>Reden: {taak.reden}</div>
+                          )}
                           {taak.aantal && (
                             <div style={{ fontSize: 12, color: '#374151', marginTop: 3 }}>Aantal: {taak.aantal}</div>
                           )}
@@ -3697,6 +3948,11 @@ export default function App() {
                         <div style={{ fontSize: isMobiel ? 13 : 11, fontWeight: 700, color: '#111827', marginBottom: 2 }}>
                           {taak.titel}
                         </div>
+                        {taak.reden && (
+                          <div style={{ fontSize: isMobiel ? 12 : 10, color: '#374151', marginBottom: 4 }}>
+                            Reden: {taak.reden}
+                          </div>
+                        )}
                         {taak.aantal && (
                           <div style={{ fontSize: isMobiel ? 12 : 10, color: '#374151', marginBottom: 4 }}>
                             Aantal: {taak.aantal}
@@ -3938,6 +4194,7 @@ export default function App() {
                             titel: isOverig ? '' : gekozen,
                             aantal: TAKEN_MET_AANTAL.includes(gekozen) ? prev.aantal : '',
                             tijd: TAKEN_MET_TIJD.includes(gekozen) ? prev.tijd : '',
+                            reden: gekozen === 'Garage' ? prev.reden || '' : '',
                             ...taakRouteVoorTitel(gekozen, prev),
                           }))
                           setTaakOverigVestiging({ van: false, naar: false })
@@ -4021,7 +4278,22 @@ export default function App() {
                         {renderTaakToelichtingVeld()}
                       </>
                     )}
-                    {nieuw.titel && !['Plukker', 'Eelan', 'Extra kratten', 'Extra sorteren', 'CoderDojo', 'Stort'].includes(nieuw.titel) && (
+                    {nieuw.titel === 'Garage' && (
+                      <>
+                        <div>
+                          <Label>Reden</Label>
+                          <input
+                            value={nieuw.reden || ''}
+                            onChange={(e) => setNieuw((prev) => ({ ...prev, reden: e.target.value }))}
+                            placeholder="Bijv. onderhoud, reparatie..."
+                            style={inp}
+                          />
+                        </div>
+                        {renderTaakTijdVeld()}
+                        {renderTaakToelichtingVeld()}
+                      </>
+                    )}
+                    {nieuw.titel && !['Plukker', 'Eelan', 'Extra kratten', 'Extra sorteren', 'CoderDojo', 'Stort', 'Garage'].includes(nieuw.titel) && (
                       <>
                         {renderTaakVestigingVeld('van', 'Van vestiging')}
                         {renderTaakVestigingVeld('naar', 'Naar vestiging')}
@@ -4214,6 +4486,7 @@ export default function App() {
                               naam: STANDAARD_TAAK_NAAM,
                               titel: '',
                               omschrijving: '',
+                              reden: '',
                               aantal: '',
                               tijd: '',
                               van: '',
@@ -4341,6 +4614,9 @@ export default function App() {
                         >
                           <div style={{ flex: 1, minWidth: 230 }}>
                             <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{taak.titel}</div>
+                            {taak.reden && (
+                              <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Reden: {taak.reden}</div>
+                            )}
                             {taak.aantal && (
                               <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Aantal: {taak.aantal}</div>
                             )}
@@ -4440,6 +4716,9 @@ export default function App() {
                             >
                               <div style={{ flex: 1, minWidth: 230 }}>
                                 <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{taak.titel}</div>
+                                {taak.reden && (
+                                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Reden: {taak.reden}</div>
+                                )}
                                 {taak.aantal && (
                                   <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Aantal: {taak.aantal}</div>
                                 )}
@@ -4481,7 +4760,7 @@ export default function App() {
             </Card>
           )}
 
-          {tab === 'aanvraag' && rol === 'transporteur' && aanvraagInvoerTab === 'drukte' && (
+          {tab === 'drukte' && rol === 'transporteur' && (
             <div style={{ display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 18 }}>
               <Card>
                 <CardHead title="Druktemelding toevoegen" />
@@ -5016,6 +5295,7 @@ export default function App() {
                         >
                           <span style={{ flex: 2, fontWeight: 500, color: '#111827' }}>
                             {taak.titel}
+                            {taak.reden ? ` - ${taak.reden}` : ''}
                             {taak.aantal ? ` (${taak.aantal})` : ''}
                             {taak.tijd ? ` - ${taak.tijd} min` : ''}
                           </span>
@@ -5291,6 +5571,7 @@ export default function App() {
                   setVerlaatAanvraagTab(null)
                   setAanvraag(standaardAanvraag())
                   setAanvraagOverigVestiging({ van: false, naar: false })
+                  setAanvraagEigenTitelActief(false)
                   setZsmBewustGekozen(false)
                   setAanvraagMaand(new Date().toISOString().slice(0, 7))
                   setAanvraagEditId(null)
