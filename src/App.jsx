@@ -288,6 +288,7 @@ export default function App() {
     periode: '',
     bestandNaam: '',
   })
+  const [educatieMelding, setEducatieMelding] = useState('')
 
   useEffect(() => {
     if (!isMobiel || !rol) return undefined
@@ -3114,7 +3115,10 @@ export default function App() {
                     <Label required>Schooljaar</Label>
                     <input
                       value={educatieImport.schooljaar}
-                      onChange={(e) => setEducatieImport((prev) => ({ ...prev, schooljaar: e.target.value }))}
+                      onChange={(e) => {
+                        setEducatieImport((prev) => ({ ...prev, schooljaar: e.target.value }))
+                        setEducatieMelding('')
+                      }}
                       placeholder="Bijv. 2026-2027"
                       style={inp}
                     />
@@ -3123,7 +3127,10 @@ export default function App() {
                     <Label required>Periode</Label>
                     <input
                       value={educatieImport.periode}
-                      onChange={(e) => setEducatieImport((prev) => ({ ...prev, periode: e.target.value }))}
+                      onChange={(e) => {
+                        setEducatieImport((prev) => ({ ...prev, periode: e.target.value }))
+                        setEducatieMelding('')
+                      }}
                       placeholder="Bijv. Periode 1"
                       style={inp}
                     />
@@ -3153,6 +3160,7 @@ export default function App() {
                         onChange={(e) => {
                           const bestand = e.target.files?.[0]
                           setEducatieImport((prev) => ({ ...prev, bestandNaam: bestand?.name || '' }))
+                          setEducatieMelding('')
                         }}
                         style={{ display: 'none' }}
                       />
@@ -3161,6 +3169,10 @@ export default function App() {
                   <button
                     type="button"
                     disabled={!educatieImportKlaar}
+                    onClick={() => {
+                      if (!educatieImportKlaar) return
+                      setEducatieMelding('Bestand staat klaar. Zodra het voorbeeldbestand bekend is, wordt de echte import hieraan gekoppeld.')
+                    }}
                     style={{
                       background: educatieImportKlaar ? '#1F7A4D' : '#E5E7EB',
                       color: educatieImportKlaar ? '#fff' : '#9CA3AF',
@@ -3174,6 +3186,21 @@ export default function App() {
                   >
                     Import voorbereiden
                   </button>
+                  {educatieMelding && (
+                    <div
+                      style={{
+                        background: '#ECFDF5',
+                        border: '1px solid #A7F3D0',
+                        borderRadius: 8,
+                        padding: '10px 12px',
+                        fontSize: 12,
+                        color: '#065F46',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {educatieMelding}
+                    </div>
+                  )}
                 </div>
               </Card>
               <Card>
