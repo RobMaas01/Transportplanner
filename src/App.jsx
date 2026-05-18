@@ -120,6 +120,7 @@ function korteWeekLabel(wk) {
 }
 
 const TAKEN_MET_AANTAL = ['Extra kratten', 'Extra sorteren']
+const OVERIG_OPTIE = 'Overig'
 
 export default function App() {
   const WEKEN = maakWeken('2026-W01', 520)
@@ -226,10 +227,13 @@ export default function App() {
   const [aanvraagEditId, setAanvraagEditId] = useState(null)
   const [aanvraagBevestigd, setAanvraagBevestigd] = useState(false)
   const [aanvraagErrors, setAanvraagErrors] = useState({})
+  const [aanvraagOverigVestiging, setAanvraagOverigVestiging] = useState({ van: false, naar: false })
   const [aanvraagStatusTab, setAanvraagStatusTab] = useState('open')
   const [bertAanvragenTab, setBertAanvragenTab] = useState('nieuw')
   const [taakErrors, setTaakErrors] = useState({})
   const [taakEditId, setTaakEditId] = useState(null)
+  const [eigenTitelActief, setEigenTitelActief] = useState(false)
+  const [taakOverigVestiging, setTaakOverigVestiging] = useState({ van: false, naar: false })
   const [taakMelding, setTaakMelding] = useState('')
   const [aanvraagMelding, setAanvraagMelding] = useState('')
   const [nieuweAanvraagMelding, setNieuweAanvraagMelding] = useState(null)
@@ -574,12 +578,25 @@ export default function App() {
     setAanvraagMaand(new Date().toISOString().slice(0, 7))
     setAanvraagEditId(null)
     setAanvraagErrors({})
+    setAanvraagOverigVestiging({ van: false, naar: false })
     setAanvraagBevestigd(false)
     setRol('aanvrager')
     setTab('aanvraag')
     setPin('')
     setPinErr('')
     setToonBertPin(false)
+  }
+
+  function vestigingSelectWaarde(value, overigActief = false) {
+    if (overigActief) return OVERIG_OPTIE
+    if (!value) return ''
+    return VESTIGINGEN.includes(value) ? value : OVERIG_OPTIE
+  }
+
+  function taakSelectWaarde(value) {
+    if (eigenTitelActief) return OVERIG_OPTIE
+    if (!value) return ''
+    return TAAK_SUGGESTIES.includes(value) && value !== OVERIG_OPTIE ? value : OVERIG_OPTIE
   }
 
   function openVandaagTaakVraag() {
@@ -642,6 +659,8 @@ export default function App() {
       prioriteit: 'normaal',
     })
     setTaakEditId(null)
+    setEigenTitelActief(false)
+    setTaakOverigVestiging({ van: false, naar: false })
     setTaakErrors({})
     if (taakEditId) {
       setTaakMelding('Taak gewijzigd.')
@@ -675,6 +694,11 @@ export default function App() {
     })
     setTaakMaand(isoDag(getMaandag(taak.week || vandaag())).slice(0, 7))
     setTaakEditId(taak.id)
+    setEigenTitelActief(!TAAK_SUGGESTIES.includes(taak.titel || ''))
+    setTaakOverigVestiging({
+      van: Boolean(taak.van && !VESTIGINGEN.includes(taak.van)),
+      naar: Boolean(taak.naar && !VESTIGINGEN.includes(taak.naar)),
+    })
     setTaakErrors({})
     setToevoegenTab('taak')
     setTab('toevoegen')
@@ -730,6 +754,7 @@ export default function App() {
     }
 
     setAanvraag(standaardAanvraag())
+    setAanvraagOverigVestiging({ van: false, naar: false })
     setZsmBewustGekozen(false)
     setAanvraagMaand(new Date().toISOString().slice(0, 7))
     if (!aanvraagEditId && rol !== 'transporteur') setAanvraagBevestigd(true)
@@ -751,6 +776,10 @@ export default function App() {
       prioriteit: item.prioriteit || 'normaal',
       prive: Boolean(item.prive),
     })
+    setAanvraagOverigVestiging({
+      van: Boolean(item.van && !VESTIGINGEN.includes(item.van)),
+      naar: Boolean(item.naar && !VESTIGINGEN.includes(item.naar)),
+    })
     setZsmBewustGekozen(false)
     setAanvraagEditId(item.id)
     setAanvraagBevestigd(false)
@@ -761,6 +790,7 @@ export default function App() {
     setAanvraagEditId(null)
     setAanvraagErrors({})
     setAanvraag(standaardAanvraag())
+    setAanvraagOverigVestiging({ van: false, naar: false })
     setZsmBewustGekozen(false)
     setAanvraagMaand(new Date().toISOString().slice(0, 7))
     setAanvraagBevestigd(false)
@@ -1150,6 +1180,13 @@ export default function App() {
             { k: 'rapportage', l: 'Rapportage' },
           ]
   const zichtbareNavTabs = isMobiel ? navTabs.filter((item) => item.k !== 'rapportage') : navTabs
+  const zichtbareNavGroepen =
+    rol === 'transporteur'
+      ? [
+          { titel: 'Bert', tabs: zichtbareNavTabs.filter((item) => ['planning', 'aanvragen'].includes(item.k)) },
+          { titel: 'Registratie', tabs: zichtbareNavTabs.filter((item) => ['toevoegen', 'alletaken', 'rapportage'].includes(item.k)) },
+        ].filter((groep) => groep.tabs.length > 0)
+      : [{ titel: '', tabs: zichtbareNavTabs }]
 
   const pagina = {
     planning: 'Weekplanning',
@@ -1572,29 +1609,38 @@ export default function App() {
                     Sluiten
                   </button>
                 </div>
-                <div style={{ display: 'grid', alignContent: 'start', gap: 8 }}>
-                {zichtbareNavTabs.map((item) => (
-                  <button
-                    key={item.k}
-                    type="button"
-                    onClick={() => {
-                      gaNaarTab(item.k)
-                    }}
-                    style={{
-                      textAlign: 'left',
-                      padding: '11px 12px',
-                      borderRadius: 8,
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: tab === item.k ? '#fff' : '#7C4A2A',
-                      background: tab === item.k ? '#EA6A1F' : '#FFF7ED',
-                      boxShadow: tab === item.k ? '0 6px 14px rgba(234, 106, 31, .18)' : 'inset 0 0 0 1px #FED7AA',
-                    }}
-                  >
-                    {item.l}
-                  </button>
+                <div style={{ display: 'grid', alignContent: 'start', gap: 10 }}>
+                {zichtbareNavGroepen.map((groep) => (
+                  <div key={groep.titel || 'aanvrager'} style={{ display: 'grid', gap: 6 }}>
+                    {groep.titel && (
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#9A5A2E', textTransform: 'uppercase', padding: '0 3px' }}>
+                        {groep.titel}
+                      </div>
+                    )}
+                    {groep.tabs.map((item) => (
+                      <button
+                        key={item.k}
+                        type="button"
+                        onClick={() => {
+                          gaNaarTab(item.k)
+                        }}
+                        style={{
+                          textAlign: 'left',
+                          padding: '11px 12px',
+                          borderRadius: 8,
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: tab === item.k ? '#fff' : '#7C4A2A',
+                          background: tab === item.k ? '#EA6A1F' : '#FFF7ED',
+                          boxShadow: tab === item.k ? '0 6px 14px rgba(234, 106, 31, .18)' : 'inset 0 0 0 1px #FED7AA',
+                        }}
+                      >
+                        {item.l}
+                      </button>
+                    ))}
+                  </div>
                 ))}
                 </div>
                 <div style={{ display: 'grid', gap: 10 }}>
@@ -1621,22 +1667,31 @@ export default function App() {
           </div>
         ) : (
           <nav style={{ padding: '10px 8px', flex: 1, overflowY: 'auto' }}>
-            {zichtbareNavTabs.map((item) => (
-              <div
-                key={item.k}
-                onClick={() => gaNaarTab(item.k)}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  marginBottom: 2,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: tab === item.k ? '#fff' : '#7C4A2A',
-                  background: tab === item.k ? '#EA6A1F' : 'transparent',
-                }}
-              >
-                {item.l}
+            {zichtbareNavGroepen.map((groep) => (
+              <div key={groep.titel || 'aanvrager'} style={{ marginBottom: groep.titel ? 12 : 0 }}>
+                {groep.titel && (
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#9A5A2E', textTransform: 'uppercase', padding: '8px 12px 5px' }}>
+                    {groep.titel}
+                  </div>
+                )}
+                {groep.tabs.map((item) => (
+                  <div
+                    key={item.k}
+                    onClick={() => gaNaarTab(item.k)}
+                    style={{
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      marginBottom: 2,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: tab === item.k ? '#fff' : '#7C4A2A',
+                      background: tab === item.k ? '#EA6A1F' : 'transparent',
+                    }}
+                  >
+                    {item.l}
+                  </div>
+                ))}
               </div>
             ))}
           </nav>
@@ -1984,9 +2039,11 @@ export default function App() {
                     <div>
                       <Label>Van vestiging</Label>
                       <select
-                        value={aanvraag.van}
+                        value={vestigingSelectWaarde(aanvraag.van, aanvraagOverigVestiging.van)}
                         onChange={(e) => {
-                          setAanvraag((prev) => ({ ...prev, van: e.target.value }))
+                          const waarde = e.target.value
+                          setAanvraagOverigVestiging((prev) => ({ ...prev, van: waarde === OVERIG_OPTIE }))
+                          setAanvraag((prev) => ({ ...prev, van: waarde === OVERIG_OPTIE ? (VESTIGINGEN.includes(prev.van) ? '' : prev.van) : waarde }))
                           setAanvraagErrors((prev) => {
                             const next = { ...prev }
                             delete next.route
@@ -2001,14 +2058,32 @@ export default function App() {
                             {vestiging}
                           </option>
                         ))}
+                        <option value={OVERIG_OPTIE}>Overig</option>
                       </select>
+                      {vestigingSelectWaarde(aanvraag.van, aanvraagOverigVestiging.van) === OVERIG_OPTIE && (
+                        <input
+                          value={aanvraag.van}
+                          onChange={(e) => {
+                            setAanvraag((prev) => ({ ...prev, van: e.target.value }))
+                            setAanvraagErrors((prev) => {
+                              const next = { ...prev }
+                              delete next.route
+                              return next
+                            })
+                          }}
+                          placeholder="Vul zelf in"
+                          style={{ ...inp, marginTop: 7, borderColor: aanvraagErrors.route ? '#F87171' : '#E5E9F0' }}
+                        />
+                      )}
                     </div>
                     <div>
                       <Label>Naar vestiging</Label>
                       <select
-                        value={aanvraag.naar}
+                        value={vestigingSelectWaarde(aanvraag.naar, aanvraagOverigVestiging.naar)}
                         onChange={(e) => {
-                          setAanvraag((prev) => ({ ...prev, naar: e.target.value }))
+                          const waarde = e.target.value
+                          setAanvraagOverigVestiging((prev) => ({ ...prev, naar: waarde === OVERIG_OPTIE }))
+                          setAanvraag((prev) => ({ ...prev, naar: waarde === OVERIG_OPTIE ? (VESTIGINGEN.includes(prev.naar) ? '' : prev.naar) : waarde }))
                           setAanvraagErrors((prev) => {
                             const next = { ...prev }
                             delete next.route
@@ -2023,7 +2098,23 @@ export default function App() {
                             {vestiging}
                           </option>
                         ))}
+                        <option value={OVERIG_OPTIE}>Overig</option>
                       </select>
+                      {vestigingSelectWaarde(aanvraag.naar, aanvraagOverigVestiging.naar) === OVERIG_OPTIE && (
+                        <input
+                          value={aanvraag.naar}
+                          onChange={(e) => {
+                            setAanvraag((prev) => ({ ...prev, naar: e.target.value }))
+                            setAanvraagErrors((prev) => {
+                              const next = { ...prev }
+                              delete next.route
+                              return next
+                            })
+                          }}
+                          placeholder="Vul zelf in"
+                          style={{ ...inp, marginTop: 7, borderColor: aanvraagErrors.route ? '#F87171' : '#E5E9F0' }}
+                        />
+                      )}
                     </div>
                     {aanvraagErrors.route && (
                       <div
@@ -3609,12 +3700,15 @@ export default function App() {
                     <div>
                       <Label>Wat moet er gebeuren?</Label>
                       <select
-                        value={TAAK_SUGGESTIES.includes(nieuw.titel) && nieuw.titel !== 'Anders' ? nieuw.titel : ''}
+                        value={taakSelectWaarde(nieuw.titel)}
                         onChange={(e) => {
+                          const gekozen = e.target.value
+                          const isOverig = gekozen === OVERIG_OPTIE
+                          setEigenTitelActief(isOverig)
                           setNieuw((prev) => ({
                             ...prev,
-                            titel: e.target.value,
-                            aantal: TAKEN_MET_AANTAL.includes(e.target.value) ? prev.aantal : '',
+                            titel: isOverig ? '' : gekozen,
+                            aantal: TAKEN_MET_AANTAL.includes(gekozen) ? prev.aantal : '',
                           }))
                           setTaakErrors((prev) => {
                             const next = { ...prev }
@@ -3625,7 +3719,7 @@ export default function App() {
                         style={{ ...inp, borderColor: taakErrors.titel ? '#F87171' : '#E5E9F0' }}
                       >
                         <option value="">Kies taak...</option>
-                        {TAAK_SUGGESTIES.filter((suggestie) => suggestie !== 'Anders').map((suggestie) => (
+                        {TAAK_SUGGESTIES.map((suggestie) => (
                           <option key={suggestie} value={suggestie}>
                             {suggestie}
                           </option>
@@ -3633,12 +3727,14 @@ export default function App() {
                       </select>
                       <FieldError>{taakErrors.titel}</FieldError>
                     </div>
+                    {eigenTitelActief && (
                     <div>
                       <Label>Eigen titel</Label>
                       <input
-                        value={TAAK_SUGGESTIES.includes(nieuw.titel) ? '' : nieuw.titel}
+                        value={nieuw.titel}
                         onChange={(e) => {
                           setNieuw((prev) => ({ ...prev, titel: e.target.value, aantal: '' }))
+                          setEigenTitelActief(true)
                           setTaakErrors((prev) => {
                             const next = { ...prev }
                             delete next.titel
@@ -3649,6 +3745,7 @@ export default function App() {
                         style={{ ...inp, borderColor: taakErrors.titel ? '#F87171' : '#E5E9F0' }}
                       />
                     </div>
+                    )}
                     {TAKEN_MET_AANTAL.includes(nieuw.titel) && (
                       <div>
                         <Label>Aantal</Label>
@@ -3667,8 +3764,12 @@ export default function App() {
                     <div>
                       <Label>Van vestiging</Label>
                       <select
-                        value={nieuw.van}
-                        onChange={(e) => setNieuw((prev) => ({ ...prev, van: e.target.value }))}
+                        value={vestigingSelectWaarde(nieuw.van, taakOverigVestiging.van)}
+                        onChange={(e) => {
+                          const waarde = e.target.value
+                          setTaakOverigVestiging((prev) => ({ ...prev, van: waarde === OVERIG_OPTIE }))
+                          setNieuw((prev) => ({ ...prev, van: waarde === OVERIG_OPTIE ? (VESTIGINGEN.includes(prev.van) ? '' : prev.van) : waarde }))
+                        }}
                         style={inp}
                       >
                         <option value="">Kies...</option>
@@ -3677,13 +3778,26 @@ export default function App() {
                             {vestiging}
                           </option>
                         ))}
+                        <option value={OVERIG_OPTIE}>Overig</option>
                       </select>
+                      {vestigingSelectWaarde(nieuw.van, taakOverigVestiging.van) === OVERIG_OPTIE && (
+                        <input
+                          value={nieuw.van}
+                          onChange={(e) => setNieuw((prev) => ({ ...prev, van: e.target.value }))}
+                          placeholder="Vul zelf in"
+                          style={{ ...inp, marginTop: 7 }}
+                        />
+                      )}
                     </div>
                     <div>
                       <Label>Naar vestiging</Label>
                       <select
-                        value={nieuw.naar}
-                        onChange={(e) => setNieuw((prev) => ({ ...prev, naar: e.target.value }))}
+                        value={vestigingSelectWaarde(nieuw.naar, taakOverigVestiging.naar)}
+                        onChange={(e) => {
+                          const waarde = e.target.value
+                          setTaakOverigVestiging((prev) => ({ ...prev, naar: waarde === OVERIG_OPTIE }))
+                          setNieuw((prev) => ({ ...prev, naar: waarde === OVERIG_OPTIE ? (VESTIGINGEN.includes(prev.naar) ? '' : prev.naar) : waarde }))
+                        }}
                         style={inp}
                       >
                         <option value="">Kies...</option>
@@ -3692,7 +3806,16 @@ export default function App() {
                             {vestiging}
                           </option>
                         ))}
+                        <option value={OVERIG_OPTIE}>Overig</option>
                       </select>
+                      {vestigingSelectWaarde(nieuw.naar, taakOverigVestiging.naar) === OVERIG_OPTIE && (
+                        <input
+                          value={nieuw.naar}
+                          onChange={(e) => setNieuw((prev) => ({ ...prev, naar: e.target.value }))}
+                          placeholder="Vul zelf in"
+                          style={{ ...inp, marginTop: 7 }}
+                        />
+                      )}
                     </div>
                     <ZelfdeVestigingWaarschuwing van={nieuw.van} naar={nieuw.naar} />
                     <div>
@@ -3884,6 +4007,8 @@ export default function App() {
                         <button
                           onClick={() => {
                             setTaakEditId(null)
+                            setEigenTitelActief(false)
+                            setTaakOverigVestiging({ van: false, naar: false })
                             setNieuw({
                               titel: '',
                               omschrijving: '',
@@ -4955,6 +5080,7 @@ export default function App() {
                   const doel = verlaatAanvraagTab
                   setVerlaatAanvraagTab(null)
                   setAanvraag(standaardAanvraag())
+                  setAanvraagOverigVestiging({ van: false, naar: false })
                   setZsmBewustGekozen(false)
                   setAanvraagMaand(new Date().toISOString().slice(0, 7))
                   setAanvraagEditId(null)

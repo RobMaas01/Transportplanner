@@ -29,8 +29,9 @@ export const TAAK_SUGGESTIES = [
   'Extra sorteren',
   'CoderDojo',
   'Meubel verplaatsen',
+  'Stort',
   'Garage',
-  'Anders',
+  'Overig',
 ]
 
 export const STATUS = {
