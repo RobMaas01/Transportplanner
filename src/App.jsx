@@ -3741,6 +3741,21 @@ export default function App() {
               <Card>
                 <CardHead title={taakEditId ? 'Taak wijzigen' : 'Taak toevoegen'} />
                 <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 16, alignItems: 'start' }}>
+                  <div
+                    style={{
+                      gridColumn: '1 / -1',
+                      background: '#FFF7ED',
+                      border: '1px solid #FED7AA',
+                      borderRadius: 8,
+                      padding: '9px 11px',
+                      fontSize: 12,
+                      color: '#92400E',
+                      lineHeight: 1.4,
+                      fontWeight: 650,
+                    }}
+                  >
+                    ! Deze taak komt meteen in de planning. Gebruik Aanvraag invoeren als iets eerst nog beoordeeld of ingepland moet worden.
+                  </div>
                   {taakMelding && (
                     <div
                       onClick={() => setTaakMelding('')}
