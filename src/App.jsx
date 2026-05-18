@@ -92,9 +92,11 @@ function laadSessie() {
         ? 'aanvraag'
         : rol === 'transporteur' && !['planning', 'aanvragen', 'toevoegen', 'drukte', 'aanvraag', 'alletaken', 'rapportage'].includes(tab)
           ? 'planning'
+          : rol === 'educatie' && !['educatie-import'].includes(tab)
+            ? 'educatie-import'
           : tab || 'planning'
     return {
-      rol: rol === 'aanvrager' || rol === 'transporteur' ? rol : null,
+      rol: rol === 'aanvrager' || rol === 'transporteur' || rol === 'educatie' ? rol : null,
       tab: veiligeTab,
     }
   } catch {
@@ -153,6 +155,8 @@ export default function App() {
       ? 'planning'
       : sessie.rol === 'aanvrager' && sessie.tab === 'rapportage'
         ? 'aanvraag'
+        : sessie.rol === 'educatie'
+          ? 'educatie-import'
         : sessie.tab,
   )
   const [menuOpen, setMenuOpen] = useState(false)
@@ -211,11 +215,11 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('bb_tab', isMobiel ? 'planning' : tab)
+      localStorage.setItem('bb_tab', isMobiel && rol === 'transporteur' ? 'planning' : tab)
     } catch {
       // Zie opmerking bij rol-opslag.
     }
-  }, [isMobiel, tab])
+  }, [isMobiel, rol, tab])
 
   const [nieuw, setNieuw] = useState({
     naam: STANDAARD_TAAK_NAAM,
@@ -279,6 +283,11 @@ export default function App() {
     jaar: String(new Date().getFullYear()),
   })
   const [rapportZichtbaar, setRapportZichtbaar] = useState(false)
+  const [educatieImport, setEducatieImport] = useState({
+    schooljaar: '',
+    periode: '',
+    bestandNaam: '',
+  })
 
   useEffect(() => {
     if (!isMobiel || !rol) return undefined
@@ -292,6 +301,8 @@ export default function App() {
         setMobielePlanningDag(vandaagWerkdagIndex())
       } else if (rol === 'aanvrager') {
         setTab('aanvraag')
+      } else if (rol === 'educatie') {
+        setTab('educatie-import')
       }
       setMenuOpen(false)
       setHelpOpen(false)
@@ -596,6 +607,16 @@ export default function App() {
     setAanvraagBevestigd(false)
     setRol('aanvrager')
     setTab('aanvraag')
+    setPin('')
+    setPinErr('')
+    setToonBertPin(false)
+  }
+
+  function startEducatie() {
+    setRol('educatie')
+    setTab('educatie-import')
+    setMenuOpen(false)
+    setHelpOpen(false)
     setPin('')
     setPinErr('')
     setToonBertPin(false)
@@ -1265,6 +1286,8 @@ export default function App() {
             { k: 'aanvraag', l: 'Aanvraag indienen' },
             { k: 'aanvraagstatus', l: `Alle aanvragen${infoNodigAantal ? ` (!)` : ''}` },
           ]
+        : rol === 'educatie'
+          ? [{ k: 'educatie-import', l: 'Import schoollijsten' }]
         : [
             { k: 'planning', l: 'Planning' },
             { k: 'aanvragen', l: `Aanvragen${nieuweAanvragenAantal ? ` (${nieuweAanvragenAantal})` : ''}` },
@@ -1297,6 +1320,17 @@ export default function App() {
             ],
           },
         ].filter((groep) => groep.tabs.length > 0)
+      : rol === 'educatie'
+        ? [
+            {
+              titel: 'Educatie',
+              tint: '#ECFDF5',
+              border: '#BBF7D0',
+              active: '#1F7A4D',
+              color: '#166534',
+              tabs: zichtbareNavTabs,
+            },
+          ]
       : [{ titel: '', tabs: zichtbareNavTabs }]
 
   const pagina = {
@@ -1308,7 +1342,10 @@ export default function App() {
     toevoegen: 'Taak toevoegen',
     alletaken: 'Overzicht',
     rapportage: 'Rapportage',
+    'educatie-import': 'Import schoollijsten',
   }
+
+  const educatieImportKlaar = educatieImport.schooljaar.trim() && educatieImport.periode.trim() && educatieImport.bestandNaam
 
   if (!rol) {
     return (
@@ -1377,6 +1414,22 @@ export default function App() {
               }}
             >
               Transportaanvraag
+            </button>
+            <button
+              onClick={startEducatie}
+              style={{
+                width: '100%',
+                background: '#F3F4F6',
+                color: '#374151',
+                border: '1px solid #D1D5DB',
+                borderRadius: 10,
+                padding: '14px 18px',
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Educatie
             </button>
             <button
               onClick={() => {
@@ -1573,6 +1626,14 @@ export default function App() {
       return [
         ['Transportaanvraag', 'Geef door wat vervoerd moet worden.'],
         ['Alle aanvragen', 'Volg recente aanvragen en open acties.'],
+      ]
+    }
+
+    if (rol === 'educatie') {
+      return [
+        ['Schooljaar', 'Vul het schooljaar van de lijst in.'],
+        ['Periode', 'Vul de periode in die op de lijst staat.'],
+        ['Excel import', 'Kies straks het bestand dat verwerkt moet worden.'],
       ]
     }
 
@@ -1902,7 +1963,7 @@ export default function App() {
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: '#3A2A22' }}>Menu</div>
                     <div style={{ fontSize: 12, color: '#9A5A2E', marginTop: 2 }}>
-                      {rol === 'aanvrager' ? 'Aanvrager' : 'Beheer'}
+                      {rol === 'aanvrager' ? 'Aanvrager' : rol === 'educatie' ? 'Educatie' : 'Beheer'}
                     </div>
                   </div>
                   <button
@@ -2052,7 +2113,7 @@ export default function App() {
         >
           <div style={{ background: '#FFE8D1', borderRadius: 8, padding: isMobiel ? '7px 8px' : '10px 12px', marginBottom: 8 }}>
             <div style={{ color: '#3A2A22', fontSize: 12, fontWeight: 600 }}>
-              {rol === 'aanvrager' ? 'Aanvrager' : 'Beheer'}
+              {rol === 'aanvrager' ? 'Aanvrager' : rol === 'educatie' ? 'Educatie' : 'Beheer'}
             </div>
             <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 2 }}>Ingelogd</div>
             <div style={{ color: '#9A5A2E', fontSize: 10, marginTop: 5 }}>{opslagStatus}</div>
@@ -3033,6 +3094,135 @@ export default function App() {
                 })()}
               </div>
             </Card>
+          )}
+
+          {tab === 'educatie-import' && rol === 'educatie' && (
+            <div style={{ display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 18 }}>
+              <Card>
+                <CardHead title="Import schoollijsten" sub="Voor lijsten van Educatie per schooljaar en periode" />
+                <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gap: 12 }}>
+                  <div
+                    style={{
+                      background: '#F8F9FC',
+                      border: '1px solid #E5E9F0',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      fontSize: 12,
+                      color: '#6B7280',
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    Deze import is alvast klaargezet. Zodra het voorbeeldbestand bekend is, wordt de Excel-verwerking gekoppeld.
+                  </div>
+                  <div>
+                    <Label required>Schooljaar</Label>
+                    <input
+                      value={educatieImport.schooljaar}
+                      onChange={(e) => setEducatieImport((prev) => ({ ...prev, schooljaar: e.target.value }))}
+                      placeholder="Bijv. 2026-2027"
+                      style={inp}
+                    />
+                  </div>
+                  <div>
+                    <Label required>Periode</Label>
+                    <input
+                      value={educatieImport.periode}
+                      onChange={(e) => setEducatieImport((prev) => ({ ...prev, periode: e.target.value }))}
+                      placeholder="Bijv. Periode 1"
+                      style={inp}
+                    />
+                  </div>
+                  <div>
+                    <Label>Excel bestand</Label>
+                    <label
+                      style={{
+                        border: '1px dashed #CBD5E1',
+                        borderRadius: 10,
+                        padding: '18px 14px',
+                        background: '#FCFCFD',
+                        display: 'grid',
+                        gap: 6,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
+                        {educatieImport.bestandNaam || 'Kies Excelbestand'}
+                      </span>
+                      <span style={{ fontSize: 12, color: '#6B7280' }}>
+                        Ondersteuning voor .xlsx/.xls wordt gekoppeld zodra de lijst bekend is.
+                      </span>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={(e) => {
+                          const bestand = e.target.files?.[0]
+                          setEducatieImport((prev) => ({ ...prev, bestandNaam: bestand?.name || '' }))
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!educatieImportKlaar}
+                    style={{
+                      background: educatieImportKlaar ? '#1F7A4D' : '#E5E7EB',
+                      color: educatieImportKlaar ? '#fff' : '#9CA3AF',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '10px 14px',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: educatieImportKlaar ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    Import voorbereiden
+                  </button>
+                </div>
+              </Card>
+              <Card>
+                <CardHead title="Wat gebeurt hier straks?" />
+                <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gap: 10 }}>
+                  {[
+                    'Excelbestand lezen',
+                    'Rijen controleren',
+                    'Taken of aanvragen klaarzetten',
+                    'Daarna pas definitief toevoegen',
+                  ].map((stap, index) => (
+                    <div
+                      key={stap}
+                      style={{
+                        display: 'flex',
+                        gap: 10,
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        border: '1px solid #E5E9F0',
+                        borderRadius: 8,
+                        background: '#fff',
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: '50%',
+                          background: '#ECFDF5',
+                          color: '#166534',
+                          display: 'grid',
+                          placeItems: 'center',
+                          fontSize: 12,
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {index + 1}
+                      </span>
+                      <span style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>{stap}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
           )}
 
           {tab === 'aanvragen' && rol === 'transporteur' && (
