@@ -1,4 +1,5 @@
 import { AANVRAAG_STATUS, STATUS } from './constants'
+import { inp } from './uiStyles'
 import { maandLabel, verschuifMaand } from './utils'
 
 export function MonthNav({ value, onChange, min }) {
@@ -240,6 +241,171 @@ export function FieldError({ children }) {
   if (!children) return null
 
   return <div style={{ fontSize: 11, color: '#B91C1C', marginTop: 4 }}>{children}</div>
+}
+
+export function EducatieImportLayout({
+  breedFormGrid,
+  educatieImport,
+  educatieImportKlaar,
+  educatieMelding,
+  isMobiel,
+  setEducatieImport,
+  setEducatieMelding,
+}) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 18 }}>
+      <Card>
+        <CardHead title="Import schoollijsten" sub="Voor lijsten van Educatie per schooljaar en periode" />
+        <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gap: 12 }}>
+          <div
+            style={{
+              background: '#F8F9FC',
+              border: '1px solid #E5E9F0',
+              borderRadius: 8,
+              padding: '10px 12px',
+              fontSize: 12,
+              color: '#6B7280',
+              lineHeight: 1.45,
+            }}
+          >
+            Deze import is alvast klaargezet. Zodra het voorbeeldbestand bekend is, wordt de Excel-verwerking gekoppeld.
+          </div>
+          <div>
+            <Label required>Schooljaar</Label>
+            <input
+              value={educatieImport.schooljaar}
+              onChange={(e) => {
+                setEducatieImport((prev) => ({ ...prev, schooljaar: e.target.value }))
+                setEducatieMelding('')
+              }}
+              placeholder="Bijv. 2026-2027"
+              style={inp}
+            />
+          </div>
+          <div>
+            <Label required>Periode</Label>
+            <input
+              value={educatieImport.periode}
+              onChange={(e) => {
+                setEducatieImport((prev) => ({ ...prev, periode: e.target.value }))
+                setEducatieMelding('')
+              }}
+              placeholder="Bijv. Periode 1"
+              style={inp}
+            />
+          </div>
+          <div>
+            <Label>Excel bestand</Label>
+            <label
+              style={{
+                border: '1px dashed #CBD5E1',
+                borderRadius: 10,
+                padding: '18px 14px',
+                background: '#FCFCFD',
+                display: 'grid',
+                gap: 6,
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
+                {educatieImport.bestandNaam || 'Kies Excelbestand'}
+              </span>
+              <span style={{ fontSize: 12, color: '#6B7280' }}>
+                Ondersteuning voor .xlsx/.xls wordt gekoppeld zodra de lijst bekend is.
+              </span>
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={(e) => {
+                  const bestand = e.target.files?.[0]
+                  setEducatieImport((prev) => ({ ...prev, bestandNaam: bestand?.name || '' }))
+                  setEducatieMelding('')
+                }}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </div>
+          <button
+            type="button"
+            disabled={!educatieImportKlaar}
+            onClick={() => {
+              if (!educatieImportKlaar) return
+              setEducatieMelding('Bestand staat klaar. Zodra het voorbeeldbestand bekend is, wordt de echte import hieraan gekoppeld.')
+            }}
+            style={{
+              background: educatieImportKlaar ? '#1F7A4D' : '#E5E7EB',
+              color: educatieImportKlaar ? '#fff' : '#9CA3AF',
+              border: 'none',
+              borderRadius: 8,
+              padding: '10px 14px',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: educatieImportKlaar ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Import voorbereiden
+          </button>
+          {educatieMelding && (
+            <div
+              style={{
+                background: '#ECFDF5',
+                border: '1px solid #A7F3D0',
+                borderRadius: 8,
+                padding: '10px 12px',
+                fontSize: 12,
+                color: '#065F46',
+                lineHeight: 1.4,
+              }}
+            >
+              {educatieMelding}
+            </div>
+          )}
+        </div>
+      </Card>
+      <Card>
+        <CardHead title="Wat gebeurt hier straks?" />
+        <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gap: 10 }}>
+          {[
+            'Excelbestand lezen',
+            'Rijen controleren',
+            'Taken of aanvragen klaarzetten',
+            'Daarna pas definitief toevoegen',
+          ].map((stap, index) => (
+            <div
+              key={stap}
+              style={{
+                display: 'flex',
+                gap: 10,
+                alignItems: 'center',
+                padding: '10px 12px',
+                border: '1px solid #E5E9F0',
+                borderRadius: 8,
+                background: '#fff',
+              }}
+            >
+              <span
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  background: '#ECFDF5',
+                  color: '#166534',
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  flexShrink: 0,
+                }}
+              >
+                {index + 1}
+              </span>
+              <span style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>{stap}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  )
 }
 
 export function DrukteWaarschuwing({ waarschuwing, compact = false }) {
