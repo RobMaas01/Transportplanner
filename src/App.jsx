@@ -119,7 +119,12 @@ function korteWeekLabel(wk) {
   return `${weekNr(wk)} ${getMaandag(wk).getFullYear()}`
 }
 
+const STANDAARD_TAAK_NAAM = 'Bert'
+const SCHOOL7 = 'Bibliotheek School 7'
+const TUITJENHORN = 'Bibliotheek Tuitjenhorn'
 const TAKEN_MET_AANTAL = ['Plukker', 'Extra kratten', 'Extra sorteren']
+const TAKEN_MET_TIJD = ['Extra sorteren']
+const CODERDOJO_VESTIGINGEN = [SCHOOL7, 'Bibliotheek Anna Paulowna', 'Bibliotheek Schagen']
 const OVERIG_OPTIE = 'Overig'
 
 export default function App() {
@@ -212,9 +217,11 @@ export default function App() {
   }, [isMobiel, tab])
 
   const [nieuw, setNieuw] = useState({
+    naam: STANDAARD_TAAK_NAAM,
     titel: '',
     omschrijving: '',
     aantal: '',
+    tijd: '',
     van: '',
     naar: '',
     week: vandaag(),
@@ -601,10 +608,27 @@ export default function App() {
     return TAAK_SUGGESTIES.includes(value) && value !== OVERIG_OPTIE ? value : OVERIG_OPTIE
   }
 
-  function taakStandaardRoute(titel) {
-    if (titel === 'Plukker') return { van: 'Plukker', naar: 'Bibliotheek School 7' }
-    if (titel === 'Eelan') return { van: 'Eelan', naar: 'Bibliotheek School 7' }
-    return null
+  function taakRouteVoorTitel(titel, vorigeTaak) {
+    const basis = {
+      van: vorigeTaak.van || '',
+      naar: vorigeTaak.naar || '',
+    }
+    if (titel === 'Plukker' || titel === 'Eelan') return { van: '', naar: basis.naar || SCHOOL7 }
+    if (titel === 'Extra sorteren') return { van: basis.van || TUITJENHORN, naar: '' }
+    if (titel === 'Stort') return { van: basis.van, naar: '' }
+    if (titel === 'CoderDojo') {
+      return {
+        van: CODERDOJO_VESTIGINGEN.includes(basis.van) ? basis.van : '',
+        naar: CODERDOJO_VESTIGINGEN.includes(basis.naar) ? basis.naar : '',
+      }
+    }
+    return basis
+  }
+
+  function taakRouteVoorOpslag(titel, taak) {
+    if (titel === 'Plukker' || titel === 'Eelan') return { van: '', naar: taak.naar || '' }
+    if (titel === 'Extra sorteren' || titel === 'Stort') return { van: taak.van || '', naar: '' }
+    return { van: taak.van || '', naar: taak.naar || '' }
   }
 
   function openVandaagTaakVraag() {
@@ -622,8 +646,11 @@ export default function App() {
     if (Object.keys(errors).length > 0) return false
     const taakData = {
       ...nieuw,
+      naam: String(nieuw.naam || STANDAARD_TAAK_NAAM).trim() || STANDAARD_TAAK_NAAM,
       titel: nieuw.titel.trim(),
+      ...taakRouteVoorOpslag(nieuw.titel.trim(), nieuw),
       aantal: TAKEN_MET_AANTAL.includes(nieuw.titel.trim()) ? String(nieuw.aantal || '').trim() : '',
+      tijd: TAKEN_MET_TIJD.includes(nieuw.titel.trim()) ? String(nieuw.tijd || '').trim() : '',
       dag: nieuw.alleenWeek ? null : nieuw.dag,
       omschrijving: nieuw.omschrijving,
     }
@@ -656,9 +683,11 @@ export default function App() {
     }
 
     setNieuw({
+      naam: STANDAARD_TAAK_NAAM,
       titel: '',
       omschrijving: '',
       aantal: '',
+      tijd: '',
       van: '',
       naar: '',
       week: vandaag(),
@@ -690,9 +719,11 @@ export default function App() {
 
   function bewerkTaak(taak) {
     setNieuw({
+      naam: taak.naam || STANDAARD_TAAK_NAAM,
       titel: taak.titel || '',
       omschrijving: taak.omschrijving || '',
       aantal: taak.aantal || '',
+      tijd: taak.tijd || '',
       van: taak.van || '',
       naar: taak.naar || '',
       week: taak.week || vandaag(),
@@ -1132,8 +1163,10 @@ export default function App() {
       'Datum',
       'Week',
       'Dag',
+      'Naam',
       'Taak',
       'Aantal',
+      'Tijd in minuten',
       'Van',
       'Naar',
       'Status',
@@ -1146,8 +1179,10 @@ export default function App() {
       fmt(taakDatum(taak)),
       weekNr(taak.week),
       dagLabel(taak.dag),
+      taak.naam || taak.door || '',
       taak.titel,
       taak.aantal || '',
+      taak.tijd || '',
       taak.van || '',
       taak.naar || '',
       STATUS[taak.status]?.label || taak.status,
@@ -1494,6 +1529,101 @@ export default function App() {
       ['Rapportage', 'Maak een overzicht voor administratie.'],
     ]
   })()
+
+  const taakVestigingOpties = nieuw.titel === 'CoderDojo' ? CODERDOJO_VESTIGINGEN : VESTIGINGEN
+  const taakToelichtingPlaceholder =
+    nieuw.titel === 'Extra sorteren'
+      ? 'Eventuele opmerkingen'
+      : nieuw.titel === 'Plukker'
+        ? 'Eventuele opmerkingen'
+        : 'Bijzonderheden, gewenste tijd...'
+
+  function renderTaakVestigingVeld(veld, label, opties = taakVestigingOpties) {
+    return (
+      <div>
+        <Label>{label}</Label>
+        <select
+          value={vestigingSelectWaarde(nieuw[veld], taakOverigVestiging[veld])}
+          onChange={(e) => {
+            const waarde = e.target.value
+            setTaakOverigVestiging((prev) => ({ ...prev, [veld]: waarde === OVERIG_OPTIE }))
+            setNieuw((prev) => ({
+              ...prev,
+              [veld]: waarde === OVERIG_OPTIE ? (opties.includes(prev[veld]) ? '' : prev[veld]) : waarde,
+            }))
+          }}
+          style={inp}
+        >
+          <option value="">Kies...</option>
+          {opties.map((vestiging) => (
+            <option key={vestiging} value={vestiging}>
+              {vestiging}
+            </option>
+          ))}
+          <option value={OVERIG_OPTIE}>Overig</option>
+        </select>
+        {vestigingSelectWaarde(nieuw[veld], taakOverigVestiging[veld]) === OVERIG_OPTIE && (
+          <input
+            value={nieuw[veld]}
+            onChange={(e) => setNieuw((prev) => ({ ...prev, [veld]: e.target.value }))}
+            placeholder="Vul zelf in"
+            style={{ ...inp, marginTop: 7 }}
+          />
+        )}
+      </div>
+    )
+  }
+
+  function renderTaakAantalVeld() {
+    return (
+      <div>
+        <Label>Aantal</Label>
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          step="1"
+          value={nieuw.aantal}
+          onChange={(e) => setNieuw((prev) => ({ ...prev, aantal: e.target.value }))}
+          placeholder="Bijv. 6"
+          style={inp}
+        />
+      </div>
+    )
+  }
+
+  function renderTaakTijdVeld() {
+    return (
+      <div>
+        <Label>Tijd in minuten</Label>
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          step="1"
+          value={nieuw.tijd}
+          onChange={(e) => setNieuw((prev) => ({ ...prev, tijd: e.target.value }))}
+          placeholder="Bijv. 30"
+          style={inp}
+        />
+      </div>
+    )
+  }
+
+  function renderTaakToelichtingVeld() {
+    return (
+      <div>
+        <Label>Toelichting</Label>
+        <textarea
+          value={nieuw.omschrijving}
+          onChange={(e) => setNieuw((prev) => ({ ...prev, omschrijving: e.target.value }))}
+          placeholder={taakToelichtingPlaceholder}
+          rows={2}
+          style={{ ...inp, resize: 'vertical' }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div
@@ -3498,6 +3628,9 @@ export default function App() {
                           {taak.aantal && (
                             <div style={{ fontSize: 12, color: '#374151', marginTop: 3 }}>Aantal: {taak.aantal}</div>
                           )}
+                          {taak.tijd && (
+                            <div style={{ fontSize: 12, color: '#374151', marginTop: 3 }}>Tijd: {taak.tijd} min</div>
+                          )}
                           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
                             <Pill status={taak.status} />
                             <span style={{ fontSize: 10, color: '#9CA3AF' }}>Alleen week</span>
@@ -3567,6 +3700,11 @@ export default function App() {
                         {taak.aantal && (
                           <div style={{ fontSize: isMobiel ? 12 : 10, color: '#374151', marginBottom: 4 }}>
                             Aantal: {taak.aantal}
+                          </div>
+                        )}
+                        {taak.tijd && (
+                          <div style={{ fontSize: isMobiel ? 12 : 10, color: '#374151', marginBottom: 4 }}>
+                            Tijd: {taak.tijd} min
                           </div>
                         )}
                         {taak.van && taak.naar && (
@@ -3779,29 +3917,30 @@ export default function App() {
                   )}
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div>
+                      <Label>Naam</Label>
+                      <input
+                        value={nieuw.naam}
+                        onChange={(e) => setNieuw((prev) => ({ ...prev, naam: e.target.value }))}
+                        placeholder="Bert"
+                        style={inp}
+                      />
+                    </div>
+                    <div>
                       <Label>Wat moet er gebeuren?</Label>
                       <select
                         value={taakSelectWaarde(nieuw.titel)}
                         onChange={(e) => {
                           const gekozen = e.target.value
                           const isOverig = gekozen === OVERIG_OPTIE
-                          const standaardRoute = taakStandaardRoute(gekozen)
                           setEigenTitelActief(isOverig)
-                          if (standaardRoute) {
-                            setTaakOverigVestiging({
-                              van: !VESTIGINGEN.includes(standaardRoute.van),
-                              naar: !VESTIGINGEN.includes(standaardRoute.naar),
-                            })
-                          } else if (['Plukker', 'Eelan'].includes(nieuw.titel)) {
-                            setTaakOverigVestiging({ van: false, naar: false })
-                          }
                           setNieuw((prev) => ({
                             ...prev,
                             titel: isOverig ? '' : gekozen,
                             aantal: TAKEN_MET_AANTAL.includes(gekozen) ? prev.aantal : '',
-                            ...(!standaardRoute && ['Plukker', 'Eelan'].includes(prev.titel) ? { van: '', naar: '' } : {}),
-                            ...(standaardRoute || {}),
+                            tijd: TAKEN_MET_TIJD.includes(gekozen) ? prev.tijd : '',
+                            ...taakRouteVoorTitel(gekozen, prev),
                           }))
+                          setTaakOverigVestiging({ van: false, naar: false })
                           setTaakErrors((prev) => {
                             const next = { ...prev }
                             delete next.titel
@@ -3838,88 +3977,58 @@ export default function App() {
                       />
                     </div>
                     )}
-                    {TAKEN_MET_AANTAL.includes(nieuw.titel) && (
-                      <div>
-                        <Label>Aantal</Label>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min="0"
-                          step="1"
-                          value={nieuw.aantal}
-                          onChange={(e) => setNieuw((prev) => ({ ...prev, aantal: e.target.value }))}
-                          placeholder="Bijv. 6"
-                          style={inp}
-                        />
-                      </div>
+                    {nieuw.titel === 'Plukker' && (
+                      <>
+                        {renderTaakVestigingVeld('naar', 'Naar vestiging')}
+                        {renderTaakAantalVeld()}
+                        {renderTaakToelichtingVeld()}
+                      </>
                     )}
-                    <div>
-                      <Label>Van vestiging</Label>
-                      <select
-                        value={vestigingSelectWaarde(nieuw.van, taakOverigVestiging.van)}
-                        onChange={(e) => {
-                          const waarde = e.target.value
-                          setTaakOverigVestiging((prev) => ({ ...prev, van: waarde === OVERIG_OPTIE }))
-                          setNieuw((prev) => ({ ...prev, van: waarde === OVERIG_OPTIE ? (VESTIGINGEN.includes(prev.van) ? '' : prev.van) : waarde }))
-                        }}
-                        style={inp}
-                      >
-                        <option value="">Kies...</option>
-                        {VESTIGINGEN.map((vestiging) => (
-                          <option key={vestiging} value={vestiging}>
-                            {vestiging}
-                          </option>
-                        ))}
-                        <option value={OVERIG_OPTIE}>Overig</option>
-                      </select>
-                      {vestigingSelectWaarde(nieuw.van, taakOverigVestiging.van) === OVERIG_OPTIE && (
-                        <input
-                          value={nieuw.van}
-                          onChange={(e) => setNieuw((prev) => ({ ...prev, van: e.target.value }))}
-                          placeholder="Vul zelf in"
-                          style={{ ...inp, marginTop: 7 }}
-                        />
-                      )}
-                    </div>
-                    <div>
-                      <Label>Naar vestiging</Label>
-                      <select
-                        value={vestigingSelectWaarde(nieuw.naar, taakOverigVestiging.naar)}
-                        onChange={(e) => {
-                          const waarde = e.target.value
-                          setTaakOverigVestiging((prev) => ({ ...prev, naar: waarde === OVERIG_OPTIE }))
-                          setNieuw((prev) => ({ ...prev, naar: waarde === OVERIG_OPTIE ? (VESTIGINGEN.includes(prev.naar) ? '' : prev.naar) : waarde }))
-                        }}
-                        style={inp}
-                      >
-                        <option value="">Kies...</option>
-                        {VESTIGINGEN.map((vestiging) => (
-                          <option key={vestiging} value={vestiging}>
-                            {vestiging}
-                          </option>
-                        ))}
-                        <option value={OVERIG_OPTIE}>Overig</option>
-                      </select>
-                      {vestigingSelectWaarde(nieuw.naar, taakOverigVestiging.naar) === OVERIG_OPTIE && (
-                        <input
-                          value={nieuw.naar}
-                          onChange={(e) => setNieuw((prev) => ({ ...prev, naar: e.target.value }))}
-                          placeholder="Vul zelf in"
-                          style={{ ...inp, marginTop: 7 }}
-                        />
-                      )}
-                    </div>
-                    <ZelfdeVestigingWaarschuwing van={nieuw.van} naar={nieuw.naar} />
-                    <div>
-                      <Label>Toelichting</Label>
-                      <textarea
-                        value={nieuw.omschrijving}
-                        onChange={(e) => setNieuw((prev) => ({ ...prev, omschrijving: e.target.value }))}
-                        placeholder="Aantal kratten, bijzonderheden, gewenste tijd..."
-                        rows={2}
-                        style={{ ...inp, resize: 'vertical' }}
-                      />
-                    </div>
+                    {nieuw.titel === 'Eelan' && (
+                      <>
+                        {renderTaakVestigingVeld('naar', 'Naar vestiging')}
+                        {renderTaakToelichtingVeld()}
+                      </>
+                    )}
+                    {nieuw.titel === 'Extra kratten' && (
+                      <>
+                        {renderTaakVestigingVeld('van', 'Van vestiging')}
+                        {renderTaakVestigingVeld('naar', 'Naar vestiging')}
+                        <ZelfdeVestigingWaarschuwing van={nieuw.van} naar={nieuw.naar} />
+                        {renderTaakAantalVeld()}
+                        {renderTaakToelichtingVeld()}
+                      </>
+                    )}
+                    {nieuw.titel === 'Extra sorteren' && (
+                      <>
+                        {renderTaakVestigingVeld('van', 'Vestiging')}
+                        {renderTaakAantalVeld()}
+                        {renderTaakTijdVeld()}
+                        {renderTaakToelichtingVeld()}
+                      </>
+                    )}
+                    {nieuw.titel === 'CoderDojo' && (
+                      <>
+                        {renderTaakVestigingVeld('van', 'Van vestiging', CODERDOJO_VESTIGINGEN)}
+                        {renderTaakVestigingVeld('naar', 'Naar vestiging', CODERDOJO_VESTIGINGEN)}
+                        <ZelfdeVestigingWaarschuwing van={nieuw.van} naar={nieuw.naar} />
+                        {renderTaakToelichtingVeld()}
+                      </>
+                    )}
+                    {nieuw.titel === 'Stort' && (
+                      <>
+                        {renderTaakVestigingVeld('van', 'Van vestiging')}
+                        {renderTaakToelichtingVeld()}
+                      </>
+                    )}
+                    {nieuw.titel && !['Plukker', 'Eelan', 'Extra kratten', 'Extra sorteren', 'CoderDojo', 'Stort'].includes(nieuw.titel) && (
+                      <>
+                        {renderTaakVestigingVeld('van', 'Van vestiging')}
+                        {renderTaakVestigingVeld('naar', 'Naar vestiging')}
+                        <ZelfdeVestigingWaarschuwing van={nieuw.van} naar={nieuw.naar} />
+                        {renderTaakToelichtingVeld()}
+                      </>
+                    )}
                   </div>
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div>
@@ -4102,9 +4211,11 @@ export default function App() {
                             setEigenTitelActief(false)
                             setTaakOverigVestiging({ van: false, naar: false })
                             setNieuw({
+                              naam: STANDAARD_TAAK_NAAM,
                               titel: '',
                               omschrijving: '',
                               aantal: '',
+                              tijd: '',
                               van: '',
                               naar: '',
                               week: vandaag(),
@@ -4233,6 +4344,9 @@ export default function App() {
                             {taak.aantal && (
                               <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Aantal: {taak.aantal}</div>
                             )}
+                            {taak.tijd && (
+                              <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Tijd: {taak.tijd} min</div>
+                            )}
                             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
                               {weekNr(taak.week)} | {dagLabel(taak.dag)} | {bronLabel(taak.bron)}
                             </div>
@@ -4328,6 +4442,9 @@ export default function App() {
                                 <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{taak.titel}</div>
                                 {taak.aantal && (
                                   <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Aantal: {taak.aantal}</div>
+                                )}
+                                {taak.tijd && (
+                                  <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Tijd: {taak.tijd} min</div>
                                 )}
                                 <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
                                   {weekNr(taak.week)} | {dagLabel(taak.dag)} | {bronLabel(taak.bron)}
@@ -4900,6 +5017,7 @@ export default function App() {
                           <span style={{ flex: 2, fontWeight: 500, color: '#111827' }}>
                             {taak.titel}
                             {taak.aantal ? ` (${taak.aantal})` : ''}
+                            {taak.tijd ? ` - ${taak.tijd} min` : ''}
                           </span>
                           <span style={{ flex: 2, color: '#6B7280' }}>
                             {dagLabel(taak.dag)}

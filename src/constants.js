@@ -28,8 +28,8 @@ export const TAAK_SUGGESTIES = [
   'Extra kratten',
   'Extra sorteren',
   'CoderDojo',
-  'Meubel verplaatsen',
   'Stort',
+  'Meubel verplaatsen',
   'Garage',
   'Overig',
 ]

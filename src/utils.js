@@ -342,6 +342,8 @@ export function taakZoekTekst(taak) {
   return [
     taak.titel,
     taak.aantal,
+    taak.tijd,
+    taak.naam,
     taak.omschrijving,
     taak.van,
     taak.naar,
