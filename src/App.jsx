@@ -1175,7 +1175,7 @@ export default function App() {
         : [
             { k: 'planning', l: 'Planning' },
             { k: 'aanvragen', l: `Aanvragen${nieuweAanvragenAantal ? ` (${nieuweAanvragenAantal})` : ''}` },
-            { k: 'toevoegen', l: 'Registreren' },
+            { k: 'toevoegen', l: 'Taak toevoegen' },
             { k: 'alletaken', l: 'Overzicht' },
             { k: 'rapportage', l: 'Rapportage' },
           ]
@@ -1193,7 +1193,7 @@ export default function App() {
     aanvragen: 'Aanvragen',
     aanvraag: 'Transport aanvragen',
     aanvraagstatus: 'Aanvragen volgen',
-    toevoegen: 'Registreren',
+    toevoegen: 'Taak toevoegen',
     alletaken: 'Overzicht',
     rapportage: 'Rapportage',
   }
@@ -1460,7 +1460,7 @@ export default function App() {
       ['Planning', 'Bekijk taken per week, maand of jaar.'],
       ['Aanvragen', 'Plan aanvragen in, vraag extra info of verwijder dubbele of foutieve aanvragen.'],
       [
-        'Registreren',
+        'Taak toevoegen',
         'Voeg een taak toe of zet een druktemelding, bijvoorbeeld vakantie, afwezigheid of een drukke week. Aanvragers zien deze waarschuwing bij het kiezen van een datum.',
       ],
       ['Overzicht', 'Zoek taken terug, wijzig ze of verwijder ze.'],
@@ -1862,6 +1862,20 @@ export default function App() {
               <Card>
                 <CardHead title={aanvraagEditId ? 'Aanvraag aanvullen' : 'Nieuwe transportaanvraag'} />
                 <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 16, alignItems: 'start' }}>
+                  <div
+                    style={{
+                      gridColumn: '1 / -1',
+                      background: '#F8F9FC',
+                      border: '1px solid #E5E9F0',
+                      borderRadius: 8,
+                      padding: '9px 11px',
+                      fontSize: 12,
+                      color: '#6B7280',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    Voor leidinggevende, administratie en educatie die een extra transporttaak willen doorgeven.
+                  </div>
                   {heeftErrors(aanvraagErrors) && (
                     <div
                       style={{
