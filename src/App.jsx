@@ -350,7 +350,24 @@ export default function App() {
   }
 
   function resetTaakForm() {
-    resetTaakForm()
+    setNieuw({
+      naam: STANDAARD_TAAK_NAAM,
+      titel: '',
+      omschrijving: '',
+      reden: '',
+      aantal: '',
+      tijd: '',
+      van: '',
+      naar: '',
+      week: vandaag(),
+      dag: vandaagDagIndex(),
+      alleenWeek: false,
+      prioriteit: 'normaal',
+    })
+    setTaakEditId(null)
+    setEigenTitelActief(false)
+    setTaakOverigVestiging({ van: false, naar: false })
+    setTaakErrors({})
   }
 
   function gaNaarTab(nieuweTab) {
