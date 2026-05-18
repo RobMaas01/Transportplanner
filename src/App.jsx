@@ -1447,28 +1447,32 @@ export default function App() {
     if (isMobiel) {
       const mobieleHelp = {
         aanvraag: [
-          ['Transportaanvraag', 'Vul in wat er vervoerd moet worden. Kies minimaal een van- of naar-vestiging.'],
-          ['Privé', 'Privé-aanvragen zijn alleen zichtbaar in Registratie & beheer en komen niet in Alle aanvragen.'],
+          rol === 'transporteur'
+            ? ['Aanvraag invoeren', 'Voer een aanvraag in namens iemand.']
+            : ['Transportaanvraag', 'Geef door wat vervoerd moet worden.'],
+          rol === 'transporteur'
+            ? ['Druktemelding', 'Geef drukte of afwezigheid door.']
+            : ['Prive', 'Alleen zichtbaar voor Registratie & beheer.'],
         ],
         aanvraagstatus: [
-          ['Open', 'Hier staan recente aanvragen die nog lopen.'],
-          ['Voltooid', 'Afgeronde aanvragen blijven tijdelijk zichtbaar en verdwijnen daarna uit dit overzicht.'],
+          ['Alle aanvragen', 'Volg recente aanvragen en open acties.'],
+          ['Meer info nodig', 'Vul de aanvraag aan als dit gevraagd wordt.'],
         ],
         planning: [
-          ['Weekplanning', 'Gebruik de pijlen om van week te wisselen en kies bovenin de dag die je wilt bekijken.'],
-          ['Taken', 'Geplande taken staan blauw. Afgeronde taken staan groen.'],
+          ['Planning', 'Bekijk wat per dag of week gepland staat.'],
+          ['Vandaag', 'Ga snel terug naar de planning van vandaag.'],
         ],
         aanvragen: [
-          ['Aanvragen', 'Nieuwe aanvragen staan bovenaan. Open een aanvraag om te plannen of om meer informatie te vragen.'],
-          ['Verwijderen', 'Verwijder alleen dubbele of foutieve aanvragen. Gebruik Meer info nodig als de aanvrager nog iets moet doen.'],
+          ['Aanvragen', 'Plan aanvragen in of vraag meer info.'],
+          ['Nieuw', 'Het cijfer blijft staan tot de aanvraag is behandeld.'],
         ],
         toevoegen: [
-          ['Taak toevoegen', 'Voeg eigen taken toe voor planning of registratie achteraf.'],
-          ['Meteen uitvoeren', 'Gebruik dit als de taak al gedaan is en alleen nog in de administratie moet komen.'],
+          ['Taak toevoegen', 'Zet een taak direct in de planning.'],
+          ['Meteen uitvoeren', 'Gebruik dit als de taak al gedaan is.'],
         ],
         alletaken: [
-          ['Overzicht', 'Zoek taken terug met de zoekbalk of filter op jaar en maand.'],
-          ['Verwijderd', 'Verwijderde taken kun je tijdelijk terugvinden en herstellen.'],
+          ['Overzicht', 'Zoek, wijzig of herstel taken.'],
+          ['Verwijderd', 'Herstel of verwijder taken definitief.'],
         ],
       }
       return mobieleHelp[tab] || [['Hulp', 'Gebruik Menu om naar de verschillende onderdelen te gaan.']]
@@ -1476,21 +1480,18 @@ export default function App() {
 
     if (rol === 'aanvrager') {
       return [
-        ['Aanvraag indienen', 'Maak een nieuwe transportaanvraag voor de Boekenbode.'],
-        ['Alle aanvragen', 'Bekijk de status, wijzig open aanvragen of verwijder ze.'],
+        ['Transportaanvraag', 'Geef door wat vervoerd moet worden.'],
+        ['Alle aanvragen', 'Volg recente aanvragen en open acties.'],
       ]
     }
 
     return [
-      ['Planning', 'Bekijk taken per week, maand of jaar.'],
-      ['Aanvragen', 'Plan aanvragen in, vraag extra info of verwijder dubbele of foutieve aanvragen.'],
-      [
-        'Taak toevoegen',
-        'Voeg een taak toe voor planning of registratie achteraf.',
-      ],
-      ['Aanvraag invoeren', 'Voer een aanvraag in of zet een druktemelding voor een drukke dag of week.'],
-      ['Overzicht', 'Zoek taken terug, wijzig ze of verwijder ze.'],
-      ['Rapportage', 'Maak een overzicht per week, maand of jaar.'],
+      ['Planning', 'Bekijk de geplande taken.'],
+      ['Aanvragen', 'Plan aanvragen in of vraag meer info.'],
+      ['Taak toevoegen', 'Zet een taak direct in de planning.'],
+      ['Aanvraag invoeren', 'Voer een aanvraag in of zet een druktemelding.'],
+      ['Overzicht', 'Zoek, wijzig of herstel taken.'],
+      ['Rapportage', 'Maak een overzicht voor administratie.'],
     ]
   })()
 
@@ -1950,20 +1951,6 @@ export default function App() {
               <Card>
                 <CardHead title={aanvraagEditId ? 'Aanvraag aanvullen' : 'Nieuwe transportaanvraag'} />
                 <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 16, alignItems: 'start' }}>
-                  <div
-                    style={{
-                      gridColumn: '1 / -1',
-                      background: '#F8F9FC',
-                      border: '1px solid #E5E9F0',
-                      borderRadius: 8,
-                      padding: '9px 11px',
-                      fontSize: 12,
-                      color: '#6B7280',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    Voor leidinggevende, administratie en educatie die een extra transporttaak willen doorgeven.
-                  </div>
                   {heeftErrors(aanvraagErrors) && (
                     <div
                       style={{
