@@ -92,7 +92,7 @@ function laadSessie() {
         ? 'aanvraag'
         : rol === 'transporteur' && !['planning', 'aanvragen', 'toevoegen', 'drukte', 'aanvraag', 'alletaken', 'rapportage'].includes(tab)
           ? 'planning'
-          : rol === 'educatie' && !['educatie-import'].includes(tab)
+          : rol === 'educatie' && !['educatie-import', 'educatie-projecten'].includes(tab)
             ? 'educatie-import'
           : tab || 'planning'
     return {
@@ -1287,7 +1287,10 @@ export default function App() {
             { k: 'aanvraagstatus', l: `Alle aanvragen${infoNodigAantal ? ` (!)` : ''}` },
           ]
         : rol === 'educatie'
-          ? [{ k: 'educatie-import', l: 'Import schoollijsten' }]
+          ? [
+              { k: 'educatie-import', l: 'Import schoollijsten' },
+              { k: 'educatie-projecten', l: 'Projecten' },
+            ]
         : [
             { k: 'planning', l: 'Planning' },
             { k: 'aanvragen', l: `Aanvragen${nieuweAanvragenAantal ? ` (${nieuweAanvragenAantal})` : ''}` },
@@ -1334,6 +1337,7 @@ export default function App() {
     alletaken: 'Overzicht',
     rapportage: 'Rapportage',
     'educatie-import': 'Import schoollijsten',
+    'educatie-projecten': 'Projecten',
   }
 
   const educatieImportKlaar = educatieImport.schooljaar.trim() && educatieImport.periode.trim() && educatieImport.bestandNaam
@@ -1625,6 +1629,7 @@ export default function App() {
         ['Schooljaar', 'Vul het schooljaar van de lijst in.'],
         ['Periode', 'Vul de periode in die op de lijst staat.'],
         ['Excel import', 'Kies straks het bestand dat verwerkt moet worden.'],
+        ['Projecten', 'Hier komt later ruimte voor losse educatieprojecten.'],
       ]
     }
 
@@ -3214,6 +3219,20 @@ export default function App() {
                 </div>
               </Card>
             </div>
+          )}
+
+          {tab === 'educatie-projecten' && rol === 'educatie' && (
+            <Card>
+              <CardHead title="Projecten" />
+              <div style={{ padding: isMobiel ? 18 : 24, display: 'grid', gap: 10 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>
+                  Nog geen projecten toegevoegd
+                </div>
+                <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, maxWidth: 560 }}>
+                  Dit onderdeel staat alvast klaar. Later kunnen hier losse educatieprojecten of handmatige projectaanvragen worden toegevoegd.
+                </div>
+              </div>
+            </Card>
           )}
 
           {tab === 'aanvragen' && rol === 'transporteur' && (
