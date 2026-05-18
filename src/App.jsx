@@ -1183,10 +1183,19 @@ export default function App() {
   const zichtbareNavGroepen =
     rol === 'transporteur'
       ? [
-          { titel: 'Bert', tint: '#FFF7ED', color: '#9A3412', tabs: zichtbareNavTabs.filter((item) => ['planning', 'aanvragen', 'toevoegen'].includes(item.k)) },
+          {
+            titel: 'Bert',
+            tint: '#FFF7ED',
+            border: '#FED7AA',
+            active: '#EA6A1F',
+            color: '#9A3412',
+            tabs: zichtbareNavTabs.filter((item) => ['planning', 'aanvragen', 'toevoegen'].includes(item.k)),
+          },
           {
             titel: 'Registratie',
             tint: '#ECFDF5',
+            border: '#BBF7D0',
+            active: '#1F7A4D',
             color: '#166534',
             tabs: [
               { k: 'aanvraag', l: 'Aanvraag invoeren' },
@@ -1619,17 +1628,24 @@ export default function App() {
                 </div>
                 <div style={{ display: 'grid', alignContent: 'start', gap: 10 }}>
                 {zichtbareNavGroepen.map((groep) => (
-                  <div key={groep.titel || 'aanvrager'} style={{ display: 'grid', gap: 6 }}>
+                  <div
+                    key={groep.titel || 'aanvrager'}
+                    style={{
+                      display: 'grid',
+                      gap: 6,
+                      border: groep.titel ? `1px solid ${groep.border || '#FED7AA'}` : 'none',
+                      background: groep.titel ? groep.tint || '#FFF7ED' : 'transparent',
+                      borderRadius: 10,
+                      padding: groep.titel ? 8 : 0,
+                    }}
+                  >
                     {groep.titel && (
                       <div
                         style={{
                           fontSize: 11,
                           fontWeight: 650,
                           color: groep.color || '#7C4A2A',
-                          background: groep.tint || '#FFF7ED',
-                          border: '1px solid #E5E9F0',
-                          borderRadius: 7,
-                          padding: '6px 9px',
+                          padding: '2px 2px 4px',
                         }}
                       >
                         {groep.titel}
@@ -1650,9 +1666,9 @@ export default function App() {
                           cursor: 'pointer',
                           fontSize: 14,
                           fontWeight: 600,
-                          color: tab === item.k ? '#fff' : '#7C4A2A',
-                          background: tab === item.k ? '#EA6A1F' : '#FFF7ED',
-                          boxShadow: tab === item.k ? '0 6px 14px rgba(234, 106, 31, .18)' : 'inset 0 0 0 1px #FED7AA',
+                          color: tab === item.k ? '#fff' : groep.color || '#7C4A2A',
+                          background: tab === item.k ? groep.active || '#EA6A1F' : '#fff',
+                          boxShadow: tab === item.k ? '0 6px 14px rgba(0,0,0,.08)' : `inset 0 0 0 1px ${groep.border || '#FED7AA'}`,
                         }}
                       >
                         {item.l}
@@ -1686,18 +1702,23 @@ export default function App() {
         ) : (
           <nav style={{ padding: '10px 8px', flex: 1, overflowY: 'auto' }}>
             {zichtbareNavGroepen.map((groep) => (
-              <div key={groep.titel || 'aanvrager'} style={{ marginBottom: groep.titel ? 12 : 0 }}>
+              <div
+                key={groep.titel || 'aanvrager'}
+                style={{
+                  marginBottom: groep.titel ? 12 : 0,
+                  border: groep.titel ? `1px solid ${groep.border || '#FED7AA'}` : 'none',
+                  background: groep.titel ? groep.tint || '#FFF7ED' : 'transparent',
+                  borderRadius: 10,
+                  padding: groep.titel ? 7 : 0,
+                }}
+              >
                 {groep.titel && (
                   <div
                     style={{
                       fontSize: 11,
                       fontWeight: 650,
                       color: groep.color || '#7C4A2A',
-                      background: groep.tint || '#FFF7ED',
-                      border: '1px solid #E5E9F0',
-                      borderRadius: 7,
-                      padding: '6px 9px',
-                      margin: '8px 4px 6px',
+                      padding: '2px 3px 5px',
                     }}
                   >
                     {groep.titel}
@@ -1714,8 +1735,8 @@ export default function App() {
                       marginBottom: 2,
                       fontSize: 13,
                       fontWeight: 500,
-                      color: tab === item.k ? '#fff' : '#7C4A2A',
-                      background: tab === item.k ? '#EA6A1F' : 'transparent',
+                      color: tab === item.k ? '#fff' : groep.color || '#7C4A2A',
+                      background: tab === item.k ? groep.active || '#EA6A1F' : '#fff',
                     }}
                   >
                     {item.l}
