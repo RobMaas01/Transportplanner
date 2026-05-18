@@ -1043,6 +1043,18 @@ export default function App() {
     setBlokForm({ type: 'week', week: '', eindWeek: '', dag: vandaagDagIndex(), reden: '' })
   }
 
+  function kiesDrukteWeek(wk) {
+    setBlokForm((prev) => {
+      if (!prev.week || prev.eindWeek) return { ...prev, type: 'week', week: wk, eindWeek: '', dag: vandaagDagIndex() }
+      if (prev.week === wk) return { ...prev, type: 'week', week: wk, eindWeek: '', dag: vandaagDagIndex() }
+
+      const start = getMaandag(prev.week)
+      const gekozen = getMaandag(wk)
+      if (gekozen < start) return { ...prev, type: 'week', week: wk, eindWeek: prev.week, dag: vandaagDagIndex() }
+      return { ...prev, type: 'week', eindWeek: wk, dag: vandaagDagIndex() }
+    })
+  }
+
   function blokkadeVoorWeek(wk) {
     return geblokt.find((item) => item.week === wk && (item.dag === null || item.dag === undefined)) || automatischeBlokkade(wk)
   }
@@ -4127,8 +4139,8 @@ export default function App() {
                 <div style={{ padding: 18, display: 'grid', gap: 12 }}>
                   <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3 }}>
                     {[
-                      { k: 'week', l: 'Week/weken' },
-                      { k: 'dag', l: 'Dag' },
+                      { k: 'week', l: 'Hele week' },
+                      { k: 'dag', l: 'Losse dag' },
                     ].map((item) => (
                       <button
                         key={item.k}
@@ -4158,38 +4170,112 @@ export default function App() {
                     ))}
                   </div>
                   {blokForm.type === 'week' && (
-                    <>
-                      <div>
-                        <Label>Vanaf week</Label>
-                        <select
-                          value={blokForm.week}
-                          onChange={(e) => setBlokForm((prev) => ({ ...prev, week: e.target.value }))}
-                          style={inp}
+                    <div>
+                      <Label>Welke week?</Label>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBlokForm((prev) => ({ ...prev, type: 'week', week: vandaag(), eindWeek: '' }))
+                            setBlokMaand(new Date().toISOString().slice(0, 7))
+                          }}
+                          style={{
+                            background: blokForm.week === vandaag() && !blokForm.eindWeek ? '#EA6A1F' : '#F3F4F6',
+                            color: blokForm.week === vandaag() && !blokForm.eindWeek ? '#fff' : '#374151',
+                            border: blokForm.week === vandaag() && !blokForm.eindWeek ? 'none' : '1px solid #E5E9F0',
+                            borderRadius: 8,
+                            padding: '8px 12px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
                         >
-                          <option value="">Kies week...</option>
-                          {WEKEN.map((wk) => (
-                            <option key={wk} value={wk}>
-                              {weekOptieLabel(wk)}
-                            </option>
-                          ))}
-                        </select>
+                          Deze week
+                        </button>
+                        <MonthNav value={blokMaand} onChange={setBlokMaand} />
                       </div>
-                      <div>
-                        <Label>Tot en met week</Label>
-                        <select
-                          value={blokForm.eindWeek}
-                          onChange={(e) => setBlokForm((prev) => ({ ...prev, eindWeek: e.target.value }))}
-                          style={inp}
+                      <div
+                        style={{
+                          border: '1px solid #E5E9F0',
+                          borderRadius: 8,
+                          padding: 10,
+                          background: '#F8F9FC',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '48px repeat(7, minmax(0, 1fr))',
+                            gap: 5,
+                            marginBottom: 5,
+                          }}
                         >
-                          <option value="">Alleen deze week</option>
-                          {WEKEN.map((wk) => (
-                            <option key={wk} value={wk}>
-                              {weekOptieLabel(wk)}
-                            </option>
+                          <div />
+                          {['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'].map((dag) => (
+                            <div key={dag} style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textAlign: 'center' }}>
+                              {dag}
+                            </div>
                           ))}
-                        </select>
+                        </div>
+                        <div style={{ display: 'grid', gap: 5 }}>
+                          {Array.from({ length: Math.ceil(maandDagen(blokMaand).length / 7) }, (_, rij) => {
+                            const weekDagenMaand = maandDagen(blokMaand).slice(rij * 7, rij * 7 + 7)
+                            const weekKey = weekDagenMaand[0]?.week
+                            const geselecteerd = blokForm.week && wekenTussen(blokForm.week, blokForm.eindWeek).includes(weekKey)
+
+                            return (
+                              <button
+                                key={`drukte-week-${weekKey}`}
+                                type="button"
+                                onClick={() => kiesDrukteWeek(weekKey)}
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '48px repeat(7, minmax(0, 1fr))',
+                                  gap: 5,
+                                  alignItems: 'center',
+                                  width: '100%',
+                                  border: geselecteerd ? '1px solid #EA6A1F' : '1px solid #E5E9F0',
+                                  borderRadius: 8,
+                                  background: geselecteerd ? '#FFF7ED' : '#fff',
+                                  padding: 5,
+                                  cursor: 'pointer',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                <span style={{ fontSize: 11, fontWeight: 750, color: geselecteerd ? '#9A3412' : '#6B7280' }}>
+                                  {weekNr(weekKey).replace('Week ', 'W')}
+                                </span>
+                                {weekDagenMaand.map((dag) => (
+                                  <span
+                                    key={dag.iso}
+                                    style={{
+                                      minHeight: 28,
+                                      borderRadius: 6,
+                                      display: 'grid',
+                                      placeItems: 'center',
+                                      background: geselecteerd ? '#FED7AA' : dag.inMaand ? '#F8F9FC' : '#fff',
+                                      color: dag.inMaand ? '#111827' : '#D1D5DB',
+                                      fontSize: 12,
+                                      fontWeight: dag.inMaand ? 650 : 500,
+                                    }}
+                                  >
+                                    {dag.date.getDate()}
+                                  </span>
+                                ))}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
-                    </>
+                      <div style={{ fontSize: 11, color: '#6B7280', marginTop: 6 }}>
+                        Gekozen:{' '}
+                        {blokForm.week
+                          ? blokForm.eindWeek
+                            ? `${weekNr(blokForm.week)} t/m ${weekNr(blokForm.eindWeek)}`
+                            : weekNr(blokForm.week)
+                          : 'kies een week'}
+                      </div>
+                    </div>
                   )}
                   {blokForm.type === 'dag' && (
                     <div>
