@@ -119,7 +119,7 @@ function korteWeekLabel(wk) {
   return `${weekNr(wk)} ${getMaandag(wk).getFullYear()}`
 }
 
-const TAKEN_MET_AANTAL = ['Extra kratten', 'Extra sorteren']
+const TAKEN_MET_AANTAL = ['Plukker', 'Extra kratten', 'Extra sorteren']
 const OVERIG_OPTIE = 'Overig'
 
 export default function App() {
@@ -228,6 +228,7 @@ export default function App() {
   const [aanvraagBevestigd, setAanvraagBevestigd] = useState(false)
   const [aanvraagErrors, setAanvraagErrors] = useState({})
   const [aanvraagOverigVestiging, setAanvraagOverigVestiging] = useState({ van: false, naar: false })
+  const [aanvraagInvoerTab, setAanvraagInvoerTab] = useState('aanvraag')
   const [aanvraagStatusTab, setAanvraagStatusTab] = useState('open')
   const [bertAanvragenTab, setBertAanvragenTab] = useState('nieuw')
   const [taakErrors, setTaakErrors] = useState({})
@@ -336,6 +337,7 @@ export default function App() {
       setMenuOpen(false)
       return
     }
+    if (rol === 'transporteur' && nieuweTab === 'aanvraag') setAanvraagInvoerTab('aanvraag')
     setTab(nieuweTab)
     setMenuOpen(false)
   }
@@ -597,6 +599,12 @@ export default function App() {
     if (eigenTitelActief) return OVERIG_OPTIE
     if (!value) return ''
     return TAAK_SUGGESTIES.includes(value) && value !== OVERIG_OPTIE ? value : OVERIG_OPTIE
+  }
+
+  function taakStandaardRoute(titel) {
+    if (titel === 'Plukker') return { van: 'Plukker', naar: 'Bibliotheek School 7' }
+    if (titel === 'Eelan') return { van: 'Eelan', naar: 'Bibliotheek School 7' }
+    return null
   }
 
   function openVandaagTaakVraag() {
@@ -1455,7 +1463,7 @@ export default function App() {
           ['Verwijderen', 'Verwijder alleen dubbele of foutieve aanvragen. Gebruik Meer info nodig als de aanvrager nog iets moet doen.'],
         ],
         toevoegen: [
-          ['Taak toevoegen', 'Voeg eigen taken of druktemeldingen toe. Druktemeldingen helpen aanvragers bij het kiezen van een datum.'],
+          ['Taak toevoegen', 'Voeg eigen taken toe voor planning of registratie achteraf.'],
           ['Meteen uitvoeren', 'Gebruik dit als de taak al gedaan is en alleen nog in de administratie moet komen.'],
         ],
         alletaken: [
@@ -1478,8 +1486,9 @@ export default function App() {
       ['Aanvragen', 'Plan aanvragen in, vraag extra info of verwijder dubbele of foutieve aanvragen.'],
       [
         'Taak toevoegen',
-        'Voeg een taak toe of zet een druktemelding, bijvoorbeeld vakantie, afwezigheid of een drukke week. Aanvragers zien deze waarschuwing bij het kiezen van een datum.',
+        'Voeg een taak toe voor planning of registratie achteraf.',
       ],
+      ['Aanvraag invoeren', 'Voer een aanvraag in of zet een druktemelding voor een drukke dag of week.'],
       ['Overzicht', 'Zoek taken terug, wijzig ze of verwijder ze.'],
       ['Rapportage', 'Maak een overzicht per week, maand of jaar.'],
     ]
@@ -1856,6 +1865,35 @@ export default function App() {
           )}
           {tab === 'aanvraag' && (rol === 'aanvrager' || rol === 'transporteur') && (
             <div>
+              {rol === 'transporteur' && (
+                <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3, marginBottom: 14, width: 'fit-content' }}>
+                  {[
+                    { k: 'aanvraag', l: 'Aanvraag invoeren' },
+                    { k: 'drukte', l: 'Druktemelding' },
+                  ].map((item) => (
+                    <button
+                      key={item.k}
+                      type="button"
+                      onClick={() => setAanvraagInvoerTab(item.k)}
+                      style={{
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '7px 14px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        background: aanvraagInvoerTab === item.k ? '#fff' : 'transparent',
+                        color: aanvraagInvoerTab === item.k ? '#111827' : '#6B7280',
+                        boxShadow: aanvraagInvoerTab === item.k ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
+                      }}
+                    >
+                      {item.l}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {(rol !== 'transporteur' || aanvraagInvoerTab === 'aanvraag') && (
+                <>
               {aanvraagBevestigd && rol === 'aanvrager' ? (
                 <Card>
                   <div style={{ padding: 24, textAlign: 'center' }}>
@@ -2443,7 +2481,9 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              </Card>
+                </Card>
+              )}
+                </>
               )}
             </div>
           )}
@@ -3697,31 +3737,6 @@ export default function App() {
 
           {tab === 'toevoegen' && rol === 'transporteur' && (
             <div>
-              <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3, marginBottom: 14, width: 'fit-content' }}>
-                {[
-                  { k: 'taak', l: 'Taak' },
-                  { k: 'drukte', l: 'Druktemelding' },
-                ].map((item) => (
-                  <button
-                    key={item.k}
-                    type="button"
-                    onClick={() => setToevoegenTab(item.k)}
-                    style={{
-                      border: 'none',
-                      borderRadius: 6,
-                      padding: '7px 14px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      background: toevoegenTab === item.k ? '#fff' : 'transparent',
-                      color: toevoegenTab === item.k ? '#111827' : '#6B7280',
-                      boxShadow: toevoegenTab === item.k ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
-                    }}
-                  >
-                    {item.l}
-                  </button>
-                ))}
-              </div>
               {toevoegenTab === 'taak' && (
               <Card>
                 <CardHead title={taakEditId ? 'Taak wijzigen' : 'Taak toevoegen'} />
@@ -3768,11 +3783,22 @@ export default function App() {
                         onChange={(e) => {
                           const gekozen = e.target.value
                           const isOverig = gekozen === OVERIG_OPTIE
+                          const standaardRoute = taakStandaardRoute(gekozen)
                           setEigenTitelActief(isOverig)
+                          if (standaardRoute) {
+                            setTaakOverigVestiging({
+                              van: !VESTIGINGEN.includes(standaardRoute.van),
+                              naar: !VESTIGINGEN.includes(standaardRoute.naar),
+                            })
+                          } else if (['Plukker', 'Eelan'].includes(nieuw.titel)) {
+                            setTaakOverigVestiging({ van: false, naar: false })
+                          }
                           setNieuw((prev) => ({
                             ...prev,
                             titel: isOverig ? '' : gekozen,
                             aantal: TAKEN_MET_AANTAL.includes(gekozen) ? prev.aantal : '',
+                            ...(!standaardRoute && ['Plukker', 'Eelan'].includes(prev.titel) ? { van: '', naar: '' } : {}),
+                            ...(standaardRoute || {}),
                           }))
                           setTaakErrors((prev) => {
                             const next = { ...prev }
@@ -4336,7 +4362,7 @@ export default function App() {
             </Card>
           )}
 
-          {tab === 'toevoegen' && rol === 'transporteur' && toevoegenTab === 'drukte' && (
+          {tab === 'aanvraag' && rol === 'transporteur' && aanvraagInvoerTab === 'drukte' && (
             <div style={{ display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 18 }}>
               <Card>
                 <CardHead title="Druktemelding toevoegen" />
