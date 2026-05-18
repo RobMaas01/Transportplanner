@@ -581,7 +581,7 @@ export default function App() {
   function login(code = pin) {
     if (code === PIN_BERT) {
       setRol('transporteur')
-      setTab('toevoegen')
+      setTab('planning')
       setPlanningWeergave('week')
       setPinErr('')
       setToonBertPin(false)
@@ -2069,7 +2069,7 @@ export default function App() {
                   <div
                     style={{
                       fontSize: 11,
-                      fontWeight: 650,
+                      fontWeight: 400,
                       color: groep.color || '#7C4A2A',
                       padding: '2px 3px 5px',
                     }}
