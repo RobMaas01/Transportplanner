@@ -349,6 +349,10 @@ export default function App() {
     )
   }
 
+  function resetTaakForm() {
+    resetTaakForm()
+  }
+
   function gaNaarTab(nieuweTab) {
     if (
       rol === 'aanvrager' &&
@@ -360,6 +364,9 @@ export default function App() {
       setVerlaatAanvraagTab(nieuweTab)
       setMenuOpen(false)
       return
+    }
+    if (tab === 'toevoegen' && nieuweTab !== 'toevoegen' && !taakEditId) {
+      resetTaakForm()
     }
     setTab(nieuweTab)
     setMenuOpen(false)
@@ -1725,10 +1732,10 @@ export default function App() {
     )
   }
 
-  function renderTaakToelichtingVeld() {
+  function renderTaakToelichtingVeld(label = 'Toelichting') {
     return (
       <div>
-        <Label>Toelichting</Label>
+        <Label>{label}</Label>
         <textarea
           value={nieuw.omschrijving}
           onChange={(e) => setNieuw((prev) => ({ ...prev, omschrijving: e.target.value }))}
@@ -4512,6 +4519,14 @@ export default function App() {
                         {renderTaakToelichtingVeld()}
                       </>
                     )}
+                    {!nieuw.titel && (
+                      <>
+                        {renderTaakVestigingVeld('van', 'Van vestiging')}
+                        {renderTaakVestigingVeld('naar', 'Naar vestiging')}
+                        <ZelfdeVestigingWaarschuwing van={nieuw.van} naar={nieuw.naar} />
+                        {renderTaakToelichtingVeld('Opmerking')}
+                      </>
+                    )}
                     {nieuw.titel && !['Plukker', 'Eelan', 'Extra kratten', 'Extra sorteren', 'CoderDojo', 'Stort', 'Garage'].includes(nieuw.titel) && (
                       <>
                         {renderTaakVestigingVeld('van', 'Van vestiging')}
@@ -4700,24 +4715,7 @@ export default function App() {
                       {taakEditId && (
                         <button
                           onClick={() => {
-                            setTaakEditId(null)
-                            setEigenTitelActief(false)
-                            setTaakOverigVestiging({ van: false, naar: false })
-                            setNieuw({
-                              naam: STANDAARD_TAAK_NAAM,
-                              titel: '',
-                              omschrijving: '',
-                              reden: '',
-                              aantal: '',
-                              tijd: '',
-                              van: '',
-                              naar: '',
-                              week: vandaag(),
-                              dag: vandaagDagIndex(),
-                              alleenWeek: false,
-                              prioriteit: 'normaal',
-                            })
-                            setTaakErrors({})
+                            resetTaakForm()
                           }}
                           style={{
                             background: '#F3F4F6',
