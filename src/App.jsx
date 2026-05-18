@@ -66,7 +66,6 @@ import {
   weekOptieLabel,
   weekRange,
   weekWerkdagen,
-  wekenTussen,
 } from './utils'
 
 const BERT_SESSIE_MAX_MS = 8 * 60 * 60 * 1000
@@ -236,7 +235,14 @@ export default function App() {
   const [nieuweAanvraagMelding, setNieuweAanvraagMelding] = useState(null)
   const [toonPriveUitleg, setToonPriveUitleg] = useState(false)
   const [hoverPriveUitleg, setHoverPriveUitleg] = useState(false)
-  const [blokForm, setBlokForm] = useState({ type: 'week', week: '', eindWeek: '', dag: vandaagDagIndex(), reden: '' })
+  const [blokForm, setBlokForm] = useState({
+    type: 'week',
+    week: '',
+    eindWeek: '',
+    geselecteerdeWeken: [],
+    dag: vandaagDagIndex(),
+    reden: '',
+  })
   const [modal, setModal] = useState(null)
   const [verlaatAanvraagTab, setVerlaatAanvraagTab] = useState(null)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -1025,9 +1031,11 @@ export default function App() {
   }
 
   function blokkeer() {
-    if (!blokForm.week) return
+    const geselecteerdeWeken = blokForm.geselecteerdeWeken || []
+    if (blokForm.type === 'dag' && !blokForm.week) return
+    if (blokForm.type === 'week' && geselecteerdeWeken.length === 0) return
 
-    const weken = blokForm.type === 'dag' ? [blokForm.week] : wekenTussen(blokForm.week, blokForm.eindWeek)
+    const weken = blokForm.type === 'dag' ? [blokForm.week] : geselecteerdeWeken
     const nieuwGeblokt = weken.map((wk) => ({
       id: `${Date.now()}-${wk}-${blokForm.type}`,
       week: wk,
@@ -1040,18 +1048,23 @@ export default function App() {
       ...prev.filter((item) => !nieuwGeblokt.some((nieuwItem) => nieuwItem.week === item.week && nieuwItem.dag === item.dag)),
       ...nieuwGeblokt,
     ])
-    setBlokForm({ type: 'week', week: '', eindWeek: '', dag: vandaagDagIndex(), reden: '' })
+    setBlokForm({ type: 'week', week: '', eindWeek: '', geselecteerdeWeken: [], dag: vandaagDagIndex(), reden: '' })
   }
 
   function kiesDrukteWeek(wk) {
     setBlokForm((prev) => {
-      if (!prev.week || prev.eindWeek) return { ...prev, type: 'week', week: wk, eindWeek: '', dag: vandaagDagIndex() }
-      if (prev.week === wk) return { ...prev, type: 'week', week: wk, eindWeek: '', dag: vandaagDagIndex() }
-
-      const start = getMaandag(prev.week)
-      const gekozen = getMaandag(wk)
-      if (gekozen < start) return { ...prev, type: 'week', week: wk, eindWeek: prev.week, dag: vandaagDagIndex() }
-      return { ...prev, type: 'week', eindWeek: wk, dag: vandaagDagIndex() }
+      const huidigeWeken = prev.geselecteerdeWeken || []
+      const volgendeWeken = huidigeWeken.includes(wk)
+        ? huidigeWeken.filter((item) => item !== wk)
+        : [...huidigeWeken, wk].sort((a, b) => getMaandag(a) - getMaandag(b))
+      return {
+        ...prev,
+        type: 'week',
+        week: volgendeWeken[0] || '',
+        eindWeek: '',
+        geselecteerdeWeken: volgendeWeken,
+        dag: vandaagDagIndex(),
+      }
     })
   }
 
@@ -4164,6 +4177,10 @@ export default function App() {
                             week: item.k === 'dag' && !prev.week ? vandaag() : prev.week,
                             dag: item.k === 'dag' ? Number(prev.dag ?? vandaagDagIndex()) : prev.dag,
                             eindWeek: item.k === 'dag' ? '' : prev.eindWeek,
+                            geselecteerdeWeken:
+                              item.k === 'week' && (!prev.geselecteerdeWeken || prev.geselecteerdeWeken.length === 0) && prev.week
+                                ? [prev.week]
+                                : prev.geselecteerdeWeken || [],
                           }))
                         }
                       >
@@ -4173,18 +4190,18 @@ export default function App() {
                   </div>
                   {blokForm.type === 'week' && (
                     <div>
-                      <Label>Welke week?</Label>
+                      <Label>Week kiezen</Label>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                         <button
                           type="button"
                           onClick={() => {
-                            setBlokForm((prev) => ({ ...prev, type: 'week', week: vandaag(), eindWeek: '' }))
+                            kiesDrukteWeek(vandaag())
                             setBlokMaand(new Date().toISOString().slice(0, 7))
                           }}
                           style={{
-                            background: blokForm.week === vandaag() && !blokForm.eindWeek ? '#EA6A1F' : '#F3F4F6',
-                            color: blokForm.week === vandaag() && !blokForm.eindWeek ? '#fff' : '#374151',
-                            border: blokForm.week === vandaag() && !blokForm.eindWeek ? 'none' : '1px solid #E5E9F0',
+                            background: (blokForm.geselecteerdeWeken || []).includes(vandaag()) ? '#EA6A1F' : '#F3F4F6',
+                            color: (blokForm.geselecteerdeWeken || []).includes(vandaag()) ? '#fff' : '#374151',
+                            border: (blokForm.geselecteerdeWeken || []).includes(vandaag()) ? 'none' : '1px solid #E5E9F0',
                             borderRadius: 8,
                             padding: '8px 12px',
                             fontSize: 12,
@@ -4195,6 +4212,9 @@ export default function App() {
                           Deze week
                         </button>
                         <MonthNav value={blokMaand} onChange={setBlokMaand} />
+                      </div>
+                      <div style={{ fontSize: 11, color: '#6B7280', marginTop: -4, marginBottom: 8 }}>
+                        Klik op elke week die je wilt toevoegen. Klik nog een keer om een week weer weg te halen.
                       </div>
                       <div
                         style={{
@@ -4223,7 +4243,7 @@ export default function App() {
                           {Array.from({ length: Math.ceil(maandDagen(blokMaand).length / 7) }, (_, rij) => {
                             const weekDagenMaand = maandDagen(blokMaand).slice(rij * 7, rij * 7 + 7)
                             const weekKey = weekDagenMaand[0]?.week
-                            const geselecteerd = blokForm.week && wekenTussen(blokForm.week, blokForm.eindWeek).includes(weekKey)
+                            const geselecteerd = (blokForm.geselecteerdeWeken || []).includes(weekKey)
 
                             return (
                               <button
@@ -4271,10 +4291,8 @@ export default function App() {
                       </div>
                       <div style={{ fontSize: 11, color: '#6B7280', marginTop: 6 }}>
                         Gekozen:{' '}
-                        {blokForm.week
-                          ? blokForm.eindWeek
-                            ? `${weekNr(blokForm.week)} t/m ${weekNr(blokForm.eindWeek)}`
-                            : weekNr(blokForm.week)
+                        {(blokForm.geselecteerdeWeken || []).length
+                          ? (blokForm.geselecteerdeWeken || []).map((wk) => weekNr(wk)).join(', ')
                           : 'kies een week'}
                       </div>
                     </div>
