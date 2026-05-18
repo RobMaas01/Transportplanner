@@ -547,7 +547,7 @@ export default function App() {
   function login(code = pin) {
     if (code === PIN_BERT) {
       setRol('transporteur')
-      setTab('planning')
+      setTab('toevoegen')
       setPlanningWeergave('week')
       setPinErr('')
       setToonBertPin(false)
@@ -1132,19 +1132,19 @@ export default function App() {
         : [
             { k: 'planning', l: 'Planning' },
             { k: 'aanvragen', l: `Aanvragen${nieuweAanvragenAantal ? ` (${nieuweAanvragenAantal})` : ''}` },
-            { k: 'toevoegen', l: 'Toevoegen' },
-            { k: 'alletaken', l: 'Alle taken' },
+            { k: 'toevoegen', l: 'Registreren' },
+            { k: 'alletaken', l: 'Overzicht' },
             { k: 'rapportage', l: 'Rapportage' },
           ]
   const zichtbareNavTabs = isMobiel ? navTabs.filter((item) => item.k !== 'rapportage') : navTabs
 
   const pagina = {
     planning: 'Weekplanning',
-    aanvragen: 'Aanvragen inbox',
+    aanvragen: 'Aanvragen',
     aanvraag: 'Transport aanvragen',
     aanvraagstatus: 'Aanvragen volgen',
-    toevoegen: 'Toevoegen',
-    alletaken: 'Alle taken',
+    toevoegen: 'Registreren',
+    alletaken: 'Overzicht',
     rapportage: 'Rapportage',
   }
 
@@ -1235,7 +1235,7 @@ export default function App() {
                 boxShadow: '0 7px 16px rgba(31, 122, 77, .14)',
               }}
             >
-              Boekenbode
+              Registratie & beheer
             </button>
           </div>
         </div>
@@ -1265,8 +1265,10 @@ export default function App() {
                 boxSizing: 'border-box',
               }}
             >
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Bert planning</div>
-              <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14 }}>Vul de 4-cijferige pincode in.</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Registratie & beheer</div>
+              <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14 }}>
+                Voor Boekenbode, leidinggevende en administratie.
+              </div>
               <input
                 type="password"
                 inputMode="numeric"
@@ -1371,7 +1373,7 @@ export default function App() {
       const mobieleHelp = {
         aanvraag: [
           ['Transportaanvraag', 'Vul in wat er vervoerd moet worden. Kies minimaal een van- of naar-vestiging.'],
-          ['Privé', 'Privé-aanvragen zijn alleen zichtbaar voor Bert en komen niet in Alle aanvragen.'],
+          ['Privé', 'Privé-aanvragen zijn alleen zichtbaar in Registratie & beheer en komen niet in Alle aanvragen.'],
         ],
         aanvraagstatus: [
           ['Open', 'Hier staan recente aanvragen die nog lopen.'],
@@ -1390,7 +1392,7 @@ export default function App() {
           ['Meteen uitvoeren', 'Gebruik dit als de taak al gedaan is en alleen nog in de administratie moet komen.'],
         ],
         alletaken: [
-          ['Alle taken', 'Zoek taken terug met de zoekbalk of filter op jaar en maand.'],
+          ['Overzicht', 'Zoek taken terug met de zoekbalk of filter op jaar en maand.'],
           ['Verwijderd', 'Verwijderde taken kun je tijdelijk terugvinden en herstellen.'],
         ],
       }
@@ -1399,7 +1401,7 @@ export default function App() {
 
     if (rol === 'aanvrager') {
       return [
-        ['Aanvraag indienen', 'Maak een nieuwe transportaanvraag voor Bert.'],
+        ['Aanvraag indienen', 'Maak een nieuwe transportaanvraag voor de Boekenbode.'],
         ['Alle aanvragen', 'Bekijk de status, wijzig open aanvragen of verwijder ze.'],
       ]
     }
@@ -1408,10 +1410,10 @@ export default function App() {
       ['Planning', 'Bekijk taken per week, maand of jaar.'],
       ['Aanvragen', 'Plan aanvragen in, vraag extra info of verwijder dubbele of foutieve aanvragen.'],
       [
-        'Toevoegen',
+        'Registreren',
         'Voeg een taak toe of zet een druktemelding, bijvoorbeeld vakantie, afwezigheid of een drukke week. Aanvragers zien deze waarschuwing bij het kiezen van een datum.',
       ],
-      ['Alle taken', 'Zoek taken terug, wijzig ze of verwijder ze.'],
+      ['Overzicht', 'Zoek taken terug, wijzig ze of verwijder ze.'],
       ['Rapportage', 'Maak een overzicht per week, maand of jaar.'],
     ]
   })()
@@ -1537,7 +1539,7 @@ export default function App() {
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: '#3A2A22' }}>Menu</div>
                     <div style={{ fontSize: 12, color: '#9A5A2E', marginTop: 2 }}>
-                      {rol === 'aanvrager' ? 'Aanvrager' : 'Bert'}
+                      {rol === 'aanvrager' ? 'Aanvrager' : 'Beheer'}
                     </div>
                   </div>
                   <button
@@ -1636,7 +1638,7 @@ export default function App() {
         >
           <div style={{ background: '#FFE8D1', borderRadius: 8, padding: isMobiel ? '7px 8px' : '10px 12px', marginBottom: 8 }}>
             <div style={{ color: '#3A2A22', fontSize: 12, fontWeight: 600 }}>
-              {rol === 'aanvrager' ? 'Aanvrager' : 'Bert'}
+              {rol === 'aanvrager' ? 'Aanvrager' : 'Beheer'}
             </div>
             <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 2 }}>Ingelogd</div>
             <div style={{ color: '#9A5A2E', fontSize: 10, marginTop: 5 }}>{opslagStatus}</div>
@@ -1743,7 +1745,7 @@ export default function App() {
                       Aanvraag ingediend
                     </div>
                     <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 18 }}>
-                      Bert ziet de aanvraag en plant deze verder in.
+                      De Boekenbode of administratie ziet de aanvraag en plant deze verder in.
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <button
@@ -1910,7 +1912,7 @@ export default function App() {
                             pointerEvents: 'none',
                           }}
                         >
-                          Alleen Bert ziet deze aanvraag. De aanvraag komt niet in Alle aanvragen te staan.
+                          Alleen Registratie & beheer ziet deze aanvraag. De aanvraag komt niet in Alle aanvragen te staan.
                         </div>
                       )}
                       {toonPriveUitleg && (
@@ -1942,7 +1944,7 @@ export default function App() {
                               Privé aanvraag
                             </div>
                             <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, marginBottom: 14 }}>
-                              Als je Privé aanvinkt, is de aanvraag alleen zichtbaar voor Bert. De aanvraag komt dan niet in
+                              Als je Privé aanvinkt, is de aanvraag alleen zichtbaar in Registratie & beheer. De aanvraag komt dan niet in
                               het overzicht Alle aanvragen bij de aanvrager te staan.
                             </div>
                             <button
@@ -2208,7 +2210,7 @@ export default function App() {
                       </label>
                       <div style={{ fontSize: 11, color: '#6B7280', marginTop: 6 }}>
                         {aanvraag.week === 'zsm'
-                          ? 'Bert plant deze zo snel mogelijk in.'
+                          ? 'De Boekenbode plant deze zo snel mogelijk in.'
                           : `Voorkeur: ${aanvraagMomentLabel(aanvraag)}.`}
                       </div>
                       {aanvraag.week !== 'zsm' && (
@@ -2415,7 +2417,7 @@ export default function App() {
                                 <div style={{ fontSize: 11, color: '#065F46', marginTop: 3, fontWeight: 600 }}>
                                   Ingepland: {weekNr(item.geplandeWeek)} | {dagLabel(item.geplandeDag)}
                                   {(item.geplandeWeek !== item.week || Number(item.geplandeDag) !== Number(item.dag)) &&
-                                    ' | Gewijzigd door Bert'}
+                                    ' | Gewijzigd door beheer'}
                                 </div>
                               )}
                               {item.status === 'voltooid' && (
@@ -2436,7 +2438,7 @@ export default function App() {
                                     fontWeight: 650,
                                   }}
                                 >
-                                  Bert vraagt: {item.infoNotitie}
+                                  Beheer vraagt: {item.infoNotitie}
                                 </div>
                               )}
                             </div>
@@ -2616,7 +2618,7 @@ export default function App() {
                                 <AanvraagPill status={item.status} />
                                 {item.prive && (
                                   <span
-                                    title="Alleen zichtbaar voor Bert"
+                                    title="Alleen zichtbaar in beheer"
                                     style={{
                                       fontSize: 11,
                                       color: '#374151',
@@ -3907,7 +3909,7 @@ export default function App() {
           {tab === 'alletaken' && rol === 'transporteur' && (
             <Card>
               <CardHead
-                title="Alle taken"
+                title="Overzicht"
                 sub={`${actieveTaken.length} actief${verwijderdeTaken.length ? `, ${verwijderdeTaken.length} verwijderd` : ''}`}
               />
               <div style={{ padding: 14, borderBottom: '1px solid #E5E9F0', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -4555,7 +4557,7 @@ export default function App() {
                       lineHeight: 1.4,
                     }}
                   >
-                    Rapportage is alleen voor overzicht en export. Taken wijzigen of verwijderen kan bij Alle taken.
+                    Rapportage is alleen voor overzicht en export. Taken wijzigen of verwijderen kan bij Overzicht.
                   </div>
                 </div>
               </Card>
@@ -4575,7 +4577,7 @@ export default function App() {
                       { l: 'Afgerond', v: rappData.ps.afgerond, c: '#065F46' },
                       { l: 'Gepland', v: rappData.ps.gepland, c: '#1D4ED8' },
                       { l: 'Uit aanvragen', v: rappData.aanvragen, c: '#111827' },
-                      { l: 'Bert taken', v: rappData.zelf, c: '#1F7A4D' },
+                      { l: 'Handmatig toegevoegd', v: rappData.zelf, c: '#1F7A4D' },
                     ].map((item) => (
                       <div
                         key={item.l}
