@@ -7,6 +7,7 @@ import {
   DAGEN,
   DAGEN_KORT,
   PIN_BERT,
+  ROLES,
   STATUS,
   TAAK_SUGGESTIES,
   VESTIGINGEN,
@@ -19,6 +20,7 @@ import {
   CardHead,
   DrukteWaarschuwing,
   EducatieImportLayout,
+  EducatieProjectenLayout,
   FieldError,
   Label,
   MonthNav,
@@ -82,22 +84,22 @@ function laadSessie() {
   try {
     const rol = localStorage.getItem('bb_rol')
     const tab = localStorage.getItem('bb_tab')
-    if (rol === 'transporteur' && bertSessieVerlopen(localStorage.getItem('bb_login_at'))) {
+    if (rol === ROLES.transporteur && bertSessieVerlopen(localStorage.getItem('bb_login_at'))) {
       localStorage.removeItem('bb_rol')
       localStorage.removeItem('bb_tab')
       localStorage.removeItem('bb_login_at')
       return { rol: null, tab: 'planning' }
     }
     const veiligeTab =
-      rol === 'aanvrager' && !['aanvraag', 'aanvraagstatus'].includes(tab)
+      rol === ROLES.aanvrager && !['aanvraag', 'aanvraagstatus'].includes(tab)
         ? 'aanvraag'
-        : rol === 'transporteur' && !['planning', 'aanvragen', 'toevoegen', 'drukte', 'aanvraag', 'alletaken', 'rapportage'].includes(tab)
+        : rol === ROLES.transporteur && !['planning', 'aanvragen', 'toevoegen', 'drukte', 'aanvraag', 'alletaken', 'rapportage'].includes(tab)
           ? 'planning'
-          : rol === 'educatie' && !['educatie-import', 'educatie-projecten'].includes(tab)
+          : rol === ROLES.educatie && !['educatie-import', 'educatie-projecten'].includes(tab)
             ? 'educatie-import'
           : tab || 'planning'
     return {
-      rol: rol === 'aanvrager' || rol === 'transporteur' || rol === 'educatie' ? rol : null,
+      rol: Object.values(ROLES).includes(rol) ? rol : null,
       tab: veiligeTab,
     }
   } catch {
@@ -152,11 +154,11 @@ export default function App() {
   const [pinErr, setPinErr] = useState('')
   const [toonBertPin, setToonBertPin] = useState(false)
   const [tab, setTab] = useState(
-    startMobiel && sessie.rol === 'transporteur'
+    startMobiel && sessie.rol === ROLES.transporteur
       ? 'planning'
-      : sessie.rol === 'aanvrager' && sessie.tab === 'rapportage'
+      : sessie.rol === ROLES.aanvrager && sessie.tab === 'rapportage'
         ? 'aanvraag'
-        : sessie.rol === 'educatie'
+        : sessie.rol === ROLES.educatie
           ? 'educatie-import'
         : sessie.tab,
   )
@@ -168,7 +170,7 @@ export default function App() {
   const [week, setWeek] = useState(vandaag())
   const [mobielePlanningDag, setMobielePlanningDag] = useState(vandaagWerkdagIndex())
   const [toonAfgerondMobiel, setToonAfgerondMobiel] = useState(false)
-  const [planningWeergave, setPlanningWeergave] = useState(() => (sessie.rol === 'transporteur' ? 'week' : 'maand'))
+  const [planningWeergave, setPlanningWeergave] = useState(() => (sessie.rol === ROLES.transporteur ? 'week' : 'maand'))
   const [planningMaand, setPlanningMaand] = useState(new Date().toISOString().slice(0, 7))
   const [planningJaar, setPlanningJaar] = useState(String(new Date().getFullYear()))
   const [aanvraagMaand, setAanvraagMaand] = useState(new Date().toISOString().slice(0, 7))
@@ -216,7 +218,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('bb_tab', isMobiel && rol === 'transporteur' ? 'planning' : tab)
+      localStorage.setItem('bb_tab', isMobiel && rol === ROLES.transporteur ? 'planning' : tab)
     } catch {
       // Zie opmerking bij rol-opslag.
     }
@@ -296,14 +298,14 @@ export default function App() {
 
     const resetBijTerugkomen = () => {
       if (document.visibilityState !== 'visible') return
-      if (rol === 'transporteur') {
+      if (rol === ROLES.transporteur) {
         setTab('planning')
         setPlanningWeergave('week')
         setWeek(vandaag())
         setMobielePlanningDag(vandaagWerkdagIndex())
-      } else if (rol === 'aanvrager') {
+      } else if (rol === ROLES.aanvrager) {
         setTab('aanvraag')
-      } else if (rol === 'educatie') {
+      } else if (rol === ROLES.educatie) {
         setTab('educatie-import')
       }
       setMenuOpen(false)
@@ -373,7 +375,7 @@ export default function App() {
 
   function gaNaarTab(nieuweTab) {
     if (
-      rol === 'aanvrager' &&
+      rol === ROLES.aanvrager &&
       tab === 'aanvraag' &&
       nieuweTab === 'aanvraagstatus' &&
       !aanvraagBevestigd &&
@@ -404,7 +406,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (rol !== 'transporteur') return undefined
+    if (rol !== ROLES.transporteur) return undefined
 
     const controleerSessie = () => {
       try {
@@ -573,7 +575,7 @@ export default function App() {
       )
       laatsteCentraleUpdate.current = updatedAt
       pasCentraleStateToe(data)
-      if (huidigeRol.current === 'transporteur' && binnengekomenAanvragen.length > 0) {
+      if (huidigeRol.current === ROLES.transporteur && binnengekomenAanvragen.length > 0) {
         setNieuweAanvraagMelding({
           aantal: binnengekomenAanvragen.length,
           titel: binnengekomenAanvragen[0].titel || 'Nieuwe aanvraag',
@@ -606,7 +608,7 @@ export default function App() {
 
   function login(code = pin) {
     if (code === PIN_BERT) {
-      setRol('transporteur')
+      setRol(ROLES.transporteur)
       setTab('planning')
       setPlanningWeergave('week')
       setPinErr('')
@@ -631,7 +633,7 @@ export default function App() {
     setAanvraagOverigVestiging({ van: false, naar: false })
     setAanvraagEigenTitelActief(false)
     setAanvraagBevestigd(false)
-    setRol('aanvrager')
+    setRol(ROLES.aanvrager)
     setTab('aanvraag')
     setPin('')
     setPinErr('')
@@ -639,7 +641,7 @@ export default function App() {
   }
 
   function startEducatie() {
-    setRol('educatie')
+    setRol(ROLES.educatie)
     setTab('educatie-import')
     setMenuOpen(false)
     setHelpOpen(false)
@@ -839,7 +841,7 @@ export default function App() {
         ...taakRouteVoorOpslag(aanvraag.titel.trim(), aanvraag),
         aantal: taakHeeftAantalVeld(aanvraag.titel.trim()) ? String(aanvraag.aantal || '').trim() : '',
         tijd: taakHeeftTijdVeld(aanvraag.titel.trim()) ? String(aanvraag.tijd || '').trim() : '',
-        prive: rol === 'transporteur' ? false : Boolean(aanvraag.prive),
+        prive: rol === ROLES.transporteur ? false : Boolean(aanvraag.prive),
       }
       setAanvragen((prev) =>
         prev.map((item) =>
@@ -856,7 +858,7 @@ export default function App() {
         ),
       )
       setAanvraagEditId(null)
-      setTab(rol === 'transporteur' ? 'aanvragen' : 'aanvraagstatus')
+      setTab(rol === ROLES.transporteur ? 'aanvragen' : 'aanvraagstatus')
     } else {
       const id = Date.now().toString()
       const aanvraagData = {
@@ -864,7 +866,7 @@ export default function App() {
         ...taakRouteVoorOpslag(aanvraag.titel.trim(), aanvraag),
         aantal: taakHeeftAantalVeld(aanvraag.titel.trim()) ? String(aanvraag.aantal || '').trim() : '',
         tijd: taakHeeftTijdVeld(aanvraag.titel.trim()) ? String(aanvraag.tijd || '').trim() : '',
-        prive: rol === 'transporteur' ? false : Boolean(aanvraag.prive),
+        prive: rol === ROLES.transporteur ? false : Boolean(aanvraag.prive),
       }
       setAanvragen((prev) => [
         ...prev,
@@ -883,7 +885,7 @@ export default function App() {
     setAanvraagEigenTitelActief(false)
     setZsmBewustGekozen(false)
     setAanvraagMaand(new Date().toISOString().slice(0, 7))
-    if (!aanvraagEditId && rol !== 'transporteur') setAanvraagBevestigd(true)
+    if (!aanvraagEditId && rol !== ROLES.transporteur) setAanvraagBevestigd(true)
     setAanvraagErrors({})
   }
 
@@ -1307,12 +1309,12 @@ export default function App() {
   ).length
 
   const navTabs =
-    rol === 'aanvrager'
+    rol === ROLES.aanvrager
         ? [
             { k: 'aanvraag', l: 'Aanvraag indienen' },
             { k: 'aanvraagstatus', l: `Alle aanvragen${infoNodigAantal ? ` (!)` : ''}` },
           ]
-        : rol === 'educatie'
+        : rol === ROLES.educatie
           ? [
               { k: 'educatie-import', l: 'Import schoollijsten' },
               { k: 'educatie-projecten', l: 'Projecten' },
@@ -1327,7 +1329,7 @@ export default function App() {
           ]
   const zichtbareNavTabs = isMobiel ? navTabs.filter((item) => item.k !== 'rapportage') : navTabs
   const zichtbareNavGroepen =
-    rol === 'transporteur'
+    rol === ROLES.transporteur
       ? [
           {
             titel: 'Bert',
@@ -1349,7 +1351,7 @@ export default function App() {
             ],
           },
         ].filter((groep) => groep.tabs.length > 0)
-      : rol === 'educatie'
+      : rol === ROLES.educatie
         ? [{ titel: '', tabs: zichtbareNavTabs }]
       : [{ titel: '', tabs: zichtbareNavTabs }]
 
@@ -1601,17 +1603,17 @@ export default function App() {
     (isMobiel && effectieveMobielePlanningDag !== vandaagWerkdagIndex())
   const helpSubtitel = isMobiel
     ? `Hulp bij ${pagina[tab] || 'dit scherm'}.`
-    : rol === 'aanvrager'
+    : rol === ROLES.aanvrager
       ? 'Voor aanvragen en status bekijken.'
       : 'Voor planning en aanvragen beheren.'
   const helpItems = (() => {
     if (isMobiel) {
       const mobieleHelp = {
         aanvraag: [
-          rol === 'transporteur'
+          rol === ROLES.transporteur
             ? ['Aanvraag invoeren', 'Voer een aanvraag in namens iemand.']
             : ['Transportaanvraag', 'Geef door wat vervoerd moet worden.'],
-          rol === 'transporteur'
+          rol === ROLES.transporteur
             ? ['Druktemelding', 'Geef drukte of afwezigheid door.']
             : ['Prive', 'Alleen zichtbaar voor Registratie en beheer.'],
         ],
@@ -1643,14 +1645,14 @@ export default function App() {
       return mobieleHelp[tab] || [['Hulp', 'Gebruik Menu om naar de verschillende onderdelen te gaan.']]
     }
 
-    if (rol === 'aanvrager') {
+    if (rol === ROLES.aanvrager) {
       return [
         ['Transportaanvraag', 'Geef door wat vervoerd moet worden.'],
         ['Alle aanvragen', 'Volg recente aanvragen en open acties.'],
       ]
     }
 
-    if (rol === 'educatie') {
+    if (rol === ROLES.educatie) {
       return [
         ['Schooljaar', 'Vul het schooljaar van de lijst in.'],
         ['Periode', 'Vul de periode in die op de lijst staat.'],
@@ -1943,7 +1945,7 @@ export default function App() {
               }}
             >
               Menu
-              {rol === 'transporteur' && nieuweAanvragenAantal > 0 && (
+              {rol === ROLES.transporteur && nieuweAanvragenAantal > 0 && (
                 <span
                   aria-label={`${nieuweAanvragenAantal} nieuwe aanvragen`}
                   style={{
@@ -1985,7 +1987,7 @@ export default function App() {
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: '#3A2A22' }}>Menu</div>
                     <div style={{ fontSize: 12, color: '#9A5A2E', marginTop: 2 }}>
-                      {rol === 'aanvrager' ? 'Aanvrager' : rol === 'educatie' ? 'Educatie' : 'Beheer'}
+                      {rol === ROLES.aanvrager ? 'Aanvrager' : rol === ROLES.educatie ? 'Educatie' : 'Beheer'}
                     </div>
                   </div>
                   <button
@@ -2135,7 +2137,7 @@ export default function App() {
         >
           <div style={{ background: '#FFE8D1', borderRadius: 8, padding: isMobiel ? '7px 8px' : '10px 12px', marginBottom: 8 }}>
             <div style={{ color: '#3A2A22', fontSize: 12, fontWeight: 600 }}>
-              {rol === 'aanvrager' ? 'Aanvrager' : rol === 'educatie' ? 'Educatie' : 'Beheer'}
+              {rol === ROLES.aanvrager ? 'Aanvrager' : rol === ROLES.educatie ? 'Educatie' : 'Beheer'}
             </div>
             <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 2 }}>Ingelogd</div>
             <div style={{ color: '#9A5A2E', fontSize: 10, marginTop: 5 }}>{opslagStatus}</div>
@@ -2202,7 +2204,7 @@ export default function App() {
         </div>
 
         <div style={{ padding: paginaPadding, flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden' }}>
-          {rol === 'transporteur' && nieuweAanvraagMelding && (
+          {rol === ROLES.transporteur && nieuweAanvraagMelding && (
             <button
               type="button"
               onClick={() => {
@@ -2233,9 +2235,9 @@ export default function App() {
               </span>
             </button>
           )}
-          {tab === 'aanvraag' && (rol === 'aanvrager' || rol === 'transporteur') && (
+          {tab === 'aanvraag' && (rol === ROLES.aanvrager || rol === ROLES.transporteur) && (
             <div>
-              {aanvraagBevestigd && rol === 'aanvrager' ? (
+              {aanvraagBevestigd && rol === ROLES.aanvrager ? (
                 <Card>
                   <div style={{ padding: 24, textAlign: 'center' }}>
                     <div style={{ fontSize: 18, fontWeight: 700, color: '#065F46', marginBottom: 6 }}>
@@ -2380,7 +2382,7 @@ export default function App() {
                         />
                       </div>
                     )}
-                    {rol !== 'transporteur' && (
+                    {rol !== ROLES.transporteur && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 'fit-content', position: 'relative' }}>
                       <label
                         style={{
@@ -2922,7 +2924,7 @@ export default function App() {
             </div>
           )}
 
-          {tab === 'aanvraagstatus' && rol === 'aanvrager' && (
+          {tab === 'aanvraagstatus' && rol === ROLES.aanvrager && (
             <Card>
               <CardHead title="Alle aanvragen" sub={`${aanvragen.filter(aanvraagZichtbaarVoorAanvrager).length} totaal`} />
               <div style={{ padding: 14, display: 'grid', gap: 14 }}>
@@ -3118,7 +3120,7 @@ export default function App() {
             </Card>
           )}
 
-          {tab === 'educatie-import' && rol === 'educatie' && (
+          {tab === 'educatie-import' && rol === ROLES.educatie && (
             <EducatieImportLayout
               breedFormGrid={breedFormGrid}
               educatieImport={educatieImport}
@@ -3130,21 +3132,11 @@ export default function App() {
             />
           )}
 
-          {tab === 'educatie-projecten' && rol === 'educatie' && (
-            <Card>
-              <CardHead title="Projecten" />
-              <div style={{ padding: isMobiel ? 18 : 24, display: 'grid', gap: 10 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>
-                  Nog geen projecten toegevoegd
-                </div>
-                <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, maxWidth: 560 }}>
-                  Dit onderdeel staat alvast klaar. Later kunnen hier losse educatieprojecten of handmatige projectaanvragen worden toegevoegd.
-                </div>
-              </div>
-            </Card>
+          {tab === 'educatie-projecten' && rol === ROLES.educatie && (
+            <EducatieProjectenLayout isMobiel={isMobiel} />
           )}
 
-          {tab === 'aanvragen' && rol === 'transporteur' && (
+          {tab === 'aanvragen' && rol === ROLES.transporteur && (
             <Card>
               <CardHead
                 title="Aanvragen"
@@ -4001,17 +3993,17 @@ export default function App() {
                             )}
                           </div>
                           <div style={{ display: 'flex', gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
-                            {rol === 'transporteur' && taak.status !== 'afgerond' && (
+                            {rol === ROLES.transporteur && taak.status !== 'afgerond' && (
                               <Btn size="touch" variant="success" onClick={() => updStatus(taak.id, 'afgerond')}>
                                 Uitvoeren
                               </Btn>
                             )}
-                            {rol === 'transporteur' && taak.status === 'afgerond' && (
+                            {rol === ROLES.transporteur && taak.status === 'afgerond' && (
                               <Btn variant="ghost" onClick={() => updStatus(taak.id, 'gepland')}>
                                 Terugzetten
                               </Btn>
                             )}
-                            {rol === 'transporteur' && (
+                            {rol === ROLES.transporteur && (
                               <Btn variant="danger" onClick={() => vraagVerwijderTaak(taak)}>
                                 Verwijder
                               </Btn>
@@ -4090,18 +4082,18 @@ export default function App() {
                           )}
                         </div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
-                          {rol === 'transporteur' &&
+                          {rol === ROLES.transporteur &&
                             (taak.status === 'gepland' || taak.status === 'verplaatst' || taak.status === 'onderweg') && (
                               <Btn size="touch" variant="success" onClick={() => updStatus(taak.id, 'afgerond')}>
                                 Uitvoeren
                               </Btn>
                             )}
-                          {rol === 'transporteur' && taak.status === 'afgerond' && (
+                          {rol === ROLES.transporteur && taak.status === 'afgerond' && (
                             <Btn variant="ghost" onClick={() => updStatus(taak.id, 'gepland')}>
                               Terugzetten
                             </Btn>
                           )}
-                          {rol === 'transporteur' &&
+                          {rol === ROLES.transporteur &&
                             (taak.status === 'gepland' || taak.status === 'verplaatst') && (
                               <Btn
                                 size="touch"
@@ -4116,7 +4108,7 @@ export default function App() {
                                 Verplaats
                               </Btn>
                           )}
-                          {rol === 'transporteur' && (
+                          {rol === ROLES.transporteur && (
                             <Btn variant="danger" onClick={() => vraagVerwijderTaak(taak)}>
                               Verwijder
                             </Btn>
@@ -4227,7 +4219,7 @@ export default function App() {
             </div>
           )}
 
-          {tab === 'toevoegen' && rol === 'transporteur' && (
+          {tab === 'toevoegen' && rol === ROLES.transporteur && (
             <div>
               {toevoegenTab === 'taak' && (
               <Card>
@@ -4614,7 +4606,7 @@ export default function App() {
             </div>
           )}
 
-          {tab === 'alletaken' && rol === 'transporteur' && (
+          {tab === 'alletaken' && rol === ROLES.transporteur && (
             <Card>
               <CardHead
                 title="Overzicht"
@@ -4854,7 +4846,7 @@ export default function App() {
             </Card>
           )}
 
-          {tab === 'drukte' && rol === 'transporteur' && (
+          {tab === 'drukte' && rol === ROLES.transporteur && (
             <div style={{ display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 18 }}>
               <Card>
                 <CardHead title="Druktemelding toevoegen" />

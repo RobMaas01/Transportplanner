@@ -408,6 +408,22 @@ export function EducatieImportLayout({
   )
 }
 
+export function EducatieProjectenLayout({ isMobiel }) {
+  return (
+    <Card>
+      <CardHead title="Projecten" />
+      <div style={{ padding: isMobiel ? 18 : 24, display: 'grid', gap: 10 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>
+          Nog geen projecten toegevoegd
+        </div>
+        <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, maxWidth: 560 }}>
+          Dit onderdeel staat alvast klaar. Later kunnen hier losse educatieprojecten of handmatige projectaanvragen worden toegevoegd.
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 export function DrukteWaarschuwing({ waarschuwing, compact = false }) {
   if (!waarschuwing) return null
 

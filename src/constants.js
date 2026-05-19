@@ -1,5 +1,11 @@
 export const PIN_BERT = '2378'
 
+export const ROLES = {
+  aanvrager: 'aanvrager',
+  transporteur: 'transporteur',
+  educatie: 'educatie',
+}
+
 export const VESTIGINGEN = [
   'Bibliotheek School 7',
   'Bibliotheek Schagen',
