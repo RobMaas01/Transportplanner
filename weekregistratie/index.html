@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Boekenbode Weekregistratie</title>
+    <link rel="stylesheet" href="./stijl.css" />
+  </head>
+  <body>
+    <div id="homeView" class="home-screen">
+      <section class="login-card">
+        <div class="logo-block" aria-label="de Bibliotheek KopGroep Bibliotheken">
+          <div class="logo-text">
+            <div class="logo-main">de Bibliotheek</div>
+            <div class="logo-sub">KopGroep Bibliotheken</div>
+          </div>
+          <img src="./assets/kopgroep-logo-icon.jpeg" alt="" aria-hidden="true" />
+        </div>
+        <h1>Weekregistratie extra taken</h1>
+        <p class="intro">Registreer achteraf welke extra transporttaken zijn gedaan.</p>
+        <div class="home-actions">
+          <button class="big-button orange" type="button" data-go="registratie">Registreren</button>
+          <button class="big-button green" type="button" data-go="rapportage">Rapportage</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="appView" class="app-screen is-hidden">
+      <header class="app-header">
+        <button id="homeButton" class="brand-button" type="button">
+          <span class="brand-copy">
+            <span>de Bibliotheek</span>
+            <strong>KopGroep Bibliotheken</strong>
+          </span>
+          <img src="./assets/kopgroep-logo-icon.jpeg" alt="" aria-hidden="true" />
+        </button>
+
+        <div class="top-actions">
+          <button id="helpButton" class="icon-button" type="button" aria-label="Uitleg">?</button>
+          <button id="logoutButton" class="button ghost small" type="button">Log uit</button>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="page-title">
+          <div>
+            <p class="eyebrow is-hidden" id="selectedPeriodLabel">Gekozen periode</p>
+            <h2 id="pageTitle">Taak toevoegen</h2>
+          </div>
+        </section>
+
+        <section id="registrationView" class="registration-grid">
+          <form id="taskForm" class="card">
+            <div class="card-head">
+              <h3>Taak toevoegen</h3>
+              <span id="storageStatus">Lokale opslag</span>
+            </div>
+
+            <div class="form-body">
+              <div id="saveMessage" class="save-message is-hidden">Taak opgeslagen</div>
+
+              <fieldset class="choice-group">
+                <legend>Periode</legend>
+                <label>
+                  <input type="radio" name="periodType" value="week" checked />
+                  <span>Week</span>
+                </label>
+                <label>
+                  <input type="radio" name="periodType" value="day" />
+                  <span>Dag</span>
+                </label>
+              </fieldset>
+
+              <div class="form-row" id="weekField">
+                <label class="field">
+                  <span>Week</span>
+                  <input id="weekInput" type="week" />
+                </label>
+              </div>
+
+              <div class="form-row is-hidden" id="dateField">
+                <label class="field">
+                  <span>Dag</span>
+                  <div class="inline-control">
+                    <input id="dateInput" type="date" />
+                    <button id="todayButton" class="button ghost small" type="button">Vandaag</button>
+                  </div>
+                </label>
+              </div>
+
+              <label class="field">
+                <span>Taak</span>
+                <select id="typeInput" required>
+                  <option value="">Kies taak</option>
+                  <option value="Plukker">Plukker</option>
+                  <option value="Eelan">Eelan</option>
+                  <option value="Meubel verplaatsen">Meubel verplaatsen</option>
+                  <option value="Extra sorteerwerk">Extra sorteerwerk</option>
+                  <option value="Extra kratten ophalen">Extra kratten ophalen</option>
+                  <option value="CoderDojo">CoderDojo</option>
+                  <option value="Stort">Stort</option>
+                  <option value="Garage">Garage</option>
+                  <option value="Overig">Overig</option>
+                </select>
+              </label>
+
+              <label id="customTaskField" class="field is-hidden">
+                <span>Eigen titel</span>
+                <input id="customTaskInput" type="text" placeholder="Typ eigen titel" />
+              </label>
+
+              <div class="two-col" id="locationFields">
+                <label class="field" id="fromField">
+                  <span id="fromLabel">Van</span>
+                  <select id="fromInput">
+                    <option value="">Kies vestiging</option>
+                    <option>Bibliotheek School 7</option>
+                    <option>Bibliotheek Schagen</option>
+                    <option>Bibliotheek Tuitjenhorn</option>
+                    <option>Bibliotheek 't Zand</option>
+                    <option>Bibliotheek Nieuw Den Helder</option>
+                    <option>Bibliotheek de Schooten</option>
+                    <option>Bibliotheek Julianadorp</option>
+                    <option>Bibliotheek Anna Paulowna</option>
+                    <option>Bibliotheek Hippolytushoef</option>
+                    <option>Bibliotheek Middenmeer</option>
+                    <option>Bibliotheek Nieuwe Niedorp</option>
+                    <option>Bibliotheek Wieringerwerf</option>
+                    <option>Bibliotheek Texel</option>
+                    <option>Jeugdbibliotheek Anna Paulowna</option>
+                    <option>Jeugdbibliotheek 't Veld</option>
+                    <option>Jeugdbibliotheek Wieringerwaard</option>
+                    <option>Jeugdbibliotheek Petten</option>
+                    <option>Jeugdbibliotheek Callantsoog</option>
+                    <option>Jeugdbibliotheek Waarland</option>
+                  </select>
+                  <input id="customFromInput" class="is-hidden" type="text" placeholder="Vul zelf in" />
+                </label>
+                <label class="field" id="toField">
+                  <span id="toLabel">Naar</span>
+                  <select id="toInput">
+                    <option value="">Kies vestiging</option>
+                    <option>Bibliotheek School 7</option>
+                    <option>Bibliotheek Schagen</option>
+                    <option>Bibliotheek Tuitjenhorn</option>
+                    <option>Bibliotheek 't Zand</option>
+                    <option>Bibliotheek Nieuw Den Helder</option>
+                    <option>Bibliotheek de Schooten</option>
+                    <option>Bibliotheek Julianadorp</option>
+                    <option>Bibliotheek Anna Paulowna</option>
+                    <option>Bibliotheek Hippolytushoef</option>
+                    <option>Bibliotheek Middenmeer</option>
+                    <option>Bibliotheek Nieuwe Niedorp</option>
+                    <option>Bibliotheek Wieringerwerf</option>
+                    <option>Bibliotheek Texel</option>
+                    <option>Jeugdbibliotheek Anna Paulowna</option>
+                    <option>Jeugdbibliotheek 't Veld</option>
+                    <option>Jeugdbibliotheek Wieringerwaard</option>
+                    <option>Jeugdbibliotheek Petten</option>
+                    <option>Jeugdbibliotheek Callantsoog</option>
+                    <option>Jeugdbibliotheek Waarland</option>
+                  </select>
+                  <input id="customToInput" class="is-hidden" type="text" placeholder="Vul zelf in" />
+                </label>
+              </div>
+
+              <div class="two-col amount-row">
+                <label class="field" id="amountField">
+                  <span>Aantal</span>
+                  <input id="amountInput" type="number" min="1" step="1" required />
+                </label>
+                <label class="field" id="descriptionField">
+                  <span id="descriptionLabel">Omschrijving</span>
+                  <textarea id="descriptionInput" rows="3"></textarea>
+                </label>
+                <label class="field is-hidden" id="timeField">
+                  <span>Tijd in minuten</span>
+                  <input id="timeInput" type="number" min="0" step="any" placeholder="Bijv. 30" />
+                </label>
+              </div>
+
+              <label class="field" id="noteField">
+                <span>Opmerking</span>
+                <textarea id="noteInput" rows="3" placeholder="Bijzonderheden of afspraak"></textarea>
+              </label>
+
+              <div class="form-actions">
+                <button id="submitButton" class="button primary" type="submit">Taak opslaan</button>
+                <button id="cancelEditButton" class="button ghost is-hidden" type="button">Annuleer wijzigen</button>
+              </div>
+            </div>
+          </form>
+
+          <section class="card">
+            <div class="card-head">
+              <h3>Taken deze login</h3>
+              <span id="taskCountLabel">0 taken</span>
+            </div>
+            <div id="taskList" class="task-list"></div>
+            <details id="archiveDetails" class="archive-box">
+              <summary>Archief vorige logins</summary>
+              <div id="archiveList" class="task-list archive-list"></div>
+            </details>
+          </section>
+        </section>
+
+        <section id="reportView" class="is-hidden">
+          <section class="card report-filter report-generator">
+            <div class="card-head">
+              <h3>Rapportage genereren</h3>
+              <span id="reportCountLabel">0 taken</span>
+            </div>
+            <div class="report-controls">
+              <fieldset class="segmented-control">
+                <label>
+                  <input type="radio" name="reportType" value="week" checked />
+                  <span>Per week</span>
+                </label>
+                <label>
+                  <input type="radio" name="reportType" value="month" />
+                  <span>Per maand</span>
+                </label>
+                <label>
+                  <input type="radio" name="reportType" value="year" />
+                  <span>Per jaar</span>
+                </label>
+              </fieldset>
+
+              <label id="reportWeekField" class="report-period-field">
+                <input id="reportWeekInput" type="week" />
+              </label>
+              <label id="reportMonthField" class="report-period-field is-hidden">
+                <input id="reportMonthInput" type="month" />
+              </label>
+              <label id="reportYearField" class="report-period-field is-hidden">
+                <input id="reportYearInput" type="number" min="2026" step="1" />
+              </label>
+
+              <button id="showReportButton" class="button primary report-button" type="button">Toon rapportage</button>
+              <button id="exportButton" class="button ghost report-export" type="button">Export naar Excel</button>
+            </div>
+            <p class="report-note">
+              Rapportage is alleen voor overzicht en export. Taken wijzigen of verwijderen kan bij Registreren.
+            </p>
+          </section>
+
+          <div id="reportResults" class="is-hidden">
+            <div class="stats-grid">
+              <article class="stat">
+                <span>Taken</span>
+                <strong id="statTasks">0</strong>
+              </article>
+              <article class="stat">
+                <span>Locaties</span>
+                <strong id="statLocations">0</strong>
+              </article>
+              <article class="stat">
+                <span>Totaal tijd</span>
+                <strong id="statTime">0 min</strong>
+              </article>
+            </div>
+
+            <div class="report-grid">
+              <section class="card">
+                <div class="card-head">
+                  <h3>Per taak</h3>
+                </div>
+                <div id="typeReport" class="report-list"></div>
+              </section>
+              <section class="card">
+                <div class="card-head">
+                  <h3>Per locatie</h3>
+                </div>
+                <div id="locationReport" class="report-list"></div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="helpModal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <section class="modal-card">
+        <div class="card-head">
+          <h3 id="helpTitle">Wat kan hier?</h3>
+          <button id="closeHelpButton" class="icon-button" type="button" aria-label="Sluiten">x</button>
+        </div>
+        <div class="help-content">
+          <p><strong>Registreren:</strong> voeg per week of dag extra taken toe. Opgeslagen taken verschijnen rechts bij Taken deze login.</p>
+          <p><strong>Rapportage:</strong> bekijk een overzicht per week, maand of jaar en exporteer dit naar Excel.</p>
+          <p><strong>Archief:</strong> eerdere logins blijven bewaard en kunnen nog bekeken, gewijzigd of verwijderd worden.</p>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="./weekregistratie.js"></script>
+  </body>
+</html>
