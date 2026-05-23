@@ -50,7 +50,9 @@ import {
   isVerledenDatum,
   isoDag,
   jaarMaanden,
+  kwartaalLabel,
   laadLokaleState,
+  maakDashboardData,
   maakRapportData,
   maakWeken,
   maandDagen,
@@ -283,9 +285,11 @@ export default function App() {
     type: 'week',
     week: vandaag(),
     maand: new Date().toISOString().slice(0, 7),
+    kwartaal: `${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`,
     jaar: String(new Date().getFullYear()),
   })
   const [rapportZichtbaar, setRapportZichtbaar] = useState(false)
+  const [rapportWeergave, setRapportWeergave] = useState(null)
   const [educatieImport, setEducatieImport] = useState({
     schooljaar: '',
     periode: '',
@@ -710,7 +714,17 @@ export default function App() {
     })
   }
 
+  function toonTaakInOverzicht(taakData) {
+    const datum = taakDatum(taakData)
+    setTaakZoekterm('')
+    setTaakJaarFilter(String(datum.getFullYear()))
+    setTaakMaandFilter('alle')
+    setToonVerwijderdeTaken(false)
+    setTab('alletaken')
+  }
+
   function voegToe(status = 'gepland', bestemming = null) {
+    const isBewerking = Boolean(taakEditId)
     const errors = {}
     if (!nieuw.titel.trim()) errors.titel = 'Kies een taak of typ zelf een titel.'
     setTaakErrors(errors)
@@ -734,7 +748,7 @@ export default function App() {
             ? {
                 ...taak,
                 ...taakData,
-                log: [...taak.log, { a: 'gewijzigd', d: rol, w: new Date().toISOString() }],
+                log: [...(taak.log || []), { a: 'gewijzigd', d: rol, w: new Date().toISOString() }],
               }
             : taak,
         ),
@@ -772,13 +786,13 @@ export default function App() {
     setEigenTitelActief(false)
     setTaakOverigVestiging({ van: false, naar: false })
     setTaakErrors({})
-    if (taakEditId) {
+    if (isBewerking) {
       setTaakMelding('Taak gewijzigd.')
     } else {
       setTaakMelding(status === 'afgerond' ? 'Taak toegevoegd als afgerond.' : 'Taak toegevoegd.')
     }
     if (bestemming === 'alletaken') {
-      setTab('alletaken')
+      toonTaakInOverzicht(taakData)
     }
     if (bestemming === 'planning') {
       setWeek(taakData.week)
@@ -1242,16 +1256,70 @@ export default function App() {
     return geblokt.find((item) => item.week === wk && Number(item.dag) === Number(dag)) || blokkadeVoorWeek(wk)
   }
 
-  function csvWaarde(value) {
-    const tekst = String(value ?? '')
-    return `"${tekst.replaceAll('"', '""')}"`
+  function xmlWaarde(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&apos;')
+  }
+
+  function excelWerkblad(naam, rows) {
+    return `
+      <Worksheet ss:Name="${xmlWaarde(naam)}">
+        <Table>
+          ${rows
+            .map(
+              (row) => `
+                <Row>
+                  ${row
+                    .map(
+                      (cell) => `
+                        <Cell><Data ss:Type="String">${xmlWaarde(cell)}</Data></Cell>
+                      `,
+                    )
+                    .join('')}
+                </Row>
+              `,
+            )
+            .join('')}
+        </Table>
+      </Worksheet>
+    `
   }
 
   function rappPeriodeLabel() {
     if (rapp.type === 'week') return weekNr(rapp.week)
     if (rapp.type === 'maand') return maandLabel(rapp.maand)
+    if (rapp.type === 'kwartaal') return kwartaalLabel(rapp.kwartaal)
     return rapp.jaar
   }
+
+  function kwartaalJaar(value) {
+    return value.split('-Q')[0]
+  }
+
+  function kwartaalNummer(value) {
+    return value.split('-Q')[1]
+  }
+
+  function zetKwartaal(deel, waarde) {
+    setRapp((prev) => {
+      const jaar = deel === 'jaar' ? waarde : kwartaalJaar(prev.kwartaal)
+      const kwartaal = deel === 'kwartaal' ? waarde : kwartaalNummer(prev.kwartaal)
+      return { ...prev, kwartaal: `${jaar}-Q${kwartaal}` }
+    })
+    setRapportZichtbaar(false)
+    setRapportWeergave(null)
+  }
+
+  function kiesRapportMaand(maand) {
+    setRapp((prev) => ({ ...prev, maand }))
+    setRapportZichtbaar(false)
+    setRapportWeergave(null)
+  }
+
 
   function exportRapportCsv() {
     if (!rappData) return
@@ -1291,12 +1359,63 @@ export default function App() {
       taak.aangemaakt ? fmt(new Date(taak.aangemaakt)) : '',
     ])
 
-    const csv = [headers, ...rows].map((row) => row.map(csvWaarde).join(';')).join('\r\n')
-    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
+    const exportDashboard = maakDashboardData(taken, aanvragen, rapp, geblokt)
+    const dashboardRows = [
+      ['Periode', exportDashboard.periodeLabel],
+      [],
+      ['Thema', 'Indicator', 'Waarde'],
+      ['Capaciteit', 'Signaal', exportDashboard.capaciteitSignaal],
+      ['Capaciteit', 'Norm', exportDashboard.capaciteitNorm],
+      ['Capaciteit', 'Geregistreerde tijd', `${exportDashboard.geregistreerdeTijdMin} min`],
+      ['Werkdruk', 'Openstaand', exportDashboard.open],
+      ['Werkdruk', 'Afgerond', exportDashboard.afgerond],
+      ['Werkdruk', 'Vertraagd', exportDashboard.vertraagd],
+      ['Piekindicator', 'Status', exportDashboard.piekSignaal],
+      ['Piekindicator', 'Grens', exportDashboard.piekNorm],
+      ['Piekindicator', 'Reden', exportDashboard.piekRedenen.join(', ') || 'geen'],
+      ['Piekindicator', 'Uitzonderingsritten', exportDashboard.uitzonderingsritten],
+      ['Piekindicator', 'Sorteertijd', `${exportDashboard.sorteerTijdMin} min`],
+      ['Service', 'Afrondingsgraad', `${exportDashboard.afrondingsgraad}%`],
+      ['Service', 'Open aanvragen', exportDashboard.openAanvragen],
+      ['Beheersbaarheid', 'Registratiegraad', `${exportDashboard.registratiegraad}%`],
+      ['Beheersbaarheid', 'Handmatig toegevoegd', exportDashboard.handmatig],
+      ['Piekindicator', 'Handmatige druktemeldingen', exportDashboard.druktemeldingen.length],
+      ['Piekindicator', 'Automatische waarschuwingen', exportDashboard.automatischeWaarschuwingen.length],
+      [],
+      [exportDashboard.periodeGrafiekTitel, 'Aantal'],
+      ...exportDashboard.periodeDrukte.map((item) => [item.label, item.aantal]),
+      [],
+      ['Drukte per weekdag', 'Aantal'],
+      ...exportDashboard.dagVerdeling.map((item) => [item.label, item.aantal]),
+      [],
+      ['Uitzonderingsritten', 'Aantal'],
+      ...exportDashboard.uitzonderingTypen.map((item) => [item.label, item.aantal]),
+      [],
+      ['Piekwaarschuwingen', 'Type', 'Dag', 'Reden'],
+      ...exportDashboard.piekWaarschuwingen.map((item) => [
+        weekNr(item.week),
+        item.automatisch ? 'Automatisch' : 'Handmatig',
+        item.dag === null || item.dag === undefined ? 'Hele week' : dagLabel(item.dag),
+        item.reden || '',
+      ]),
+    ]
+
+    const workbook = `<?xml version="1.0"?>
+      <?mso-application progid="Excel.Sheet"?>
+      <Workbook
+        xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+        xmlns:o="urn:schemas-microsoft-com:office:office"
+        xmlns:x="urn:schemas-microsoft-com:office:excel"
+        xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+        ${excelWerkblad('Taken', [headers, ...rows])}
+        ${excelWerkblad('Dashboard', dashboardRows)}
+      </Workbook>`
+
+    const blob = new Blob([workbook], { type: 'application/vnd.ms-excel;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `rapportage-${rapp.type}-${rappPeriodeLabel().replaceAll(' ', '-').toLowerCase()}.csv`
+    link.download = `rapportage-${rapp.type}-${rappPeriodeLabel().replaceAll(' ', '-').toLowerCase()}.xls`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -1594,7 +1713,8 @@ export default function App() {
   const gezochteVerwijderdeTaken = filterTakenOpPeriode(filterTakenOpZoekterm(verwijderdeTaken.slice().sort(sortTaken), taakZoekterm))
   const takenPerMaand = groepeerTakenPerMaand(gezochteActieveTaken)
   const verwijderdeTakenPerMaand = groepeerTakenPerMaand(gezochteVerwijderdeTaken)
-  const rappData = tab === 'rapportage' && rapportZichtbaar ? maakRapportData(taken, rapp) : null
+  const dashboardData = tab === 'rapportage' && rapportWeergave === 'dashboard' ? maakDashboardData(taken, aanvragen, rapp, geblokt) : null
+  const rappData = tab === 'rapportage' && rapportWeergave === 'rapportage' && rapportZichtbaar ? maakRapportData(taken, rapp) : null
   const breedFormGrid = isMobiel ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))'
   const paginaPadding = isMobiel ? 10 : 20
   const planningNietVandaag =
@@ -4564,7 +4684,7 @@ export default function App() {
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
-                        onClick={() => voegToe('gepland')}
+                        onClick={() => voegToe('gepland', 'alletaken')}
                         style={{
                           background: '#EA6A1F',
                           color: '#fff',
@@ -4646,11 +4766,6 @@ export default function App() {
                     </option>
                   ))}
                 </select>
-                {verwijderdeTaken.length > 0 && (
-                  <Btn variant="ghost" size="touch" onClick={() => setToonVerwijderdeTaken((prev) => !prev)}>
-                    {toonVerwijderdeTaken ? 'Verberg verwijderde taken' : 'Toon verwijderde taken'}
-                  </Btn>
-                )}
               </div>
               <div style={{ maxHeight: 620, overflowY: 'auto', padding: 14, display: 'grid', gap: 14 }}>
                 {gezochteActieveTaken.length === 0 && (
@@ -4710,7 +4825,7 @@ export default function App() {
                               <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Tijd: {taak.tijd} min</div>
                             )}
                             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                              {weekNr(taak.week)} | {dagLabel(taak.dag)} | {bronLabel(taak.bron)}
+                              {weekNr(taak.week)} | {dagLabel(taak.dag)} | {taak.naam || taak.door || bronLabel(taak.bron)}
                             </div>
                             {(taak.van || taak.naar) && (
                               <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{routeLabel(taak.van, taak.naar)}</div>
@@ -4757,10 +4872,26 @@ export default function App() {
                         alignItems: 'center',
                       }}
                     >
-                      <span style={{ fontSize: 13, fontWeight: 650, color: '#374151' }}>Verwijderde taken</span>
-                      <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 650 }}>
-                        {gezochteVerwijderdeTaken.length}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 13, fontWeight: 650, color: '#374151' }}>Verwijderde taken</span>
+                        <span
+                          style={{
+                            minWidth: 24,
+                            textAlign: 'center',
+                            borderRadius: 999,
+                            background: '#E5E7EB',
+                            color: '#4B5563',
+                            fontSize: 12,
+                            fontWeight: 750,
+                            padding: '2px 8px',
+                          }}
+                        >
+                          {gezochteVerwijderdeTaken.length}
+                        </span>
+                      </div>
+                      <Btn variant="ghost" onClick={() => setToonVerwijderdeTaken((prev) => !prev)}>
+                        {toonVerwijderdeTaken ? 'Verberg verwijderde taken' : 'Toon verwijderde taken'}
+                      </Btn>
                     </div>
                     {!toonVerwijderdeTaken ? (
                       <div style={{ padding: '12px 14px', fontSize: 12, color: '#6B7280', background: '#fff' }}>
@@ -4812,7 +4943,7 @@ export default function App() {
                                   <div style={{ fontSize: 12, color: '#374151', marginTop: 2 }}>Tijd: {taak.tijd} min</div>
                                 )}
                                 <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                                  {weekNr(taak.week)} | {dagLabel(taak.dag)} | {bronLabel(taak.bron)}
+                                  {weekNr(taak.week)} | {dagLabel(taak.dag)} | {taak.naam || taak.door || bronLabel(taak.bron)}
                                 </div>
                                 <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 3 }}>
                                   Verwijderd: {fmt(new Date(taak.verwijderdOp || taak.aangemaakt || Number(taak.id)))}
@@ -5189,12 +5320,13 @@ export default function App() {
                 <CardHead title="Rapportage genereren" />
                 <div style={{ padding: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3 }}>
-                    {['week', 'maand', 'jaar'].map((type) => (
+                    {['week', 'maand', 'kwartaal', 'jaar'].map((type) => (
                       <button
                         key={type}
                         onClick={() => {
-                          setRapp((prev) => ({ ...prev, type }))
+                          setRapp((prev) => ({ ...prev, type, week: type === 'week' ? vandaag() : prev.week }))
                           setRapportZichtbaar(false)
+                          setRapportWeergave(null)
                         }}
                         style={{
                           border: 'none',
@@ -5208,7 +5340,7 @@ export default function App() {
                           boxShadow: rapp.type === type ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
                         }}
                       >
-                        {type === 'week' ? 'Per week' : type === 'maand' ? 'Per maand' : 'Per jaar'}
+                        {type === 'week' ? 'Per week' : type === 'maand' ? 'Per maand' : type === 'kwartaal' ? 'Per kwartaal' : 'Per jaar'}
                       </button>
                     ))}
                   </div>
@@ -5218,6 +5350,7 @@ export default function App() {
                       onChange={(e) => {
                         setRapp((prev) => ({ ...prev, week: e.target.value }))
                         setRapportZichtbaar(false)
+                        setRapportWeergave(null)
                       }}
                       style={{ ...inp, width: 'auto', padding: '7px 12px' }}
                     >
@@ -5228,33 +5361,100 @@ export default function App() {
                       ))}
                     </select>
                   ) : rapp.type === 'maand' ? (
-                    <input
-                      type="month"
+                    <MonthNav
                       value={rapp.maand}
-                      onChange={(e) => {
-                        setRapp((prev) => ({ ...prev, maand: e.target.value }))
-                        setRapportZichtbaar(false)
-                      }}
-                      style={{ ...inp, width: 'auto', padding: '7px 12px' }}
+                      onChange={kiesRapportMaand}
+                      min="2026-01"
                     />
+                  ) : rapp.type === 'kwartaal' ? (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <select
+                        value={kwartaalJaar(rapp.kwartaal)}
+                        onChange={(e) => zetKwartaal('jaar', e.target.value)}
+                        style={{ ...inp, width: 'auto', padding: '7px 12px' }}
+                      >
+                        {Array.from({ length: 10 }, (_, index) => 2026 + index).map((jaar) => (
+                          <option key={jaar} value={jaar}>
+                            {jaar}
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3 }}>
+                        {[
+                          ['1', 'Q1', 'jan-feb-mrt'],
+                          ['2', 'Q2', 'apr-mei-jun'],
+                          ['3', 'Q3', 'jul-aug-sep'],
+                          ['4', 'Q4', 'okt-nov-dec'],
+                        ].map(([nummer, label, maanden]) => (
+                          <button
+                            key={nummer}
+                            type="button"
+                            onClick={() => zetKwartaal('kwartaal', nummer)}
+                            title={maanden}
+                            style={{
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '6px 10px',
+                              fontSize: 12,
+                              fontWeight: 650,
+                              cursor: 'pointer',
+                              background: kwartaalNummer(rapp.kwartaal) === nummer ? '#fff' : 'transparent',
+                              color: kwartaalNummer(rapp.kwartaal) === nummer ? '#111827' : '#6B7280',
+                              boxShadow: kwartaalNummer(rapp.kwartaal) === nummer ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#6B7280' }}>
+                        {kwartaalLabel(rapp.kwartaal).replace(`Kwartaal ${kwartaalNummer(rapp.kwartaal)} ${kwartaalJaar(rapp.kwartaal)} `, '')}
+                      </div>
+                    </div>
                   ) : (
-                    <input
-                      type="number"
-                      min="2026"
-                      max="2035"
+                    <select
                       value={rapp.jaar}
                       onChange={(e) => {
                         setRapp((prev) => ({ ...prev, jaar: e.target.value }))
                         setRapportZichtbaar(false)
+                        setRapportWeergave(null)
                       }}
-                      style={{ ...inp, width: 110, padding: '7px 12px' }}
-                    />
+                      style={{ ...inp, width: 'auto', padding: '7px 12px' }}
+                    >
+                      {Array.from({ length: 10 }, (_, index) => 2026 + index).map((jaar) => (
+                        <option key={jaar} value={jaar}>
+                          {jaar}
+                        </option>
+                      ))}
+                    </select>
                   )}
                   <button
                     type="button"
-                    onClick={() => setRapportZichtbaar(true)}
+                    onClick={() => {
+                      setRapportWeergave('dashboard')
+                      setRapportZichtbaar(false)
+                    }}
                     style={{
                       background: '#EA6A1F',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '9px 16px',
+                      fontSize: 13,
+                      fontWeight: 650,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Toon dashboard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRapportZichtbaar(true)
+                      setRapportWeergave('rapportage')
+                    }}
+                    style={{
+                      background: '#1F7A4D',
                       color: '#fff',
                       border: 'none',
                       borderRadius: 8,
@@ -5274,10 +5474,439 @@ export default function App() {
                       lineHeight: 1.4,
                     }}
                   >
-                    Rapportage is alleen voor overzicht en export. Taken wijzigen of verwijderen kan bij Overzicht.
+                    Dashboard toont stuurinformatie. Rapportage toont detailregels en export voor administratie.
                   </div>
                 </div>
               </Card>
+
+              {dashboardData && (
+                <div>
+                  <div
+                    style={{
+                      background: '#FFF7ED',
+                      color: '#3A2A22',
+                      border: '1px solid #FED7AA',
+                      borderRadius: 8,
+                      padding: isMobiel ? 16 : 20,
+                      marginBottom: 14,
+                      display: 'grid',
+                      gridTemplateColumns: isMobiel ? '1fr' : '1fr auto',
+                      gap: 16,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 12, color: '#9A3412', fontWeight: 750, marginBottom: 5 }}>
+                        Stuurinformatie transport
+                      </div>
+                      <div style={{ fontSize: 22, fontWeight: 850, letterSpacing: 0 }}>
+                        {dashboardData.periodeLabel}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#7C4A2A', marginTop: 6, lineHeight: 1.45 }}>
+                        Gericht op capaciteit, werkdruk, piekbelasting, service en beheersbaarheid.
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: isMobiel ? 'flex-start' : 'flex-end' }}>
+                      {[
+                        {
+                          label: 'Capaciteit',
+                          value: dashboardData.capaciteitSignaal,
+                          bg: dashboardData.capaciteitSignaal === 'Let op' ? '#FEE2E2' : dashboardData.capaciteitSignaal === 'Druk' ? '#FEF3C7' : '#DCFCE7',
+                          color: dashboardData.capaciteitSignaal === 'Let op' ? '#991B1B' : dashboardData.capaciteitSignaal === 'Druk' ? '#92400E' : '#166534',
+                        },
+                        {
+                          label: 'Piekindicator',
+                          value: dashboardData.piekSignaal,
+                          bg: dashboardData.piekSignaal === 'Hoog' ? '#FEE2E2' : dashboardData.piekSignaal === 'Verhoogd' ? '#FEF3C7' : '#DCFCE7',
+                          color: dashboardData.piekSignaal === 'Hoog' ? '#991B1B' : dashboardData.piekSignaal === 'Verhoogd' ? '#92400E' : '#166534',
+                        },
+                      ].map((item) => (
+                        <div
+                          key={item.label}
+                          style={{
+                            background: item.bg,
+                            color: item.color,
+                            borderRadius: 8,
+                            padding: '9px 12px',
+                            minWidth: 126,
+                          }}
+                        >
+                          <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase' }}>{item.label}</div>
+                          <div style={{ fontSize: 16, fontWeight: 850, marginTop: 2 }}>{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))',
+                      gap: 10,
+                      marginBottom: 14,
+                    }}
+                  >
+                    {[
+                      { l: 'Open taken', v: dashboardData.open, c: '#1D4ED8', sub: 'actuele werkdruk' },
+                      { l: 'Afgerond', v: dashboardData.afgerond, c: '#166534', sub: `${dashboardData.afrondingsgraad}% afronding` },
+                      { l: 'Vertraagd', v: dashboardData.vertraagd, c: '#B91C1C', sub: 'niet afgerond in verleden' },
+                      { l: 'Uitzonderingen', v: dashboardData.uitzonderingsritten, c: '#111827', sub: 'buiten standaardstroom' },
+                      { l: 'Extra stops', v: dashboardData.extraStops, c: '#B45309', sub: 'taken met locatie' },
+                      { l: 'Sorteertijd', v: `${dashboardData.sorteerTijdMin} min`, c: '#7C2D12', sub: 'Tuitjenhorn/sorteren' },
+                      { l: 'Piekwaarschuwingen', v: dashboardData.piekWaarschuwingen.length, c: '#EA6A1F', sub: 'handmatig + automatisch' },
+                    ].map((item) => (
+                      <div
+                        key={item.l}
+                        style={{
+                          background: '#fff',
+                          border: '1px solid #E5E9F0',
+                          borderRadius: 8,
+                          padding: '14px 15px',
+                        }}
+                      >
+                        <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 750 }}>{item.l}</div>
+                        <div style={{ fontSize: 26, fontWeight: 850, color: item.c, marginTop: 4 }}>{item.v}</div>
+                        <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 3 }}>{item.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                      gap: 10,
+                      marginBottom: 18,
+                    }}
+                  >
+                    <Card>
+                      <CardHead title={dashboardData.periodeGrafiekTitel} sub={dashboardData.periodeLabel} />
+                      <div style={{ padding: 16 }}>
+                        {dashboardData.periodeDrukte.length === 0 && (
+                          <div style={{ fontSize: 12, color: '#9CA3AF' }}>Geen taken in deze periode.</div>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'end', gap: 8, minHeight: 150 }}>
+                          {dashboardData.periodeDrukte.map((item) => {
+                            const max = Math.max(1, ...dashboardData.periodeDrukte.map((periodeItem) => periodeItem.aantal))
+                            return (
+                              <div key={item.label} style={{ flex: 1, display: 'grid', gap: 6, alignItems: 'end' }}>
+                                <div style={{ fontSize: 10, color: '#6B7280', textAlign: 'center', minHeight: 13 }}>{item.aantal || ''}</div>
+                                <div
+                                  title={`${item.label}: ${item.aantal}`}
+                                  style={{
+                                    minHeight: 6,
+                                    height: `${Math.max(6, (item.aantal / max) * 118)}px`,
+                                    background: item.aantal === 0 ? '#E5E7EB' : '#EA6A1F',
+                                    borderRadius: '6px 6px 2px 2px',
+                                  }}
+                                />
+                                <div style={{ fontSize: 10, color: '#6B7280', textAlign: 'center' }}>{item.label}</div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </Card>
+
+                    {rapp.type !== 'week' && (
+                      <Card>
+                        <CardHead title="Drukte per weekdag" />
+                        <div style={{ padding: 16, display: 'grid', gap: 9 }}>
+                          {dashboardData.dagVerdeling.map((item) => {
+                            const max = Math.max(1, ...dashboardData.dagVerdeling.map((dagItem) => dagItem.aantal))
+                            return (
+                              <div key={item.label}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#374151' }}>
+                                  <span>{item.label}</span>
+                                  <strong>{item.aantal}</strong>
+                                </div>
+                                <div style={{ height: 10, background: '#EEF2F7', borderRadius: 999, overflow: 'hidden', marginTop: 4 }}>
+                                  <div style={{ width: `${(item.aantal / max) * 100}%`, height: '100%', background: '#2563EB' }} />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </Card>
+                    )}
+
+                    <Card>
+                      <CardHead title="Verdeling werk" />
+                      <div style={{ padding: 16, display: 'grid', gap: 12 }}>
+                        {(() => {
+                          const items = [
+                            { label: 'Uit aanvragen', aantal: dashboardData.uitAanvragen, color: '#1D4ED8' },
+                            { label: 'Handmatig toegevoegd', aantal: dashboardData.handmatig, color: '#1F7A4D' },
+                            { label: 'Sorteerwerk', aantal: dashboardData.sorteerTaken, color: '#EA6A1F' },
+                            { label: 'Hoge prioriteit', aantal: dashboardData.hogePrioriteit, color: '#B91C1C' },
+                          ]
+                          const totaalWerk = Math.max(1, items.reduce((som, item) => som + item.aantal, 0))
+                          let positie = 0
+                          const gradient = items
+                            .map((item) => {
+                              const start = positie
+                              positie += (item.aantal / totaalWerk) * 100
+                              return `${item.color} ${start}% ${positie}%`
+                            })
+                            .join(', ')
+                          return (
+                            <div style={{ display: 'grid', gridTemplateColumns: '104px 1fr', gap: 14, alignItems: 'center' }}>
+                              <div
+                                aria-label="Verdeling werk"
+                                style={{
+                                  width: 104,
+                                  height: 104,
+                                  borderRadius: '50%',
+                                  background: items.some((item) => item.aantal > 0) ? `conic-gradient(${gradient})` : '#E5E7EB',
+                                  display: 'grid',
+                                  placeItems: 'center',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: 62,
+                                    height: 62,
+                                    borderRadius: '50%',
+                                    background: '#fff',
+                                  }}
+                                />
+                              </div>
+                              <div style={{ display: 'grid', gap: 7 }}>
+                                {items.map((item) => (
+                                  <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#374151' }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+                                    <span style={{ flex: 1 }}>{item.label}</span>
+                                    <strong>{item.aantal}</strong>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })()}
+                        {[
+                          { label: 'Uit aanvragen', aantal: dashboardData.uitAanvragen, color: '#1D4ED8' },
+                          { label: 'Handmatig toegevoegd', aantal: dashboardData.handmatig, color: '#1F7A4D' },
+                          { label: 'Sorteerwerk', aantal: dashboardData.sorteerTaken, color: '#EA6A1F' },
+                          { label: 'Hoge prioriteit', aantal: dashboardData.hogePrioriteit, color: '#B91C1C' },
+                        ].map((item) => {
+                          const max = Math.max(1, dashboardData.uitAanvragen, dashboardData.handmatig, dashboardData.sorteerTaken, dashboardData.hogePrioriteit)
+                          return (
+                            <div key={item.label}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#374151' }}>
+                                <span>{item.label}</span>
+                                <strong>{item.aantal}</strong>
+                              </div>
+                              <div style={{ height: 9, background: '#EEF2F7', borderRadius: 999, overflow: 'hidden', marginTop: 5 }}>
+                                <div style={{ width: `${(item.aantal / max) * 100}%`, height: '100%', background: item.color }} />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </Card>
+
+                    <Card>
+                      <CardHead
+                        title="Piekwaarschuwingen"
+                        sub={
+                          dashboardData.piekWaarschuwingen.length
+                            ? `${dashboardData.druktemeldingen.length} handmatig, ${dashboardData.automatischeWaarschuwingen.length} automatisch`
+                            : 'geen'
+                        }
+                      />
+                      <div style={{ padding: 16, display: 'grid', gap: 8 }}>
+                        {dashboardData.piekWaarschuwingen.length === 0 && (
+                          <div style={{ fontSize: 12, color: '#9CA3AF' }}>Geen piekwaarschuwingen in deze periode.</div>
+                        )}
+                        {dashboardData.piekWaarschuwingen.map((item) => (
+                          <div
+                            key={item.id || `${item.week}-${item.dag ?? 'week'}`}
+                            style={{
+                              background: item.automatisch ? '#F8FAFC' : '#FFF7ED',
+                              border: item.automatisch ? '1px solid #CBD5E1' : '1px solid #FED7AA',
+                              borderRadius: 8,
+                              padding: '9px 10px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 12, fontWeight: 800, color: item.automatisch ? '#475569' : '#9A3412' }}>
+                                {weekNr(item.week)} | {item.dag === null || item.dag === undefined ? 'Hele week' : dagLabel(item.dag)}
+                              </span>
+                              <span
+                                style={{
+                                  borderRadius: 999,
+                                  padding: '2px 7px',
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                  background: item.automatisch ? '#E2E8F0' : '#FED7AA',
+                                  color: item.automatisch ? '#334155' : '#9A3412',
+                                }}
+                              >
+                                {item.automatisch ? 'Automatisch' : 'Handmatig'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 12, color: item.automatisch ? '#64748B' : '#7C4A2A', marginTop: 3 }}>
+                              {item.reden || 'Geen reden ingevuld'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+                      gap: 10,
+                      marginBottom: 18,
+                    }}
+                  >
+                    {[
+                      {
+                        titel: 'Capaciteit',
+                        accent: '#1D4ED8',
+                        regels: [
+                          ['Signaal', dashboardData.capaciteitSignaal],
+                          [
+                            'Beoordeling',
+                            dashboardData.capaciteitSignaal === 'Normaal'
+                              ? 'binnen startgrens'
+                              : dashboardData.capaciteitSignaal === 'Druk'
+                                ? 'boven startgrens'
+                                : 'mogelijk capaciteitsrisico',
+                          ],
+                          ['Geregistreerde tijd', `${dashboardData.geregistreerdeTijdMin} min`],
+                          ['Open taken', dashboardData.open],
+                        ],
+                      },
+                      {
+                        titel: 'Werkdruk',
+                        accent: '#166534',
+                        regels: [
+                          ['Openstaand', dashboardData.open],
+                          ['Afgerond', dashboardData.afgerond],
+                          ['Vertraagd', dashboardData.vertraagd],
+                        ],
+                      },
+                      {
+                        titel: 'Piekindicator',
+                        accent:
+                          dashboardData.piekSignaal === 'Hoog'
+                            ? '#B91C1C'
+                            : dashboardData.piekSignaal === 'Verhoogd'
+                              ? '#B45309'
+                              : '#166534',
+                        regels: [
+                          ['Status', dashboardData.piekSignaal],
+                          ['Belasting', dashboardData.piekRedenen.join(', ') || 'geen opvallende piek'],
+                          ['Uitzonderingsritten', dashboardData.uitzonderingsritten],
+                          ['Sorteertijd', `${dashboardData.sorteerTijdMin} min`],
+                        ],
+                      },
+                      {
+                        titel: 'Service',
+                        accent: '#4F46E5',
+                        regels: [
+                          ['Afrondingsgraad', `${dashboardData.afrondingsgraad}%`],
+                          ['Open aanvragen', dashboardData.openAanvragen],
+                        ],
+                      },
+                      {
+                        titel: 'Beheersbaarheid',
+                        accent: '#0F766E',
+                        regels: [
+                          ['Registratiegraad', `${dashboardData.registratiegraad}%`],
+                          ['Handmatig', dashboardData.handmatig],
+                          ['Opvallende belasting', dashboardData.piekRedenen[0] || 'geen'],
+                        ],
+                      },
+                    ].map((blok) => (
+                      <div
+                        key={blok.titel}
+                        style={{
+                          background: '#fff',
+                          border: '1px solid #E5E9F0',
+                          borderRadius: 8,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div style={{ height: 4, background: blok.accent }} />
+                        <div style={{ padding: '12px 14px 4px', fontSize: 13, fontWeight: 850, color: '#111827' }}>
+                          {blok.titel}
+                        </div>
+                        <div style={{ padding: '6px 14px 14px', display: 'grid', gap: 8 }}>
+                          {blok.regels.map(([label, waarde]) => (
+                            <div
+                              key={label}
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: 10,
+                                fontSize: 12,
+                                color: '#374151',
+                              }}
+                            >
+                              <span>{label}</span>
+                              <strong style={{ textAlign: 'right' }}>{waarde}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                      gap: 10,
+                      marginBottom: 18,
+                    }}
+                  >
+                    {[ 
+                      { titel: 'Meest voorkomende taken', items: dashboardData.topTaken },
+                      { titel: 'Uitzonderingsritten', items: dashboardData.uitzonderingTypen },
+                      { titel: 'Vaak vanaf', items: dashboardData.topVan },
+                      { titel: 'Vaak naar', items: dashboardData.topNaar },
+                    ].map((blok) => (
+                      <Card key={blok.titel}>
+                        <CardHead title={blok.titel} />
+                        <div style={{ padding: 16, display: 'grid', gap: 9 }}>
+                          {blok.items.length === 0 && <div style={{ fontSize: 12, color: '#9CA3AF' }}>Geen gegevens.</div>}
+                          {blok.items.map((item) => (
+                            <div
+                              key={item.label}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr auto',
+                                gap: 10,
+                                alignItems: 'center',
+                                fontSize: 12,
+                                color: '#374151',
+                              }}
+                            >
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                              <strong
+                                style={{
+                                  minWidth: 28,
+                                  textAlign: 'center',
+                                  borderRadius: 999,
+                                  background: '#F3F4F6',
+                                  color: '#111827',
+                                  padding: '2px 8px',
+                                }}
+                              >
+                                {item.aantal}
+                              </strong>
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {rappData && (
                 <div>
