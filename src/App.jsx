@@ -313,10 +313,11 @@ export default function App() {
   const [educatieMelding, setEducatieMelding] = useState('')
   const [educatieProjectForm, setEducatieProjectForm] = useState({
     mode: 'excel',
+    editId: null,
     naam: '',
     bestandNaam: '',
     projectNamen: [],
-    week: vandaag(),
+    week: '',
     dag: 'flexibel',
     van: 'School 7 Educatie',
     naar: '',
@@ -769,6 +770,7 @@ export default function App() {
 
   function voegToe(status = 'gepland', bestemming = null) {
     const isBewerking = Boolean(taakEditId)
+    const bestaandeTaak = taakEditId ? taken.find((taak) => taak.id === taakEditId) : null
     const errors = {}
     if (!nieuw.titel.trim()) errors.titel = 'Kies een taak of typ zelf een titel.'
     setTaakErrors(errors)
@@ -797,6 +799,23 @@ export default function App() {
             : taak,
         ),
       )
+      if (bestaandeTaak?.educatieProjectId) {
+        setEducatieProjecten((prev) =>
+          prev.map((project) =>
+            project.id === bestaandeTaak.educatieProjectId
+              ? {
+                  ...project,
+                  naam: taakData.titel.replace(/^Project:\s*/i, ''),
+                  week: taakData.week,
+                  dag: taakData.dag,
+                  van: taakData.van,
+                  naar: taakData.naar,
+                  toelichting: taakData.omschrijving,
+                }
+              : project,
+          ),
+        )
+      }
     } else {
       setTaken((prev) => [
         ...prev,
@@ -1095,10 +1114,11 @@ export default function App() {
   function resetEducatieProjectForm() {
     setEducatieProjectForm({
       mode: 'excel',
+      editId: null,
       naam: '',
       bestandNaam: '',
       projectNamen: [],
-      week: vandaag(),
+      week: '',
       dag: 'flexibel',
       van: 'School 7 Educatie',
       naar: '',
@@ -1134,15 +1154,17 @@ export default function App() {
         ? (educatieProjectForm.projectNamen || []).map((item) => item.naam.trim()).filter(Boolean)
         : [educatieProjectForm.naam.trim()].filter(Boolean)
 
-    if (!educatieProjectForm.week || !educatieProjectForm.van || !educatieProjectForm.naar || namen.length === 0) return
+    if (!educatieProjectForm.van || !educatieProjectForm.naar || namen.length === 0) return
 
     const nu = new Date().toISOString()
     const nieuweProjecten = namen.map((naam, index) => ({
-      id: `${Date.now()}-${index}`,
-      taakId: `${Date.now()}-project-${index}`,
+      id: educatieProjectForm.editId || `${Date.now()}-${index}`,
+      taakId: educatieProjectForm.editId
+        ? educatieProjecten.find((item) => item.id === educatieProjectForm.editId)?.taakId || `${Date.now()}-project-${index}`
+        : `${Date.now()}-project-${index}`,
       naam,
       week: educatieProjectForm.week,
-      dag: educatieProjectForm.dag === 'flexibel' ? null : Number(educatieProjectForm.dag),
+      dag: !educatieProjectForm.week || educatieProjectForm.dag === 'flexibel' ? null : Number(educatieProjectForm.dag),
       van: educatieProjectForm.van,
       naar: educatieProjectForm.naar,
       toelichting: educatieProjectForm.toelichting.trim(),
@@ -1150,10 +1172,44 @@ export default function App() {
       aangemaakt: nu,
     }))
 
-    setEducatieProjecten((prev) => [...prev, ...nieuweProjecten])
-    setTaken((prev) => [...prev, ...nieuweProjecten.map((project) => projectTaakVoorOpslag(project, project.taakId))])
-    setProjectMelding(`${nieuweProjecten.length} project(en) toegevoegd aan de planning.`)
+    if (educatieProjectForm.editId) {
+      const project = nieuweProjecten[0]
+      setEducatieProjecten((prev) => prev.map((item) => (item.id === project.id ? { ...item, ...project, aangemaakt: item.aangemaakt } : item)))
+      setTaken((prev) => {
+        const zonderProjectTaak = prev.filter((taak) => taak.educatieProjectId !== project.id)
+        return project.week ? [...zonderProjectTaak, projectTaakVoorOpslag(project, project.taakId)] : zonderProjectTaak
+      })
+      setProjectMelding(project.week ? 'Project gewijzigd en in de planning gezet.' : 'Project gewijzigd.')
+    } else {
+      setEducatieProjecten((prev) => [...prev, ...nieuweProjecten])
+      const projectenMetWeek = nieuweProjecten.filter((project) => project.week)
+      if (projectenMetWeek.length > 0) {
+        setTaken((prev) => [...prev, ...projectenMetWeek.map((project) => projectTaakVoorOpslag(project, project.taakId))])
+      }
+      setProjectMelding(
+        projectenMetWeek.length
+          ? `${nieuweProjecten.length} project(en) toegevoegd. ${projectenMetWeek.length} in de planning gezet.`
+          : `${nieuweProjecten.length} project(en) toegevoegd. Nog niet ingepland.`,
+      )
+    }
     resetEducatieProjectForm()
+  }
+
+  function bewerkEducatieProject(project) {
+    setEducatieProjectForm({
+      mode: 'handmatig',
+      editId: project.id,
+      naam: project.naam || '',
+      bestandNaam: project.bestandNaam || '',
+      projectNamen: [],
+      week: project.week || '',
+      dag: project.dag === null || project.dag === undefined ? 'flexibel' : String(project.dag),
+      van: project.van || 'School 7 Educatie',
+      naar: project.naar || '',
+      toelichting: project.toelichting || '',
+    })
+    setProjectMelding('Je bewerkt nu een project.')
+    setTab('educatie-projecten')
   }
 
   function verwijderEducatieProject(id) {
@@ -3563,6 +3619,7 @@ export default function App() {
               educatieProjecten={educatieProjecten}
               isMobiel={isMobiel}
               onDeleteProject={verwijderEducatieProject}
+              onEditProject={bewerkEducatieProject}
               onSaveProjecten={slaEducatieProjectenOp}
               projectMelding={projectMelding}
               setEducatieProjectForm={setEducatieProjectForm}

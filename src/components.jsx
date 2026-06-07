@@ -602,6 +602,7 @@ export function EducatieProjectenLayout({
   educatieProjecten,
   isMobiel,
   onDeleteProject,
+  onEditProject,
   onSaveProjecten,
   projectMelding,
   setEducatieProjectForm,
@@ -610,7 +611,6 @@ export function EducatieProjectenLayout({
   const projectNamen = educatieProjectForm.projectNamen || []
   const locatieOpties = ['School 7 Educatie', ...VESTIGINGEN]
   const projectKlaar =
-    educatieProjectForm.week &&
     educatieProjectForm.van &&
     educatieProjectForm.naar &&
     (educatieProjectForm.mode === 'excel'
@@ -743,7 +743,7 @@ export function EducatieProjectenLayout({
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobiel ? '1fr' : '1fr 1fr', gap: 10 }}>
             <div>
-              <Label required>Week uitvoeren</Label>
+              <Label>Week uitvoeren</Label>
               <input
                 type="week"
                 value={educatieProjectForm.week}
@@ -755,10 +755,11 @@ export function EducatieProjectenLayout({
               <Label>Dag</Label>
               <select
                 value={educatieProjectForm.dag}
+                disabled={!educatieProjectForm.week}
                 onChange={(e) => setEducatieProjectForm((prev) => ({ ...prev, dag: e.target.value }))}
-                style={inp}
+                style={{ ...inp, background: educatieProjectForm.week ? '#fff' : '#F9FAFB' }}
               >
-                <option value="flexibel">Flexibel in die week</option>
+                <option value="flexibel">{educatieProjectForm.week ? 'Flexibel in die week' : 'Eerst week kiezen'}</option>
                 {DAGEN_KORT.map((dag, index) => (
                   <option key={dag} value={index}>{dag}</option>
                 ))}
@@ -816,8 +817,40 @@ export function EducatieProjectenLayout({
               cursor: projectKlaar ? 'pointer' : 'not-allowed',
             }}
           >
-            Project toevoegen
+            {educatieProjectForm.editId ? 'Project opslaan' : 'Project toevoegen'}
           </button>
+          {educatieProjectForm.editId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEducatieProjectForm({
+                  mode: 'excel',
+                  editId: null,
+                  naam: '',
+                  bestandNaam: '',
+                  projectNamen: [],
+                  week: '',
+                  dag: 'flexibel',
+                  van: 'School 7 Educatie',
+                  naar: '',
+                  toelichting: '',
+                })
+                setProjectMelding('')
+              }}
+              style={{
+                background: '#F3F4F6',
+                color: '#374151',
+                border: '1px solid #E5E9F0',
+                borderRadius: 8,
+                padding: '9px 12px',
+                fontSize: 12,
+                fontWeight: 650,
+                cursor: 'pointer',
+              }}
+            >
+              Bewerken annuleren
+            </button>
+          )}
           {projectMelding && (
             <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#065F46' }}>
               {projectMelding}
@@ -836,10 +869,29 @@ export function EducatieProjectenLayout({
             <div key={project.id} style={{ border: '1px solid #E5E9F0', borderRadius: 8, padding: '10px 12px', display: 'grid', gap: 7 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{project.naam}</div>
               <div style={{ fontSize: 11, color: '#6B7280' }}>
-                {project.week} | {project.dag === null ? 'flexibel' : DAGEN_KORT[Number(project.dag)]} | {project.van} naar {project.naar}
+                {project.week
+                  ? `${project.week} | ${project.dag === null ? 'flexibel' : DAGEN_KORT[Number(project.dag)]} | `
+                  : 'Nog niet ingepland | '}
+                {project.van} naar {project.naar}
               </div>
               {project.toelichting && <div style={{ fontSize: 12, color: '#374151' }}>{project.toelichting}</div>}
-              <div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => onEditProject(project)}
+                  style={{
+                    border: '1px solid #E5E9F0',
+                    background: '#F3F4F6',
+                    color: '#374151',
+                    borderRadius: 7,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Bewerken
+                </button>
                 <button
                   type="button"
                   onClick={() => {
