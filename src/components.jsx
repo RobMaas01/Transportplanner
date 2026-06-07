@@ -354,6 +354,41 @@ export function EducatieImportLayout({
                 style={{ display: 'none' }}
               />
             </label>
+            {educatieImport.bestandNaam && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEducatieImport((prev) => ({ ...prev, bestandNaam: '', rijen: [] }))
+                  setEducatieMelding('Excelbestand verwijderd uit deze import.')
+                }}
+                style={{
+                  marginTop: 8,
+                  border: '1px solid #FECACA',
+                  background: '#FEF2F2',
+                  color: '#991B1B',
+                  borderRadius: 8,
+                  padding: '7px 10px',
+                  fontSize: 12,
+                  fontWeight: 650,
+                  cursor: 'pointer',
+                }}
+              >
+                Excelbestand verwijderen
+              </button>
+            )}
+          </div>
+          <div>
+            <Label>Extra toelichting</Label>
+            <textarea
+              value={educatieImport.toelichting || ''}
+              onChange={(e) => {
+                setEducatieImport((prev) => ({ ...prev, toelichting: e.target.value }))
+                setEducatieMelding('')
+              }}
+              placeholder="Bijv. bijzonderheden over deze Educatie lijst."
+              rows={3}
+              style={{ ...inp, resize: 'vertical' }}
+            />
           </div>
           {rijen.length > 0 && (
             <div
@@ -452,7 +487,7 @@ export function EducatieImportLayout({
             <button
               type="button"
               onClick={() => {
-                setEducatieImport({ editId: null, schooljaar: '', periode: '', bestandNaam: '', rijen: [] })
+                setEducatieImport({ editId: null, schooljaar: '', periode: '', bestandNaam: '', toelichting: '', rijen: [] })
                 setEducatieMelding('')
               }}
               style={{
@@ -510,6 +545,9 @@ export function EducatieImportLayout({
                   <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
                     {lijst.schooljaar} | {lijst.periode} | {(lijst.rijen || []).length} regels
                   </div>
+                  {lijst.toelichting && (
+                    <div style={{ fontSize: 12, color: '#374151', marginTop: 4 }}>{lijst.toelichting}</div>
+                  )}
                   {lijst.status === 'ingepland' && (
                     <div style={{ fontSize: 11, color: '#065F46', marginTop: 3, fontWeight: 650 }}>Ingepland</div>
                   )}

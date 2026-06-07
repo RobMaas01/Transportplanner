@@ -85,7 +85,7 @@ export function leesEducatieExcel(bestand) {
   })
 }
 
-export function maakEducatieLijst(rijen, { schooljaar, periode, bestandNaam, bestaandId = null }) {
+export function maakEducatieLijst(rijen, { schooljaar, periode, bestandNaam, toelichting = '', bestaandId = null }) {
   const nu = new Date().toISOString()
 
   return {
@@ -94,6 +94,7 @@ export function maakEducatieLijst(rijen, { schooljaar, periode, bestandNaam, bes
     schooljaar,
     periode,
     bestandNaam,
+    toelichting,
     status: 'nieuw',
     aangemaakt: nu,
     bijgewerkt: nu,
@@ -117,6 +118,7 @@ function omschrijvingVoorRij(item, lijst) {
     item.speelzaal ? `Speelzaal: ${item.speelzaal}` : '',
     item.plaats ? `Plaats: ${item.plaats}` : '',
     item.afhaallocatie ? `Afhaallocatie: ${item.afhaallocatie}` : '',
+    lijst.toelichting ? `Extra toelichting: ${lijst.toelichting}` : '',
     lijst.bestandNaam ? `Bestand: ${lijst.bestandNaam}` : '',
   ].filter(Boolean).join('\n')
 }

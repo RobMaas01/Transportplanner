@@ -306,6 +306,7 @@ export default function App() {
     schooljaar: '',
     periode: '',
     bestandNaam: '',
+    toelichting: '',
     rijen: [],
   })
   const [educatieMelding, setEducatieMelding] = useState('')
@@ -993,6 +994,7 @@ export default function App() {
       schooljaar: educatieImport.schooljaar.trim(),
       periode: educatieImport.periode.trim(),
       bestandNaam: educatieImport.bestandNaam,
+      toelichting: educatieImport.toelichting.trim(),
       bestaandId: educatieImport.editId,
     })
 
@@ -1016,7 +1018,7 @@ export default function App() {
         ? `Educatie lijst bijgewerkt.`
         : `${lijst.rijen.length} regels opgeslagen als Educatie lijst. Deze staat nu als mapje bij Aanvragen.`,
     )
-    setEducatieImport({ editId: null, schooljaar: '', periode: '', bestandNaam: '', rijen: [] })
+    setEducatieImport({ editId: null, schooljaar: '', periode: '', bestandNaam: '', toelichting: '', rijen: [] })
   }
 
   function bewerkEducatieLijst(lijst) {
@@ -1025,6 +1027,7 @@ export default function App() {
       schooljaar: lijst.schooljaar || '',
       periode: lijst.periode || '',
       bestandNaam: lijst.bestandNaam || '',
+      toelichting: lijst.toelichting || '',
       rijen: lijst.rijen || [],
     })
     setEducatieMelding('Je bewerkt nu een bestaande Educatie lijst.')
@@ -1054,7 +1057,7 @@ export default function App() {
   function openPlanEducatieLijst(lijst) {
     setPlanEducatieLijst(lijst)
     setPlanW(vandaag())
-    setPlanD(vandaagDagIndex())
+    setPlanD(null)
     setPlanMaand(new Date().toISOString().slice(0, 7))
   }
 
@@ -1063,7 +1066,7 @@ export default function App() {
 
     const nieuweTaken = maakTakenUitEducatieLijst(planEducatieLijst, {
       week: planW,
-      dag: planD,
+      dag: null,
       door: rol,
     })
 
@@ -1075,14 +1078,14 @@ export default function App() {
               ...lijst,
               status: 'ingepland',
               geplandeWeek: planW,
-              geplandeDag: planD,
+              geplandeDag: null,
               bijgewerkt: new Date().toISOString(),
             }
           : lijst,
       ),
     )
     setWeek(planW)
-    if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(6, Number(planD || 0))))
+    if (isMobiel) setMobielePlanningDag(vandaagWerkdagIndex())
     setPlanningWeergave('week')
     setPlanEducatieLijst(null)
     setAanvraagMelding(`${nieuweTaken.length} Educatie taken ingepland.`)
@@ -1464,7 +1467,19 @@ export default function App() {
   }
 
   function blokkadeVoorWeek(wk) {
-    return geblokt.find((item) => item.week === wk && (item.dag === null || item.dag === undefined)) || automatischeBlokkade(wk)
+    const handmatig = geblokt.find((item) => item.week === wk && (item.dag === null || item.dag === undefined))
+    if (handmatig) return handmatig
+
+    const educatieLijst = educatieLijsten.find((lijst) => lijst.status === 'ingepland' && lijst.geplandeWeek === wk)
+    if (educatieLijst) {
+      return {
+        week: wk,
+        reden: `drukke week door ${educatieLijst.titel || 'Educatie lijst'} (${(educatieLijst.rijen || []).length} regels)`,
+        educatie: true,
+      }
+    }
+
+    return automatischeBlokkade(wk)
   }
 
   function blokkadeVoorDag(wk, dag) {
@@ -3569,7 +3584,7 @@ export default function App() {
                             </div>
                             {lijst.geplandeWeek && (
                               <div style={{ fontSize: 12, color: '#065F46', marginTop: 3, fontWeight: 650 }}>
-                                Gepland: {weekNr(lijst.geplandeWeek)} | {dagLabel(lijst.geplandeDag)}
+                                Gepland: {weekNr(lijst.geplandeWeek)}
                               </div>
                             )}
                           </div>
@@ -7170,111 +7185,33 @@ export default function App() {
               {planEducatieLijst.titel} | {(planEducatieLijst.rijen || []).length} regels
             </div>
             <div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    kiesDagMetWeekendCheck(vandaag(), vandaagDagIndex(), () => {
-                      setPlanW(vandaag())
-                      setPlanD(vandaagDagIndex())
-                      setPlanMaand(new Date().toISOString().slice(0, 7))
-                    })
-                  }}
-                  style={{
-                    background: planW === vandaag() && Number(planD) === vandaagDagIndex() ? '#EA6A1F' : '#F3F4F6',
-                    color: planW === vandaag() && Number(planD) === vandaagDagIndex() ? '#fff' : '#374151',
-                    border: planW === vandaag() && Number(planD) === vandaagDagIndex() ? 'none' : '1px solid #E5E9F0',
-                    borderRadius: 8,
-                    padding: '8px 12px',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Vandaag
-                </button>
-                <MonthNav value={planMaand} onChange={setPlanMaand} />
+              <div>
+                <Label>Week uitvoeren</Label>
+                <input
+                  type="week"
+                  value={planW}
+                  onChange={(e) => setPlanW(e.target.value)}
+                  style={inp}
+                />
               </div>
               <div
                 style={{
-                  border: '1px solid #E5E9F0',
+                  background: '#FFF7ED',
+                  border: '1px solid #FED7AA',
                   borderRadius: 8,
-                  padding: 10,
-                  background: '#F8F9FC',
+                  padding: '9px 11px',
+                  fontSize: 12,
+                  color: '#92400E',
+                  lineHeight: 1.4,
                 }}
               >
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                    gap: 5,
-                    marginBottom: 5,
-                  }}
-                >
-                  {DAGEN_KORT.map((dag) => (
-                    <div key={dag} style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textAlign: 'center' }}>
-                      {dag}
-                    </div>
-                  ))}
-                </div>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                    gap: 5,
-                  }}
-                >
-                  {maandDagen(planMaand).map((dag) => {
-                    const selected = planW === dag.week && Number(planD) === dag.dagIndex
-                    const waarschuwing = blokkadeVoorDag(dag.week, dag.dagIndex)
-
-                    return (
-                      <button
-                        key={`plan-educatie-${dag.iso}`}
-                        type="button"
-                        onClick={() => {
-                          kiesDagMetWeekendCheck(dag.week, dag.dagIndex, () => {
-                            setPlanW(dag.week)
-                            setPlanD(dag.dagIndex)
-                          })
-                        }}
-                        style={{
-                          minHeight: 38,
-                          border: selected ? '1px solid #EA6A1F' : '1px solid #E5E9F0',
-                          borderRadius: 7,
-                          background: selected ? '#FFF7ED' : dag.inMaand ? '#fff' : '#F8F9FC',
-                          color: '#111827',
-                          opacity: dag.inMaand ? 1 : 0.55,
-                          cursor: 'pointer',
-                          fontSize: 12,
-                          fontWeight: selected ? 800 : 600,
-                          position: 'relative',
-                        }}
-                      >
-                        {dag.date.getDate()}
-                        {waarschuwing && (
-                          <span
-                            title={`Let op: ${waarschuwing.reden || 'drukke periode'}`}
-                            style={{
-                              position: 'absolute',
-                              right: 4,
-                              top: 4,
-                              width: 5,
-                              height: 5,
-                              borderRadius: '50%',
-                              background: '#F59E0B',
-                            }}
-                          />
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
+                Deze Educatie lijst wordt per week ingepland en telt daarna automatisch als drukke week bij nieuwe
+                aanvragen.
               </div>
               <div style={{ fontSize: 11, color: '#6B7280' }}>
-                Gekozen: {planW ? `${weekNr(planW)} | ${dagLabel(planD)}` : 'kies een dag'}
+                Gekozen: {planW ? weekNr(planW) : 'kies een week'}
               </div>
-              <DrukteWaarschuwing waarschuwing={blokkadeVoorDag(planW, planD)} compact />
+              <DrukteWaarschuwing waarschuwing={blokkadeVoorWeek(planW)} compact />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
