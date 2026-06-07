@@ -30,6 +30,7 @@ import {
 } from './components'
 import { inp } from './uiStyles'
 import { bewaarCentraleState, isLegeState, laadCentraleState, localTestMode, supabaseConfigured } from './dataStore'
+import { maakEducatieAanvragen } from './educatieImport'
 import {
   aanvraagIsAfgesloten,
   aanvraagIsOpen,
@@ -294,6 +295,7 @@ export default function App() {
     schooljaar: '',
     periode: '',
     bestandNaam: '',
+    rijen: [],
   })
   const [educatieMelding, setEducatieMelding] = useState('')
 
@@ -943,6 +945,21 @@ export default function App() {
     setAanvraagBevestigd(false)
   }
 
+  function importeerEducatieAanvragen() {
+    const rijen = educatieImport.rijen || []
+    if (!educatieImport.schooljaar.trim() || !educatieImport.periode.trim() || rijen.length === 0) return
+
+    const nieuweAanvragen = maakEducatieAanvragen(rijen, {
+      schooljaar: educatieImport.schooljaar.trim(),
+      periode: educatieImport.periode.trim(),
+      bestandNaam: educatieImport.bestandNaam,
+    })
+
+    setAanvragen((prev) => [...prev, ...nieuweAanvragen])
+    setEducatieMelding(`${nieuweAanvragen.length} aanvragen toegevoegd. Ze staan nu klaar bij Aanvragen.`)
+    setEducatieImport((prev) => ({ ...prev, bestandNaam: '', rijen: [] }))
+  }
+
   function verwijderAanvraag(id, notitie = '') {
     setAanvragen((prev) =>
       prev.map((item) =>
@@ -1487,7 +1504,8 @@ export default function App() {
     'educatie-projecten': 'Projecten',
   }
 
-  const educatieImportKlaar = educatieImport.schooljaar.trim() && educatieImport.periode.trim() && educatieImport.bestandNaam
+  const educatieImportKlaar =
+    educatieImport.schooljaar.trim() && educatieImport.periode.trim() && (educatieImport.rijen || []).length > 0
 
   if (!rol) {
     return (
@@ -3247,6 +3265,7 @@ export default function App() {
               educatieImportKlaar={educatieImportKlaar}
               educatieMelding={educatieMelding}
               isMobiel={isMobiel}
+              onImportRows={importeerEducatieAanvragen}
               setEducatieImport={setEducatieImport}
               setEducatieMelding={setEducatieMelding}
             />

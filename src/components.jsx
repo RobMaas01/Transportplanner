@@ -1,4 +1,5 @@
 import { AANVRAAG_STATUS, STATUS } from './constants'
+import { leesEducatieExcel } from './educatieImport'
 import { inp } from './uiStyles'
 import { maandLabel, verschuifMaand } from './utils'
 
@@ -249,9 +250,12 @@ export function EducatieImportLayout({
   educatieImportKlaar,
   educatieMelding,
   isMobiel,
+  onImportRows,
   setEducatieImport,
   setEducatieMelding,
 }) {
+  const rijen = educatieImport.rijen || []
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 18 }}>
       <Card>
@@ -268,7 +272,7 @@ export function EducatieImportLayout({
               lineHeight: 1.45,
             }}
           >
-            Deze import is alvast klaargezet. Zodra het voorbeeldbestand bekend is, wordt de Excel-verwerking gekoppeld.
+            Kies het Excelbestand. De app toont eerst een controlelijst; daarna voeg je de regels definitief toe als aanvragen.
           </div>
           <div>
             <Label required>Schooljaar</Label>
@@ -311,26 +315,92 @@ export function EducatieImportLayout({
                 {educatieImport.bestandNaam || 'Kies Excelbestand'}
               </span>
               <span style={{ fontSize: 12, color: '#6B7280' }}>
-                Ondersteuning voor .xlsx/.xls wordt gekoppeld zodra de lijst bekend is.
+                Geschikt voor de lijsten Brengen Bert en Brengen kinderopvang.
               </span>
               <input
                 type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={(e) => {
+                accept=".xlsx,.xls"
+                onChange={async (e) => {
                   const bestand = e.target.files?.[0]
-                  setEducatieImport((prev) => ({ ...prev, bestandNaam: bestand?.name || '' }))
                   setEducatieMelding('')
+                  if (!bestand) {
+                    setEducatieImport((prev) => ({ ...prev, bestandNaam: '', rijen: [] }))
+                    return
+                  }
+                  try {
+                    const gelezenRijen = await leesEducatieExcel(bestand)
+                    setEducatieImport((prev) => ({
+                      ...prev,
+                      bestandNaam: bestand.name,
+                      rijen: gelezenRijen,
+                    }))
+                    setEducatieMelding(
+                      gelezenRijen.length
+                        ? `${gelezenRijen.length} regels gevonden. Controleer de lijst en voeg daarna toe.`
+                        : 'Geen herkenbare regels gevonden in dit bestand.',
+                    )
+                  } catch (error) {
+                    console.error('Educatiebestand kon niet worden gelezen.', error)
+                    setEducatieImport((prev) => ({ ...prev, bestandNaam: bestand.name, rijen: [] }))
+                    setEducatieMelding('Dit Excelbestand kon niet worden gelezen.')
+                  }
                 }}
                 style={{ display: 'none' }}
               />
             </label>
           </div>
+          {rijen.length > 0 && (
+            <div
+              style={{
+                border: '1px solid #E5E9F0',
+                borderRadius: 10,
+                overflow: 'hidden',
+                background: '#fff',
+              }}
+            >
+              <div
+                style={{
+                  padding: '9px 11px',
+                  background: '#F8F9FC',
+                  borderBottom: '1px solid #E5E9F0',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: '#374151',
+                }}
+              >
+                Controlelijst ({rijen.length})
+              </div>
+              <div style={{ display: 'grid', maxHeight: 260, overflow: 'auto' }}>
+                {rijen.slice(0, 12).map((item, index) => (
+                  <div
+                    key={`${item.sheet}-${item.rij}-${index}`}
+                    style={{
+                      padding: '9px 11px',
+                      borderBottom: index === Math.min(rijen.length, 12) - 1 ? 'none' : '1px solid #F1F5F9',
+                      display: 'grid',
+                      gap: 2,
+                    }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{item.titelWeergave}</div>
+                    <div style={{ fontSize: 11, color: '#6B7280' }}>
+                      Naar {item.bestemming || 'onbekend'}{item.groep ? ` | groep ${item.groep}` : ''}
+                    </div>
+                  </div>
+                ))}
+                {rijen.length > 12 && (
+                  <div style={{ padding: '9px 11px', fontSize: 11, color: '#6B7280' }}>
+                    En nog {rijen.length - 12} regels.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <button
             type="button"
             disabled={!educatieImportKlaar}
             onClick={() => {
               if (!educatieImportKlaar) return
-              setEducatieMelding('Bestand staat klaar. Zodra het voorbeeldbestand bekend is, wordt de echte import hieraan gekoppeld.')
+              onImportRows()
             }}
             style={{
               background: educatieImportKlaar ? '#1F7A4D' : '#E5E7EB',
@@ -343,7 +413,7 @@ export function EducatieImportLayout({
               cursor: educatieImportKlaar ? 'pointer' : 'not-allowed',
             }}
           >
-            Import voorbereiden
+            Aanvragen toevoegen
           </button>
           {educatieMelding && (
             <div
