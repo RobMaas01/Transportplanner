@@ -74,6 +74,7 @@ export function leesEducatieExcel(bestand) {
 
         rijen.push({
           ...item,
+          id: `${sheetNaam}-${item.rij}-${rijen.length}`,
           titelWeergave: titelLabel(item),
           bestemming: bestemmingLabel(item),
         })
@@ -84,48 +85,65 @@ export function leesEducatieExcel(bestand) {
   })
 }
 
-export function maakEducatieAanvragen(rijen, { schooljaar, periode, bestandNaam }) {
+export function maakEducatieLijst(rijen, { schooljaar, periode, bestandNaam, bestaandId = null }) {
   const nu = new Date().toISOString()
 
-  return rijen.map((item, index) => {
-    const details = [
-      `Schooljaar: ${schooljaar}`,
-      `Periode: ${periode}`,
-      item.type ? `Lijst: ${item.type}` : '',
-      item.groep ? `Groep: ${item.groep}` : '',
-      item.leerlingenaantal ? `Leerlingenaantal: ${item.leerlingenaantal}` : '',
-      item.school ? `School: ${item.school}` : '',
-      item.speelzaal ? `Speelzaal: ${item.speelzaal}` : '',
-      item.plaats ? `Plaats: ${item.plaats}` : '',
-      item.afhaallocatie ? `Afhaallocatie: ${item.afhaallocatie}` : '',
-      bestandNaam ? `Bestand: ${bestandNaam}` : '',
-    ].filter(Boolean)
+  return {
+    id: bestaandId || `${Date.now()}`,
+    titel: `Educatie lijst - ${periode}`,
+    schooljaar,
+    periode,
+    bestandNaam,
+    status: 'nieuw',
+    aangemaakt: nu,
+    bijgewerkt: nu,
+    rijen: rijen.map((item, index) => ({
+      id: item.id || `${Date.now()}-${index}`,
+      ...item,
+      titelWeergave: item.titelWeergave || titelLabel(item),
+      bestemming: item.bestemming || bestemmingLabel(item),
+    })),
+  }
+}
 
+function omschrijvingVoorRij(item, lijst) {
+  return [
+    `Schooljaar: ${lijst.schooljaar}`,
+    `Periode: ${lijst.periode}`,
+    item.type ? `Lijst: ${item.type}` : '',
+    item.groep ? `Groep: ${item.groep}` : '',
+    item.leerlingenaantal ? `Leerlingenaantal: ${item.leerlingenaantal}` : '',
+    item.school ? `School: ${item.school}` : '',
+    item.speelzaal ? `Speelzaal: ${item.speelzaal}` : '',
+    item.plaats ? `Plaats: ${item.plaats}` : '',
+    item.afhaallocatie ? `Afhaallocatie: ${item.afhaallocatie}` : '',
+    lijst.bestandNaam ? `Bestand: ${lijst.bestandNaam}` : '',
+  ].filter(Boolean).join('\n')
+}
+
+export function maakTakenUitEducatieLijst(lijst, { week, dag, door }) {
+  const nu = new Date().toISOString()
+
+  return (lijst.rijen || []).map((item, index) => {
     return {
       id: `${Date.now()}-${index}`,
-      aanvrager: 'Educatie',
       titel: item.titelWeergave,
-      omschrijving: details.join('\n'),
+      omschrijving: omschrijvingVoorRij(item, lijst),
       reden: '',
       aantal: '',
       tijd: '',
       van: 'Educatie',
       naar: item.bestemming,
-      week: 'zsm',
-      dag: -1,
+      week,
+      dag,
       prioriteit: 'normaal',
-      prive: false,
-      status: 'nieuw',
+      status: 'gepland',
       aangemaakt: nu,
-      importBron: {
-        type: 'educatie',
-        bestandNaam,
-        schooljaar,
-        periode,
-        sheet: item.sheet,
-        rij: item.rij,
-      },
-      log: [{ a: 'geimporteerd door Educatie', d: 'Educatie', w: nu }],
+      door,
+      bron: 'educatie',
+      educatieLijstId: lijst.id,
+      educatieRijId: item.id,
+      log: [{ a: 'aangemaakt uit educatie lijst', d: door, w: nu }],
     }
   })
 }

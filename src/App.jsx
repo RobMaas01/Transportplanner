@@ -30,7 +30,7 @@ import {
 } from './components'
 import { inp } from './uiStyles'
 import { bewaarCentraleState, isLegeState, laadCentraleState, localTestMode, supabaseConfigured } from './dataStore'
-import { maakEducatieAanvragen } from './educatieImport'
+import { maakEducatieLijst, maakTakenUitEducatieLijst } from './educatieImport'
 import {
   aanvraagIsAfgesloten,
   aanvraagIsOpen,
@@ -117,6 +117,7 @@ function maakStateSnapshot(state) {
       aanvragen: state?.aanvragen || [],
       geblokt: state?.geblokt || [],
       meld: state?.meld || [],
+      educatieLijsten: state?.educatieLijsten || [],
     })
   } catch {
     return ''
@@ -144,6 +145,7 @@ export default function App() {
   const huidigeStateSnapshot = useRef(maakStateSnapshot(lokaal))
   const laatsteLokaleWijzigingOp = useRef(0)
   const huidigeAanvragen = useRef(lokaal.aanvragen)
+  const huidigeEducatieLijsten = useRef(lokaal.educatieLijsten)
   const huidigeRol = useRef(sessie.rol)
   const centraleOpslagActief = useRef(supabaseConfigured)
   const centraleOpslagGeladen = useRef(!supabaseConfigured || localTestMode)
@@ -170,6 +172,7 @@ export default function App() {
   const [taken, setTaken] = useState(lokaal.taken)
   const [aanvragen, setAanvragen] = useState(lokaal.aanvragen)
   const [geblokt, setGeblokt] = useState(lokaal.geblokt)
+  const [educatieLijsten, setEducatieLijsten] = useState(lokaal.educatieLijsten)
   const [week, setWeek] = useState(vandaag())
   const [mobielePlanningDag, setMobielePlanningDag] = useState(vandaagWerkdagIndex())
   const [toonAfgerondMobiel, setToonAfgerondMobiel] = useState(false)
@@ -218,6 +221,10 @@ export default function App() {
   useEffect(() => {
     huidigeAanvragen.current = aanvragen
   }, [aanvragen])
+
+  useEffect(() => {
+    huidigeEducatieLijsten.current = educatieLijsten
+  }, [educatieLijsten])
 
   useEffect(() => {
     try {
@@ -276,6 +283,7 @@ export default function App() {
   const [weekendBevestiging, setWeekendBevestiging] = useState(null)
   const [verwijderNotitie, setVerwijderNotitie] = useState('')
   const [planAanvraag, setPlanAanvraag] = useState(null)
+  const [planEducatieLijst, setPlanEducatieLijst] = useState(null)
   const [infoAanvraag, setInfoAanvraag] = useState(null)
   const [infoNotitie, setInfoNotitie] = useState('')
   const [verplW, setVerplW] = useState('')
@@ -292,6 +300,7 @@ export default function App() {
   const [rapportZichtbaar, setRapportZichtbaar] = useState(false)
   const [rapportWeergave, setRapportWeergave] = useState(null)
   const [educatieImport, setEducatieImport] = useState({
+    editId: null,
     schooljaar: '',
     periode: '',
     bestandNaam: '',
@@ -439,10 +448,12 @@ export default function App() {
     skipVolgendeCentraleOpslag.current = true
     huidigeStateSnapshot.current = maakStateSnapshot(data)
     huidigeAanvragen.current = data?.aanvragen || []
+    huidigeEducatieLijsten.current = data?.educatieLijsten || []
     setTaken(data?.taken || [])
     setAanvragen(data?.aanvragen || [])
     setGeblokt(data?.geblokt || [])
     setMeld(data?.meld || [])
+    setEducatieLijsten(data?.educatieLijsten || [])
   }
 
   useEffect(() => {
@@ -526,8 +537,12 @@ export default function App() {
   }, [meld])
 
   useEffect(() => {
+    localStorage.setItem('e5', JSON.stringify(educatieLijsten))
+  }, [educatieLijsten])
+
+  useEffect(() => {
     if (!centraleOpslagActief.current || !centraleOpslagGeladen.current) return undefined
-    const state = { taken, aanvragen, geblokt, meld }
+    const state = { taken, aanvragen, geblokt, meld, educatieLijsten }
     huidigeStateSnapshot.current = maakStateSnapshot(state)
     if (skipVolgendeCentraleOpslag.current) {
       skipVolgendeCentraleOpslag.current = false
@@ -547,7 +562,7 @@ export default function App() {
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [taken, aanvragen, geblokt, meld])
+  }, [taken, aanvragen, geblokt, meld, educatieLijsten])
 
   useEffect(() => {
     if (!supabaseConfigured) return undefined
@@ -576,15 +591,21 @@ export default function App() {
       const huidigeNieuweAanvragen = new Set(
         huidigeAanvragen.current.filter((item) => item.status === 'nieuw').map((item) => item.id),
       )
+      const huidigeNieuweEducatieLijsten = new Set(
+        huidigeEducatieLijsten.current.filter((item) => item.status === 'nieuw').map((item) => item.id),
+      )
       const binnengekomenAanvragen = (data.aanvragen || []).filter(
         (item) => item.status === 'nieuw' && !huidigeNieuweAanvragen.has(item.id),
       )
+      const binnengekomenEducatieLijsten = (data.educatieLijsten || []).filter(
+        (item) => item.status === 'nieuw' && !huidigeNieuweEducatieLijsten.has(item.id),
+      )
       laatsteCentraleUpdate.current = updatedAt
       pasCentraleStateToe(data)
-      if (huidigeRol.current === ROLES.transporteur && binnengekomenAanvragen.length > 0) {
+      if (huidigeRol.current === ROLES.transporteur && (binnengekomenAanvragen.length > 0 || binnengekomenEducatieLijsten.length > 0)) {
         setNieuweAanvraagMelding({
-          aantal: binnengekomenAanvragen.length,
-          titel: binnengekomenAanvragen[0].titel || 'Nieuwe aanvraag',
+          aantal: binnengekomenAanvragen.length + binnengekomenEducatieLijsten.length,
+          titel: binnengekomenAanvragen[0]?.titel || binnengekomenEducatieLijsten[0]?.titel || 'Nieuwe aanvraag',
         })
       }
       setOpslagStatus('Centrale opslag bijgewerkt')
@@ -945,19 +966,107 @@ export default function App() {
     setAanvraagBevestigd(false)
   }
 
-  function importeerEducatieAanvragen() {
+  function importeerEducatieLijst() {
     const rijen = educatieImport.rijen || []
     if (!educatieImport.schooljaar.trim() || !educatieImport.periode.trim() || rijen.length === 0) return
 
-    const nieuweAanvragen = maakEducatieAanvragen(rijen, {
+    const lijst = maakEducatieLijst(rijen, {
       schooljaar: educatieImport.schooljaar.trim(),
       periode: educatieImport.periode.trim(),
       bestandNaam: educatieImport.bestandNaam,
+      bestaandId: educatieImport.editId,
     })
 
-    setAanvragen((prev) => [...prev, ...nieuweAanvragen])
-    setEducatieMelding(`${nieuweAanvragen.length} aanvragen toegevoegd. Ze staan nu klaar bij Aanvragen.`)
-    setEducatieImport((prev) => ({ ...prev, bestandNaam: '', rijen: [] }))
+    setEducatieLijsten((prev) =>
+      educatieImport.editId
+        ? prev.map((item) =>
+            item.id === educatieImport.editId
+              ? {
+                  ...item,
+                  ...lijst,
+                  status: item.status || lijst.status,
+                  geplandeWeek: item.geplandeWeek,
+                  geplandeDag: item.geplandeDag,
+                }
+              : item,
+          )
+        : [...prev, lijst],
+    )
+    setEducatieMelding(
+      educatieImport.editId
+        ? `Educatie lijst bijgewerkt.`
+        : `${lijst.rijen.length} regels opgeslagen als Educatie lijst. Deze staat nu als mapje bij Aanvragen.`,
+    )
+    setEducatieImport({ editId: null, schooljaar: '', periode: '', bestandNaam: '', rijen: [] })
+  }
+
+  function bewerkEducatieLijst(lijst) {
+    setEducatieImport({
+      editId: lijst.id,
+      schooljaar: lijst.schooljaar || '',
+      periode: lijst.periode || '',
+      bestandNaam: lijst.bestandNaam || '',
+      rijen: lijst.rijen || [],
+    })
+    setEducatieMelding('Je bewerkt nu een bestaande Educatie lijst.')
+    setTab('educatie-import')
+  }
+
+  function verwijderEducatieLijst(id) {
+    setEducatieLijsten((prev) => prev.filter((lijst) => lijst.id !== id))
+    setTaken((prev) => prev.filter((taak) => taak.educatieLijstId !== id))
+    setEducatieMelding('Educatie lijst verwijderd.')
+  }
+
+  function updateEducatieRij(rijId, veld, waarde) {
+    setEducatieImport((prev) => ({
+      ...prev,
+      rijen: (prev.rijen || []).map((rij) => (rij.id === rijId ? { ...rij, [veld]: waarde } : rij)),
+    }))
+  }
+
+  function verwijderEducatieRij(rijId) {
+    setEducatieImport((prev) => ({
+      ...prev,
+      rijen: (prev.rijen || []).filter((rij) => rij.id !== rijId),
+    }))
+  }
+
+  function openPlanEducatieLijst(lijst) {
+    setPlanEducatieLijst(lijst)
+    setPlanW(vandaag())
+    setPlanD(vandaagDagIndex())
+    setPlanMaand(new Date().toISOString().slice(0, 7))
+  }
+
+  function zetEducatieLijstDoor() {
+    if (!planEducatieLijst || !planW) return
+
+    const nieuweTaken = maakTakenUitEducatieLijst(planEducatieLijst, {
+      week: planW,
+      dag: planD,
+      door: rol,
+    })
+
+    setTaken((prev) => [...prev, ...nieuweTaken])
+    setEducatieLijsten((prev) =>
+      prev.map((lijst) =>
+        lijst.id === planEducatieLijst.id
+          ? {
+              ...lijst,
+              status: 'ingepland',
+              geplandeWeek: planW,
+              geplandeDag: planD,
+              bijgewerkt: new Date().toISOString(),
+            }
+          : lijst,
+      ),
+    )
+    setWeek(planW)
+    if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(6, Number(planD || 0))))
+    setPlanningWeergave('week')
+    setPlanEducatieLijst(null)
+    setAanvraagMelding(`${nieuweTaken.length} Educatie taken ingepland.`)
   }
 
   function verwijderAanvraag(id, notitie = '') {
@@ -1439,7 +1548,8 @@ export default function App() {
     URL.revokeObjectURL(url)
   }
 
-  const nieuweAanvragenAantal = aanvragen.filter((item) => item.status === 'nieuw').length
+  const nieuweAanvragenAantal =
+    aanvragen.filter((item) => item.status === 'nieuw').length + educatieLijsten.filter((item) => item.status === 'nieuw').length
   const infoNodigAantal = aanvragen.filter(
     (item) => aanvraagZichtbaarVoorAanvrager(item) && item.status === 'info',
   ).length
@@ -3263,9 +3373,14 @@ export default function App() {
               breedFormGrid={breedFormGrid}
               educatieImport={educatieImport}
               educatieImportKlaar={educatieImportKlaar}
+              educatieLijsten={educatieLijsten}
               educatieMelding={educatieMelding}
               isMobiel={isMobiel}
-              onImportRows={importeerEducatieAanvragen}
+              onDeleteList={verwijderEducatieLijst}
+              onDeleteRow={verwijderEducatieRij}
+              onEditList={bewerkEducatieLijst}
+              onImportRows={importeerEducatieLijst}
+              onUpdateRow={updateEducatieRij}
               setEducatieImport={setEducatieImport}
               setEducatieMelding={setEducatieMelding}
             />
@@ -3297,7 +3412,94 @@ export default function App() {
                     {aanvraagMelding}
                   </div>
                 )}
-                {aanvragen.length === 0 && (
+                {educatieLijsten.length > 0 && (
+                  <div
+                    style={{
+                      border: '1px solid #DDE7F2',
+                      borderRadius: 10,
+                      background: '#F8FBFF',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '10px 12px',
+                        borderBottom: '1px solid #DDE7F2',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1F2937' }}>Educatie lijsten</div>
+                      <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 650 }}>{educatieLijsten.length}</div>
+                    </div>
+                    <div style={{ display: 'grid', gap: 10, padding: 10 }}>
+                      {educatieLijsten.map((lijst) => (
+                        <div
+                          key={lijst.id}
+                          style={{
+                            border: '1px solid #E5E9F0',
+                            borderRadius: 8,
+                            background: '#fff',
+                            padding: '12px 14px',
+                            display: 'grid',
+                            gap: 10,
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 14, fontWeight: 750, color: '#111827' }}>
+                                {lijst.titel || 'Educatie lijst'}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  color: lijst.status === 'ingepland' ? '#065F46' : '#2255CC',
+                                  background: lijst.status === 'ingepland' ? '#ECFDF5' : '#EEF4FF',
+                                  border: `1px solid ${lijst.status === 'ingepland' ? '#A7F3D0' : '#BFDBFE'}`,
+                                  borderRadius: 999,
+                                  padding: '2px 7px',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {lijst.status === 'ingepland' ? 'Ingepland' : 'Nieuw'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                              {lijst.schooljaar} | {lijst.periode} | {(lijst.rijen || []).length} regels
+                            </div>
+                            {lijst.geplandeWeek && (
+                              <div style={{ fontSize: 12, color: '#065F46', marginTop: 3, fontWeight: 650 }}>
+                                Gepland: {weekNr(lijst.geplandeWeek)} | {dagLabel(lijst.geplandeDag)}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            {lijst.status !== 'ingepland' && (
+                              <Btn size="touch" variant="success" onClick={() => openPlanEducatieLijst(lijst)}>
+                                Plan lijst in
+                              </Btn>
+                            )}
+                            <Btn size="touch" variant="ghost" onClick={() => bewerkEducatieLijst(lijst)}>
+                              Bewerken
+                            </Btn>
+                            <Btn
+                              size="touch"
+                              variant="danger"
+                              onClick={() => {
+                                if (window.confirm('Educatie lijst verwijderen?')) verwijderEducatieLijst(lijst.id)
+                              }}
+                            >
+                              Verwijder
+                            </Btn>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {aanvragen.length === 0 && educatieLijsten.length === 0 && (
                   <div style={{ textAlign: 'center', padding: 32, color: '#9CA3AF', fontSize: 13 }}>
                     Nog geen aanvragen ontvangen.
                   </div>
@@ -6817,6 +7019,184 @@ export default function App() {
               </button>
               <button
                 onClick={() => setInfoAanvraag(null)}
+                style={{
+                  flex: 1,
+                  background: '#F3F4F6',
+                  color: '#374151',
+                  border: '1px solid #E5E9F0',
+                  borderRadius: 8,
+                  padding: '9px 0',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Annuleer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {planEducatieLijst && (
+        <div
+          onClick={() => setPlanEducatieLijst(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 210,
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 14,
+              padding: 24,
+              width: '100%',
+              maxWidth: 460,
+              boxShadow: '0 20px 60px rgba(0,0,0,.15)',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 4 }}>
+              Educatie lijst inplannen
+            </div>
+            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 12 }}>
+              {planEducatieLijst.titel} | {(planEducatieLijst.rijen || []).length} regels
+            </div>
+            <div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    kiesDagMetWeekendCheck(vandaag(), vandaagDagIndex(), () => {
+                      setPlanW(vandaag())
+                      setPlanD(vandaagDagIndex())
+                      setPlanMaand(new Date().toISOString().slice(0, 7))
+                    })
+                  }}
+                  style={{
+                    background: planW === vandaag() && Number(planD) === vandaagDagIndex() ? '#EA6A1F' : '#F3F4F6',
+                    color: planW === vandaag() && Number(planD) === vandaagDagIndex() ? '#fff' : '#374151',
+                    border: planW === vandaag() && Number(planD) === vandaagDagIndex() ? 'none' : '1px solid #E5E9F0',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Vandaag
+                </button>
+                <MonthNav value={planMaand} onChange={setPlanMaand} />
+              </div>
+              <div
+                style={{
+                  border: '1px solid #E5E9F0',
+                  borderRadius: 8,
+                  padding: 10,
+                  background: '#F8F9FC',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                    gap: 5,
+                    marginBottom: 5,
+                  }}
+                >
+                  {DAGEN_KORT.map((dag) => (
+                    <div key={dag} style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textAlign: 'center' }}>
+                      {dag}
+                    </div>
+                  ))}
+                </div>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                    gap: 5,
+                  }}
+                >
+                  {maandDagen(planMaand).map((dag) => {
+                    const selected = planW === dag.week && Number(planD) === dag.dagIndex
+                    const waarschuwing = blokkadeVoorDag(dag.week, dag.dagIndex)
+
+                    return (
+                      <button
+                        key={`plan-educatie-${dag.iso}`}
+                        type="button"
+                        onClick={() => {
+                          kiesDagMetWeekendCheck(dag.week, dag.dagIndex, () => {
+                            setPlanW(dag.week)
+                            setPlanD(dag.dagIndex)
+                          })
+                        }}
+                        style={{
+                          minHeight: 38,
+                          border: selected ? '1px solid #EA6A1F' : '1px solid #E5E9F0',
+                          borderRadius: 7,
+                          background: selected ? '#FFF7ED' : dag.inMaand ? '#fff' : '#F8F9FC',
+                          color: '#111827',
+                          opacity: dag.inMaand ? 1 : 0.55,
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          fontWeight: selected ? 800 : 600,
+                          position: 'relative',
+                        }}
+                      >
+                        {dag.date.getDate()}
+                        {waarschuwing && (
+                          <span
+                            title={`Let op: ${waarschuwing.reden || 'drukke periode'}`}
+                            style={{
+                              position: 'absolute',
+                              right: 4,
+                              top: 4,
+                              width: 5,
+                              height: 5,
+                              borderRadius: '50%',
+                              background: '#F59E0B',
+                            }}
+                          />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: '#6B7280' }}>
+                Gekozen: {planW ? `${weekNr(planW)} | ${dagLabel(planD)}` : 'kies een dag'}
+              </div>
+              <DrukteWaarschuwing waarschuwing={blokkadeVoorDag(planW, planD)} compact />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={zetEducatieLijstDoor}
+                style={{
+                  flex: 1,
+                  background: '#EA6A1F',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '9px 0',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Lijst inplannen
+              </button>
+              <button
+                onClick={() => setPlanEducatieLijst(null)}
                 style={{
                   flex: 1,
                   background: '#F3F4F6',

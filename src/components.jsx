@@ -248,13 +248,19 @@ export function EducatieImportLayout({
   breedFormGrid,
   educatieImport,
   educatieImportKlaar,
+  educatieLijsten,
   educatieMelding,
   isMobiel,
+  onDeleteList,
+  onDeleteRow,
+  onEditList,
   onImportRows,
+  onUpdateRow,
   setEducatieImport,
   setEducatieMelding,
 }) {
   const rijen = educatieImport.rijen || []
+  const isBewerking = Boolean(educatieImport.editId)
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 18 }}>
@@ -272,7 +278,7 @@ export function EducatieImportLayout({
               lineHeight: 1.45,
             }}
           >
-            Kies het Excelbestand. De app toont eerst een controlelijst; daarna voeg je de regels definitief toe als aanvragen.
+            Kies het Excelbestand. De app toont eerst een controlelijst; daarna sla je alles op als één Educatie lijst.
           </div>
           <div>
             <Label required>Schooljaar</Label>
@@ -371,27 +377,54 @@ export function EducatieImportLayout({
                 Controlelijst ({rijen.length})
               </div>
               <div style={{ display: 'grid', maxHeight: 260, overflow: 'auto' }}>
-                {rijen.slice(0, 12).map((item, index) => (
+                {rijen.map((item, index) => (
                   <div
                     key={`${item.sheet}-${item.rij}-${index}`}
                     style={{
                       padding: '9px 11px',
-                      borderBottom: index === Math.min(rijen.length, 12) - 1 ? 'none' : '1px solid #F1F5F9',
+                      borderBottom: index === rijen.length - 1 ? 'none' : '1px solid #F1F5F9',
                       display: 'grid',
                       gap: 2,
                     }}
                   >
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{item.titelWeergave}</div>
-                    <div style={{ fontSize: 11, color: '#6B7280' }}>
-                      Naar {item.bestemming || 'onbekend'}{item.groep ? ` | groep ${item.groep}` : ''}
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      <input
+                        value={item.titelWeergave || ''}
+                        onChange={(e) => onUpdateRow(item.id, 'titelWeergave', e.target.value)}
+                        style={{ ...inp, fontSize: 12, minHeight: 34 }}
+                        aria-label="Titel educatieregel"
+                      />
+                      <input
+                        value={item.bestemming || ''}
+                        onChange={(e) => onUpdateRow(item.id, 'bestemming', e.target.value)}
+                        placeholder="Bestemming"
+                        style={{ ...inp, fontSize: 12, minHeight: 34 }}
+                        aria-label="Bestemming educatieregel"
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                        <div style={{ fontSize: 11, color: '#6B7280' }}>
+                          {item.groep ? `Groep ${item.groep}` : item.type || 'Educatie'}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteRow(item.id)}
+                          style={{
+                            border: '1px solid #FECACA',
+                            background: '#FEF2F2',
+                            color: '#991B1B',
+                            borderRadius: 7,
+                            padding: '5px 8px',
+                            fontSize: 11,
+                            fontWeight: 650,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Verwijder regel
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
-                {rijen.length > 12 && (
-                  <div style={{ padding: '9px 11px', fontSize: 11, color: '#6B7280' }}>
-                    En nog {rijen.length - 12} regels.
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -413,8 +446,29 @@ export function EducatieImportLayout({
               cursor: educatieImportKlaar ? 'pointer' : 'not-allowed',
             }}
           >
-            Aanvragen toevoegen
+            {isBewerking ? 'Lijst opslaan' : 'Educatie lijst opslaan'}
           </button>
+          {isBewerking && (
+            <button
+              type="button"
+              onClick={() => {
+                setEducatieImport({ editId: null, schooljaar: '', periode: '', bestandNaam: '', rijen: [] })
+                setEducatieMelding('')
+              }}
+              style={{
+                background: '#F3F4F6',
+                color: '#374151',
+                border: '1px solid #E5E9F0',
+                borderRadius: 8,
+                padding: '9px 12px',
+                fontSize: 12,
+                fontWeight: 650,
+                cursor: 'pointer',
+              }}
+            >
+              Bewerken annuleren
+            </button>
+          )}
           {educatieMelding && (
             <div
               style={{
@@ -433,43 +487,70 @@ export function EducatieImportLayout({
         </div>
       </Card>
       <Card>
-        <CardHead title="Wat gebeurt hier straks?" />
+        <CardHead title="Educatie lijsten" sub={`${educatieLijsten.length} lijst(en)`} />
         <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gap: 10 }}>
-          {[
-            'Excelbestand lezen',
-            'Rijen controleren',
-            'Taken of aanvragen klaarzetten',
-            'Daarna pas definitief toevoegen',
-          ].map((stap, index) => (
+          {educatieLijsten.length === 0 && (
+            <div style={{ color: '#9CA3AF', fontSize: 13, padding: '10px 2px' }}>Nog geen Educatie lijsten.</div>
+          )}
+          {educatieLijsten.map((lijst) => (
             <div
-              key={stap}
+              key={lijst.id}
               style={{
-                display: 'flex',
-                gap: 10,
-                alignItems: 'center',
                 padding: '10px 12px',
                 border: '1px solid #E5E9F0',
                 borderRadius: 8,
                 background: '#fff',
+                display: 'grid',
+                gap: 8,
               }}
             >
-              <span
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  background: '#ECFDF5',
-                  color: '#166534',
-                  display: 'grid',
-                  placeItems: 'center',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  flexShrink: 0,
-                }}
-              >
-                {index + 1}
-              </span>
-              <span style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>{stap}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'start' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{lijst.titel || 'Educatie lijst'}</div>
+                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                    {lijst.schooljaar} | {lijst.periode} | {(lijst.rijen || []).length} regels
+                  </div>
+                  {lijst.status === 'ingepland' && (
+                    <div style={{ fontSize: 11, color: '#065F46', marginTop: 3, fontWeight: 650 }}>Ingepland</div>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => onEditList(lijst)}
+                  style={{
+                    border: '1px solid #E5E9F0',
+                    background: '#F3F4F6',
+                    color: '#374151',
+                    borderRadius: 7,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Bewerken
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Educatie lijst verwijderen?')) onDeleteList(lijst.id)
+                  }}
+                  style={{
+                    border: '1px solid #FECACA',
+                    background: '#FEF2F2',
+                    color: '#991B1B',
+                    borderRadius: 7,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Verwijderen
+                </button>
+              </div>
             </div>
           ))}
         </div>
