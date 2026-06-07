@@ -118,6 +118,7 @@ function maakStateSnapshot(state) {
       geblokt: state?.geblokt || [],
       meld: state?.meld || [],
       educatieLijsten: state?.educatieLijsten || [],
+      educatieProjecten: state?.educatieProjecten || [],
     })
   } catch {
     return ''
@@ -173,6 +174,7 @@ export default function App() {
   const [aanvragen, setAanvragen] = useState(lokaal.aanvragen)
   const [geblokt, setGeblokt] = useState(lokaal.geblokt)
   const [educatieLijsten, setEducatieLijsten] = useState(lokaal.educatieLijsten)
+  const [educatieProjecten, setEducatieProjecten] = useState(lokaal.educatieProjecten)
   const [week, setWeek] = useState(vandaag())
   const [mobielePlanningDag, setMobielePlanningDag] = useState(vandaagWerkdagIndex())
   const [toonAfgerondMobiel, setToonAfgerondMobiel] = useState(false)
@@ -307,6 +309,18 @@ export default function App() {
     rijen: [],
   })
   const [educatieMelding, setEducatieMelding] = useState('')
+  const [educatieProjectForm, setEducatieProjectForm] = useState({
+    mode: 'excel',
+    naam: '',
+    bestandNaam: '',
+    projectNamen: [],
+    week: vandaag(),
+    dag: 'flexibel',
+    van: 'School 7 Educatie',
+    naar: '',
+    toelichting: '',
+  })
+  const [projectMelding, setProjectMelding] = useState('')
 
   useEffect(() => {
     if (!isMobiel || !rol) return undefined
@@ -454,6 +468,7 @@ export default function App() {
     setGeblokt(data?.geblokt || [])
     setMeld(data?.meld || [])
     setEducatieLijsten(data?.educatieLijsten || [])
+    setEducatieProjecten(data?.educatieProjecten || [])
   }
 
   useEffect(() => {
@@ -541,8 +556,12 @@ export default function App() {
   }, [educatieLijsten])
 
   useEffect(() => {
+    localStorage.setItem('p5', JSON.stringify(educatieProjecten))
+  }, [educatieProjecten])
+
+  useEffect(() => {
     if (!centraleOpslagActief.current || !centraleOpslagGeladen.current) return undefined
-    const state = { taken, aanvragen, geblokt, meld, educatieLijsten }
+    const state = { taken, aanvragen, geblokt, meld, educatieLijsten, educatieProjecten }
     huidigeStateSnapshot.current = maakStateSnapshot(state)
     if (skipVolgendeCentraleOpslag.current) {
       skipVolgendeCentraleOpslag.current = false
@@ -562,7 +581,7 @@ export default function App() {
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [taken, aanvragen, geblokt, meld, educatieLijsten])
+  }, [taken, aanvragen, geblokt, meld, educatieLijsten, educatieProjecten])
 
   useEffect(() => {
     if (!supabaseConfigured) return undefined
@@ -1067,6 +1086,76 @@ export default function App() {
     setPlanningWeergave('week')
     setPlanEducatieLijst(null)
     setAanvraagMelding(`${nieuweTaken.length} Educatie taken ingepland.`)
+  }
+
+  function resetEducatieProjectForm() {
+    setEducatieProjectForm({
+      mode: 'excel',
+      naam: '',
+      bestandNaam: '',
+      projectNamen: [],
+      week: vandaag(),
+      dag: 'flexibel',
+      van: 'School 7 Educatie',
+      naar: '',
+      toelichting: '',
+    })
+  }
+
+  function projectTaakVoorOpslag(project, taakId) {
+    return {
+      id: taakId,
+      titel: `Project: ${project.naam}`,
+      omschrijving: project.toelichting,
+      reden: '',
+      aantal: '',
+      tijd: '',
+      van: project.van,
+      naar: project.naar,
+      week: project.week,
+      dag: project.dag,
+      prioriteit: 'normaal',
+      status: 'gepland',
+      aangemaakt: project.aangemaakt,
+      door: rol,
+      bron: 'educatie-project',
+      educatieProjectId: project.id,
+      log: [{ a: 'aangemaakt uit educatie project', d: rol, w: project.aangemaakt }],
+    }
+  }
+
+  function slaEducatieProjectenOp() {
+    const namen =
+      educatieProjectForm.mode === 'excel'
+        ? (educatieProjectForm.projectNamen || []).map((item) => item.naam.trim()).filter(Boolean)
+        : [educatieProjectForm.naam.trim()].filter(Boolean)
+
+    if (!educatieProjectForm.week || !educatieProjectForm.van || !educatieProjectForm.naar || namen.length === 0) return
+
+    const nu = new Date().toISOString()
+    const nieuweProjecten = namen.map((naam, index) => ({
+      id: `${Date.now()}-${index}`,
+      taakId: `${Date.now()}-project-${index}`,
+      naam,
+      week: educatieProjectForm.week,
+      dag: educatieProjectForm.dag === 'flexibel' ? null : Number(educatieProjectForm.dag),
+      van: educatieProjectForm.van,
+      naar: educatieProjectForm.naar,
+      toelichting: educatieProjectForm.toelichting.trim(),
+      bestandNaam: educatieProjectForm.mode === 'excel' ? educatieProjectForm.bestandNaam : '',
+      aangemaakt: nu,
+    }))
+
+    setEducatieProjecten((prev) => [...prev, ...nieuweProjecten])
+    setTaken((prev) => [...prev, ...nieuweProjecten.map((project) => projectTaakVoorOpslag(project, project.taakId))])
+    setProjectMelding(`${nieuweProjecten.length} project(en) toegevoegd aan de planning.`)
+    resetEducatieProjectForm()
+  }
+
+  function verwijderEducatieProject(id) {
+    const project = educatieProjecten.find((item) => item.id === id)
+    setEducatieProjecten((prev) => prev.filter((item) => item.id !== id))
+    if (project?.taakId) setTaken((prev) => prev.filter((taak) => taak.id !== project.taakId))
   }
 
   function verwijderAanvraag(id, notitie = '') {
@@ -3387,7 +3476,16 @@ export default function App() {
           )}
 
           {tab === 'educatie-projecten' && rol === ROLES.educatie && (
-            <EducatieProjectenLayout isMobiel={isMobiel} />
+            <EducatieProjectenLayout
+              educatieProjectForm={educatieProjectForm}
+              educatieProjecten={educatieProjecten}
+              isMobiel={isMobiel}
+              onDeleteProject={verwijderEducatieProject}
+              onSaveProjecten={slaEducatieProjectenOp}
+              projectMelding={projectMelding}
+              setEducatieProjectForm={setEducatieProjectForm}
+              setProjectMelding={setProjectMelding}
+            />
           )}
 
           {tab === 'aanvragen' && rol === ROLES.transporteur && (

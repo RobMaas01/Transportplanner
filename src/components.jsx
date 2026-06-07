@@ -1,5 +1,5 @@
-import { AANVRAAG_STATUS, STATUS } from './constants'
-import { leesEducatieExcel } from './educatieImport'
+import { AANVRAAG_STATUS, DAGEN_KORT, STATUS, VESTIGINGEN } from './constants'
+import { leesEducatieExcel, leesProjectenExcel } from './educatieImport'
 import { inp } from './uiStyles'
 import { maandLabel, verschuifMaand } from './utils'
 
@@ -559,19 +559,273 @@ export function EducatieImportLayout({
   )
 }
 
-export function EducatieProjectenLayout({ isMobiel }) {
+export function EducatieProjectenLayout({
+  educatieProjectForm,
+  educatieProjecten,
+  isMobiel,
+  onDeleteProject,
+  onSaveProjecten,
+  projectMelding,
+  setEducatieProjectForm,
+  setProjectMelding,
+}) {
+  const projectNamen = educatieProjectForm.projectNamen || []
+  const locatieOpties = ['School 7 Educatie', ...VESTIGINGEN]
+  const projectKlaar =
+    educatieProjectForm.week &&
+    educatieProjectForm.van &&
+    educatieProjectForm.naar &&
+    (educatieProjectForm.mode === 'excel'
+      ? projectNamen.some((item) => item.naam.trim())
+      : educatieProjectForm.naam.trim())
+
   return (
-    <Card>
-      <CardHead title="Projecten" />
-      <div style={{ padding: isMobiel ? 18 : 24, display: 'grid', gap: 10 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>
-          Nog geen projecten toegevoegd
+    <div style={{ display: 'grid', gridTemplateColumns: isMobiel ? '1fr' : 'minmax(0, 1.2fr) minmax(320px, .8fr)', gap: isMobiel ? 12 : 18 }}>
+      <Card>
+        <CardHead title="Projecten" sub="Excel importeren of handmatig invoeren" />
+        <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3, width: 'fit-content', maxWidth: '100%', flexWrap: 'wrap' }}>
+            {[
+              { key: 'excel', label: 'Excelbestand importeren' },
+              { key: 'handmatig', label: 'Handmatig invoeren' },
+            ].map((item) => {
+              const actief = educatieProjectForm.mode === item.key
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => {
+                    setEducatieProjectForm((prev) => ({ ...prev, mode: item.key }))
+                    setProjectMelding('')
+                  }}
+                  style={{
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '7px 12px',
+                    fontSize: 12,
+                    fontWeight: actief ? 700 : 600,
+                    cursor: 'pointer',
+                    background: actief ? '#fff' : 'transparent',
+                    color: actief ? '#111827' : '#6B7280',
+                    boxShadow: actief ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
+                  }}
+                >
+                  {item.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {educatieProjectForm.mode === 'excel' ? (
+            <div>
+              <Label>Excelbestand</Label>
+              <label
+                style={{
+                  border: '1px dashed #CBD5E1',
+                  borderRadius: 10,
+                  padding: '16px 14px',
+                  background: '#FCFCFD',
+                  display: 'grid',
+                  gap: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
+                  {educatieProjectForm.bestandNaam || 'Kies Excelbestand'}
+                </span>
+                <span style={{ fontSize: 12, color: '#6B7280' }}>Projectnamen worden uit het bestand gelezen.</span>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={async (e) => {
+                    const bestand = e.target.files?.[0]
+                    setProjectMelding('')
+                    if (!bestand) {
+                      setEducatieProjectForm((prev) => ({ ...prev, bestandNaam: '', projectNamen: [] }))
+                      return
+                    }
+                    try {
+                      const projecten = await leesProjectenExcel(bestand)
+                      setEducatieProjectForm((prev) => ({
+                        ...prev,
+                        bestandNaam: bestand.name,
+                        projectNamen: projecten,
+                      }))
+                      setProjectMelding(projecten.length ? `${projecten.length} projecten gevonden.` : 'Geen projectnamen gevonden.')
+                    } catch (error) {
+                      console.error('Projectbestand kon niet worden gelezen.', error)
+                      setEducatieProjectForm((prev) => ({ ...prev, bestandNaam: bestand.name, projectNamen: [] }))
+                      setProjectMelding('Dit Excelbestand kon niet worden gelezen.')
+                    }
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+          ) : (
+            <div>
+              <Label required>Naam project</Label>
+              <input
+                value={educatieProjectForm.naam}
+                onChange={(e) => {
+                  setEducatieProjectForm((prev) => ({ ...prev, naam: e.target.value }))
+                  setProjectMelding('')
+                }}
+                placeholder="Bijv. Kinderboekenweek"
+                style={inp}
+              />
+            </div>
+          )}
+
+          {educatieProjectForm.mode === 'excel' && projectNamen.length > 0 && (
+            <div style={{ border: '1px solid #E5E9F0', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+              <div style={{ padding: '9px 11px', background: '#F8F9FC', borderBottom: '1px solid #E5E9F0', fontSize: 12, fontWeight: 700, color: '#374151' }}>
+                Projecten ({projectNamen.length})
+              </div>
+              <div style={{ display: 'grid', maxHeight: 220, overflow: 'auto' }}>
+                {projectNamen.map((project, index) => (
+                  <div key={project.id} style={{ padding: '8px 10px', borderBottom: index === projectNamen.length - 1 ? 'none' : '1px solid #F1F5F9' }}>
+                    <input
+                      value={project.naam}
+                      onChange={(e) =>
+                        setEducatieProjectForm((prev) => ({
+                          ...prev,
+                          projectNamen: (prev.projectNamen || []).map((item) =>
+                            item.id === project.id ? { ...item, naam: e.target.value } : item,
+                          ),
+                        }))
+                      }
+                      style={{ ...inp, fontSize: 12, minHeight: 34 }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobiel ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <div>
+              <Label required>Week uitvoeren</Label>
+              <input
+                type="week"
+                value={educatieProjectForm.week}
+                onChange={(e) => setEducatieProjectForm((prev) => ({ ...prev, week: e.target.value }))}
+                style={inp}
+              />
+            </div>
+            <div>
+              <Label>Dag</Label>
+              <select
+                value={educatieProjectForm.dag}
+                onChange={(e) => setEducatieProjectForm((prev) => ({ ...prev, dag: e.target.value }))}
+                style={inp}
+              >
+                <option value="flexibel">Flexibel in die week</option>
+                {DAGEN_KORT.map((dag, index) => (
+                  <option key={dag} value={index}>{dag}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobiel ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <div>
+              <Label required>Van locatie</Label>
+              <select
+                value={educatieProjectForm.van}
+                onChange={(e) => setEducatieProjectForm((prev) => ({ ...prev, van: e.target.value }))}
+                style={inp}
+              >
+                {locatieOpties.map((locatie) => <option key={locatie} value={locatie}>{locatie}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label required>Naar locatie</Label>
+              <select
+                value={educatieProjectForm.naar}
+                onChange={(e) => setEducatieProjectForm((prev) => ({ ...prev, naar: e.target.value }))}
+                style={inp}
+              >
+                <option value="">Kies...</option>
+                {locatieOpties.map((locatie) => <option key={locatie} value={locatie}>{locatie}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <Label>Extra toelichting</Label>
+            <textarea
+              value={educatieProjectForm.toelichting}
+              onChange={(e) => setEducatieProjectForm((prev) => ({ ...prev, toelichting: e.target.value }))}
+              placeholder="Bijv. bijzonderheden voor transport."
+              rows={3}
+              style={{ ...inp, resize: 'vertical' }}
+            />
+          </div>
+
+          <button
+            type="button"
+            disabled={!projectKlaar}
+            onClick={onSaveProjecten}
+            style={{
+              background: projectKlaar ? '#1F7A4D' : '#E5E7EB',
+              color: projectKlaar ? '#fff' : '#9CA3AF',
+              border: 'none',
+              borderRadius: 8,
+              padding: '10px 14px',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: projectKlaar ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Project toevoegen
+          </button>
+          {projectMelding && (
+            <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#065F46' }}>
+              {projectMelding}
+            </div>
+          )}
         </div>
-        <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, maxWidth: 560 }}>
-          Dit onderdeel staat alvast klaar. Later kunnen hier losse educatieprojecten of handmatige projectaanvragen worden toegevoegd.
+      </Card>
+
+      <Card>
+        <CardHead title="Toegevoegde projecten" sub={`${educatieProjecten.length} project(en)`} />
+        <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gap: 10 }}>
+          {educatieProjecten.length === 0 && (
+            <div style={{ color: '#9CA3AF', fontSize: 13, padding: '10px 2px' }}>Nog geen projecten toegevoegd.</div>
+          )}
+          {educatieProjecten.map((project) => (
+            <div key={project.id} style={{ border: '1px solid #E5E9F0', borderRadius: 8, padding: '10px 12px', display: 'grid', gap: 7 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{project.naam}</div>
+              <div style={{ fontSize: 11, color: '#6B7280' }}>
+                {project.week} | {project.dag === null ? 'flexibel' : DAGEN_KORT[Number(project.dag)]} | {project.van} naar {project.naar}
+              </div>
+              {project.toelichting && <div style={{ fontSize: 12, color: '#374151' }}>{project.toelichting}</div>}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Project verwijderen?')) onDeleteProject(project.id)
+                  }}
+                  style={{
+                    border: '1px solid #FECACA',
+                    background: '#FEF2F2',
+                    color: '#991B1B',
+                    borderRadius: 7,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Verwijderen
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-    </Card>
+      </Card>
+    </div>
   )
 }
 

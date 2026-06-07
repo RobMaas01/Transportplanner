@@ -192,6 +192,7 @@ export const LOKALE_KEYS = {
   geblokt: 'g5',
   meld: 'm5',
   educatieLijsten: 'e5',
+  educatieProjecten: 'p5',
 }
 
 export function laadLokaleState() {
@@ -201,6 +202,7 @@ export function laadLokaleState() {
     geblokt: laadLokaal(LOKALE_KEYS.geblokt, []),
     meld: laadLokaal(LOKALE_KEYS.meld, []),
     educatieLijsten: laadLokaal(LOKALE_KEYS.educatieLijsten, []),
+    educatieProjecten: laadLokaal(LOKALE_KEYS.educatieProjecten, []),
   }
 }
 

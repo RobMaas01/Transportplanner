@@ -10,7 +10,8 @@ export function isLegeState(state) {
     (!state?.aanvragen || state.aanvragen.length === 0) &&
     (!state?.geblokt || state.geblokt.length === 0) &&
     (!state?.meld || state.meld.length === 0) &&
-    (!state?.educatieLijsten || state.educatieLijsten.length === 0)
+    (!state?.educatieLijsten || state.educatieLijsten.length === 0) &&
+    (!state?.educatieProjecten || state.educatieProjecten.length === 0)
   )
 }
 

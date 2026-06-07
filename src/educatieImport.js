@@ -147,3 +147,35 @@ export function maakTakenUitEducatieLijst(lijst, { week, dag, door }) {
     }
   })
 }
+
+export function leesProjectenExcel(bestand) {
+  return bestand.arrayBuffer().then((buffer) => {
+    const workbook = XLSX.read(buffer, { type: 'array' })
+    const projecten = []
+
+    workbook.SheetNames.forEach((sheetNaam) => {
+      const sheet = workbook.Sheets[sheetNaam]
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+      const headerIndex = rows.findIndex((row) => row.some((cell) => schoon(cell)))
+      if (headerIndex < 0) return
+
+      const headers = rows[headerIndex].map(schoon)
+      const projectKolom = headers.findIndex((header) =>
+        ['naam project', 'projectnaam', 'project', 'naam', 'titel'].includes(sleutel(header)),
+      )
+
+      rows.slice(headerIndex + 1).forEach((row, index) => {
+        const naam = projectKolom >= 0 ? schoon(row[projectKolom]) : schoon(row.find((cell) => schoon(cell)))
+        if (!naam) return
+        projecten.push({
+          id: `${sheetNaam}-${headerIndex + index + 2}-${projecten.length}`,
+          naam,
+          sheet: sheetNaam,
+          rij: headerIndex + index + 2,
+        })
+      })
+    })
+
+    return projecten
+  })
+}
