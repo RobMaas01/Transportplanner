@@ -286,6 +286,7 @@ export default function App() {
   const [verwijderNotitie, setVerwijderNotitie] = useState('')
   const [planAanvraag, setPlanAanvraag] = useState(null)
   const [planEducatieLijst, setPlanEducatieLijst] = useState(null)
+  const [educatieUitvoer, setEducatieUitvoer] = useState(null)
   const [infoAanvraag, setInfoAanvraag] = useState(null)
   const [infoNotitie, setInfoNotitie] = useState('')
   const [verplW, setVerplW] = useState('')
@@ -1396,6 +1397,55 @@ export default function App() {
     }
   }
 
+  function openEducatieUitvoer(groep) {
+    setEducatieUitvoer({
+      id: groep.id,
+      titel: groep.titel,
+      taken: groep.taken,
+      geselecteerd: groep.taken
+        .filter((taak) => taak.status !== 'afgerond')
+        .map((taak) => taak.id),
+    })
+  }
+
+  function toggleEducatieUitvoerTaak(id) {
+    setEducatieUitvoer((prev) => {
+      if (!prev) return prev
+      const geselecteerd = prev.geselecteerd.includes(id)
+        ? prev.geselecteerd.filter((item) => item !== id)
+        : [...prev.geselecteerd, id]
+      return { ...prev, geselecteerd }
+    })
+  }
+
+  function rondEducatieUitvoerAf() {
+    if (!educatieUitvoer) return
+    const ids = new Set(educatieUitvoer.geselecteerd)
+    if (ids.size === 0) return
+    const allesKlaar = educatieUitvoer.taken.every((taak) => taak.status === 'afgerond' || ids.has(taak.id))
+    setTaken((prev) =>
+      prev.map((taak) =>
+        ids.has(taak.id)
+          ? {
+              ...taak,
+              status: 'afgerond',
+              log: [...(taak.log || []), { a: 'bulk afgerond educatie', d: rol, w: new Date().toISOString() }],
+            }
+          : taak,
+      ),
+    )
+    if (allesKlaar) {
+      setEducatieLijsten((prev) =>
+        prev.map((lijst) =>
+          lijst.id === educatieUitvoer.id
+            ? { ...lijst, status: 'voltooid', voltooidOp: new Date().toISOString(), bijgewerkt: new Date().toISOString() }
+            : lijst,
+        ),
+      )
+    }
+    setEducatieUitvoer(null)
+  }
+
   function verplaats() {
     if (!verplW || !modal) return
 
@@ -1913,6 +1963,23 @@ export default function App() {
   const dagData = weekHeeftWeekendTaken ? weekDagen(week) : weekWerkdagen(week)
   const weekTaken = actieveTaken.filter((taak) => taak.week === week)
   const weekTakenAlleenWeek = weekTaken.filter((taak) => taak.dag === null || taak.dag === undefined)
+  const educatieWeekGroepen = Object.values(
+    weekTakenAlleenWeek
+      .filter((taak) => taak.educatieLijstId)
+      .reduce((groepen, taak) => {
+        if (!groepen[taak.educatieLijstId]) {
+          const lijst = educatieLijsten.find((item) => item.id === taak.educatieLijstId)
+          groepen[taak.educatieLijstId] = {
+            id: taak.educatieLijstId,
+            titel: lijst?.titel || 'Educatie lijst',
+            taken: [],
+          }
+        }
+        groepen[taak.educatieLijstId].taken.push(taak)
+        return groepen
+      }, {}),
+  )
+  const weekTakenAlleenWeekLos = weekTakenAlleenWeek.filter((taak) => !taak.educatieLijstId)
   const weekTakenMetDag = weekTaken.filter((taak) => taak.dag !== null && taak.dag !== undefined)
   const effectieveMobielePlanningDag = Math.min(mobielePlanningDag, dagData.length - 1)
   const zichtbareWeekDagen = isMobiel ? dagData.filter((_, di) => di === effectieveMobielePlanningDag) : dagData
@@ -3568,15 +3635,15 @@ export default function App() {
                               <span
                                 style={{
                                   fontSize: 11,
-                                  color: lijst.status === 'ingepland' ? '#065F46' : '#2255CC',
-                                  background: lijst.status === 'ingepland' ? '#ECFDF5' : '#EEF4FF',
-                                  border: `1px solid ${lijst.status === 'ingepland' ? '#A7F3D0' : '#BFDBFE'}`,
+                                  color: lijst.status === 'voltooid' || lijst.status === 'ingepland' ? '#065F46' : '#2255CC',
+                                  background: lijst.status === 'voltooid' || lijst.status === 'ingepland' ? '#ECFDF5' : '#EEF4FF',
+                                  border: `1px solid ${lijst.status === 'voltooid' || lijst.status === 'ingepland' ? '#A7F3D0' : '#BFDBFE'}`,
                                   borderRadius: 999,
                                   padding: '2px 7px',
                                   fontWeight: 700,
                                 }}
                               >
-                                {lijst.status === 'ingepland' ? 'Ingepland' : 'Nieuw'}
+                                {lijst.status === 'voltooid' ? 'Voltooid' : lijst.status === 'ingepland' ? 'Ingepland' : 'Nieuw'}
                               </span>
                             </div>
                             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
@@ -4415,7 +4482,58 @@ export default function App() {
                 <Card style={{ marginBottom: 10 }}>
                   <CardHead title="Weektaken" sub={`${weekTakenAlleenWeek.length} zonder vaste dag`} />
                   <div style={{ padding: isMobiel ? 10 : 12, display: 'grid', gap: 8 }}>
-                    {weekTakenAlleenWeek.map((taak) => {
+                    {educatieWeekGroepen.map((groep) => {
+                      const openAantal = groep.taken.filter((taak) => taak.status !== 'afgerond').length
+                      const afgerondAantal = groep.taken.length - openAantal
+
+                      return (
+                        <div
+                          key={groep.id}
+                          style={{
+                            background: openAantal ? '#F8FBFF' : '#F9FAFB',
+                            border: '1px solid #DDE7F2',
+                            borderRadius: 9,
+                            borderLeft: `3px solid ${openAantal ? '#2563EB' : '#10B981'}`,
+                            padding: '11px 12px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'start', flexWrap: 'wrap' }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: '#111827' }}>{groep.titel}</div>
+                              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>
+                                {groep.taken.length} regels | {openAantal} open{afgerondAantal ? ` | ${afgerondAantal} klaar` : ''}
+                              </div>
+                            </div>
+                            <Pill status={openAantal ? 'gepland' : 'afgerond'} />
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
+                            {rol === ROLES.transporteur && openAantal > 0 && (
+                              <Btn size="touch" variant="success" onClick={() => openEducatieUitvoer(groep)}>
+                                Uitvoeren
+                              </Btn>
+                            )}
+                            {rol === ROLES.transporteur && openAantal === 0 && (
+                              <Btn variant="ghost" onClick={() => openEducatieUitvoer(groep)}>
+                                Bekijken
+                              </Btn>
+                            )}
+                            {rol === ROLES.transporteur && (
+                              <Btn
+                                variant="danger"
+                                onClick={() => {
+                                  if (window.confirm('Deze hele Educatie lijst uit de planning verwijderen?')) {
+                                    groep.taken.forEach((taak) => verwijderTaak(taak.id, 'Educatie lijst verwijderd uit planning'))
+                                  }
+                                }}
+                              >
+                                Verwijder
+                              </Btn>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {weekTakenAlleenWeekLos.map((taak) => {
                       const sm = STATUS[taak.status] || STATUS.gepland
 
                       return (
@@ -6642,6 +6760,163 @@ export default function App() {
                 }}
               >
                 Toch verlaten
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {educatieUitvoer && (
+        <div
+          onClick={() => setEducatieUitvoer(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 216,
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 14,
+              padding: 24,
+              width: '100%',
+              maxWidth: 520,
+              maxHeight: '86vh',
+              overflow: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,.15)',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 750, color: '#111827', marginBottom: 4 }}>
+              Educatie uitvoeren
+            </div>
+            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 14 }}>
+              Vink uit wat niet is uitgevoerd. De aangevinkte regels worden daarna als afgerond gezet.
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              <button
+                type="button"
+                onClick={() =>
+                  setEducatieUitvoer((prev) =>
+                    prev ? { ...prev, geselecteerd: prev.taken.filter((taak) => taak.status !== 'afgerond').map((taak) => taak.id) } : prev,
+                  )
+                }
+                style={{
+                  border: '1px solid #E5E9F0',
+                  background: '#F3F4F6',
+                  color: '#374151',
+                  borderRadius: 8,
+                  padding: '7px 10px',
+                  fontSize: 12,
+                  fontWeight: 650,
+                  cursor: 'pointer',
+                }}
+              >
+                Alles selecteren
+              </button>
+              <button
+                type="button"
+                onClick={() => setEducatieUitvoer((prev) => (prev ? { ...prev, geselecteerd: [] } : prev))}
+                style={{
+                  border: '1px solid #E5E9F0',
+                  background: '#fff',
+                  color: '#6B7280',
+                  borderRadius: 8,
+                  padding: '7px 10px',
+                  fontSize: 12,
+                  fontWeight: 650,
+                  cursor: 'pointer',
+                }}
+              >
+                Alles uitzetten
+              </button>
+            </div>
+            <div style={{ border: '1px solid #E5E9F0', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+              {educatieUitvoer.taken.map((taak, index) => {
+                const klaar = taak.status === 'afgerond'
+                const checked = klaar || educatieUitvoer.geselecteerd.includes(taak.id)
+
+                return (
+                  <label
+                    key={taak.id}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'auto 1fr',
+                      gap: 10,
+                      alignItems: 'start',
+                      padding: '10px 12px',
+                      borderBottom: index === educatieUitvoer.taken.length - 1 ? 'none' : '1px solid #F1F5F9',
+                      background: klaar ? '#F9FAFB' : '#fff',
+                      cursor: klaar ? 'default' : 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={klaar}
+                      onChange={() => toggleEducatieUitvoerTaak(taak.id)}
+                      style={{ marginTop: 2 }}
+                    />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: klaar ? '#6B7280' : '#111827' }}>
+                        {taak.titel}
+                      </div>
+                      {taak.naar && (
+                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>Naar {taak.naar}</div>
+                      )}
+                      {klaar && (
+                        <div style={{ fontSize: 11, color: '#065F46', marginTop: 2, fontWeight: 650 }}>Al afgerond</div>
+                      )}
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={rondEducatieUitvoerAf}
+                disabled={educatieUitvoer.geselecteerd.length === 0}
+                style={{
+                  flex: 1,
+                  minWidth: 150,
+                  background: educatieUitvoer.geselecteerd.length ? '#1F7A4D' : '#E5E7EB',
+                  color: educatieUitvoer.geselecteerd.length ? '#fff' : '#9CA3AF',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '10px 0',
+                  fontSize: 13,
+                  fontWeight: 750,
+                  cursor: educatieUitvoer.geselecteerd.length ? 'pointer' : 'not-allowed',
+                }}
+              >
+                Definitief afronden
+              </button>
+              <button
+                type="button"
+                onClick={() => setEducatieUitvoer(null)}
+                style={{
+                  flex: 1,
+                  minWidth: 150,
+                  background: '#F3F4F6',
+                  color: '#374151',
+                  border: '1px solid #E5E9F0',
+                  borderRadius: 8,
+                  padding: '10px 0',
+                  fontSize: 13,
+                  fontWeight: 650,
+                  cursor: 'pointer',
+                }}
+              >
+                Annuleer
               </button>
             </div>
           </div>
