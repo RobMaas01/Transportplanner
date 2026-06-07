@@ -640,7 +640,7 @@ function blokkadeInRapportPeriode(item, rapp) {
   return getMaandag(item.week).getFullYear() === Number(rapp.jaar)
 }
 
-export function maakDashboardData(taken, aanvragen, rapp, geblokt = []) {
+export function maakDashboardData(taken, aanvragen, rapp, geblokt = [], extraWaarschuwingen = []) {
   const actieveTaken = taken.filter((taak) => taak.status !== 'verwijderd')
   const periodeTaken = actieveTaken.filter((taak) => taakInRapportPeriode(taak, rapp))
   const periodeAanvragen = aanvragen.filter((aanvraag) => aanvraagInRapportPeriode(aanvraag, rapp))
@@ -654,9 +654,17 @@ export function maakDashboardData(taken, aanvragen, rapp, geblokt = []) {
       dag: null,
       automatisch: true,
     }))
+  const extraAutomatischeMeldingen = extraWaarschuwingen
+    .filter((item) => blokkadeInRapportPeriode(item, rapp))
+    .map((item) => ({
+      ...item,
+      dag: item.dag ?? null,
+      automatisch: true,
+    }))
   const piekWaarschuwingen = [
     ...periodeDruktemeldingen.map((item) => ({ ...item, automatisch: false })),
     ...automatischeMeldingen,
+    ...extraAutomatischeMeldingen,
   ].sort((a, b) => getMaandag(a.week) - getMaandag(b.week) || Number(a.dag ?? -1) - Number(b.dag ?? -1))
   const afgerond = periodeTaken.filter((taak) => taak.status === 'afgerond').length
   const open = periodeTaken.filter((taak) => !['afgerond', 'verwijderd'].includes(taak.status)).length
@@ -727,7 +735,7 @@ export function maakDashboardData(taken, aanvragen, rapp, geblokt = []) {
     periodeGrafiekTitel: rapp.type === 'week' ? 'Drukte per dag' : rapp.type === 'maand' ? 'Drukte per week' : 'Drukte per maand',
     periodeDrukte: periodeDrukte(periodeTaken, rapp),
     druktemeldingen: periodeDruktemeldingen,
-    automatischeWaarschuwingen: automatischeMeldingen,
+    automatischeWaarschuwingen: [...automatischeMeldingen, ...extraAutomatischeMeldingen],
     piekWaarschuwingen,
     totaal,
     afgerond,

@@ -286,6 +286,7 @@ export default function App() {
   const [verwijderNotitie, setVerwijderNotitie] = useState('')
   const [planAanvraag, setPlanAanvraag] = useState(null)
   const [planEducatieLijst, setPlanEducatieLijst] = useState(null)
+  const [planProjectLijst, setPlanProjectLijst] = useState(null)
   const [educatieUitvoer, setEducatieUitvoer] = useState(null)
   const [infoAanvraag, setInfoAanvraag] = useState(null)
   const [infoNotitie, setInfoNotitie] = useState('')
@@ -1055,9 +1056,58 @@ export default function App() {
   }
 
   function verwijderEducatieLijst(id) {
-    setEducatieLijsten((prev) => prev.filter((lijst) => lijst.id !== id))
-    setTaken((prev) => prev.filter((taak) => taak.educatieLijstId !== id))
-    setEducatieMelding('Educatie lijst verwijderd.')
+    const nu = new Date().toISOString()
+    setEducatieLijsten((prev) =>
+      prev.map((lijst) =>
+        lijst.id === id
+          ? { ...lijst, vorigeStatus: lijst.status || 'nieuw', status: 'verwijderd', verwijderdOp: nu, bijgewerkt: nu }
+          : lijst,
+      ),
+    )
+    setTaken((prev) =>
+      prev.map((taak) =>
+        taak.educatieLijstId === id
+          ? {
+              ...taak,
+              vorigeStatus: taak.status === 'verwijderd' ? taak.vorigeStatus || 'gepland' : taak.status,
+              status: 'verwijderd',
+              verwijderdOp: nu,
+              log: [...(taak.log || []), { a: 'verwijderd met Educatie lijst', d: rol, w: nu }],
+            }
+          : taak,
+      ),
+    )
+    setEducatieMelding('Educatie lijst verplaatst naar Verwijderd.')
+  }
+
+  function herstelEducatieLijst(id) {
+    const nu = new Date().toISOString()
+    setEducatieLijsten((prev) =>
+      prev.map((lijst) =>
+        lijst.id === id
+          ? {
+              ...lijst,
+              status: lijst.vorigeStatus || (lijst.geplandeWeek ? 'ingepland' : 'nieuw'),
+              vorigeStatus: null,
+              verwijderdOp: null,
+              bijgewerkt: nu,
+            }
+          : lijst,
+      ),
+    )
+    setTaken((prev) =>
+      prev.map((taak) =>
+        taak.educatieLijstId === id
+          ? {
+              ...taak,
+              status: taak.vorigeStatus || 'gepland',
+              vorigeStatus: null,
+              verwijderdOp: null,
+              log: [...(taak.log || []), { a: 'hersteld met Educatie lijst', d: rol, w: nu }],
+            }
+          : taak,
+      ),
+    )
   }
 
   function updateEducatieRij(rijId, veld, waarde) {
@@ -1081,12 +1131,20 @@ export default function App() {
     setPlanMaand(new Date().toISOString().slice(0, 7))
   }
 
+  function openPlanProjectLijst(project) {
+    setPlanProjectLijst(project)
+    setPlanW(project.geplandeWeek || vandaag())
+    setPlanD(project.geplandeDag === null || project.geplandeDag === undefined ? null : Number(project.geplandeDag))
+    setPlanMaand(new Date().toISOString().slice(0, 7))
+  }
+
   function zetEducatieLijstDoor() {
     if (!planEducatieLijst || !planW) return
+    const dag = planD === null || planD === undefined ? null : Number(planD)
 
     const nieuweTaken = maakTakenUitEducatieLijst(planEducatieLijst, {
       week: planW,
-      dag: null,
+      dag,
       door: rol,
     })
 
@@ -1098,17 +1156,49 @@ export default function App() {
               ...lijst,
               status: 'ingepland',
               geplandeWeek: planW,
-              geplandeDag: null,
+              geplandeDag: dag,
               bijgewerkt: new Date().toISOString(),
             }
           : lijst,
       ),
     )
     setWeek(planW)
-    if (isMobiel) setMobielePlanningDag(vandaagWerkdagIndex())
+    if (isMobiel) setMobielePlanningDag(dag === null ? vandaagWerkdagIndex() : Math.max(0, Math.min(6, dag)))
     setPlanningWeergave('week')
     setPlanEducatieLijst(null)
     setAanvraagMelding(`${nieuweTaken.length} Educatie taken ingepland.`)
+  }
+
+  function zetProjectLijstDoor() {
+    if (!planProjectLijst || !planW) return
+
+    const dag = planD === null || planD === undefined ? null : Number(planD)
+    const regels = projectRegels(planProjectLijst)
+    const bijgewerkteProject = {
+      ...planProjectLijst,
+      status: 'ingepland',
+      geplandeWeek: planW,
+      geplandeDag: dag,
+      bijgewerkt: new Date().toISOString(),
+    }
+    const nieuweTaken = regels.map((rij, index) => projectTaakVoorOpslag(bijgewerkteProject, rij, index, planW, dag))
+
+    setTaken((prev) => [
+      ...prev.filter(
+        (taak) =>
+          taak.educatieProjectLijstId !== planProjectLijst.id &&
+          taak.educatieProjectId !== planProjectLijst.id,
+      ),
+      ...nieuweTaken,
+    ])
+    setEducatieProjecten((prev) =>
+      prev.map((project) => (project.id === planProjectLijst.id ? bijgewerkteProject : project)),
+    )
+    setWeek(planW)
+    if (isMobiel) setMobielePlanningDag(dag === null ? vandaagWerkdagIndex() : Math.max(0, Math.min(6, dag)))
+    setPlanningWeergave('week')
+    setPlanProjectLijst(null)
+    setAanvraagMelding(`${nieuweTaken.length} projecttaak${nieuweTaken.length === 1 ? '' : 'en'} ingepland.`)
   }
 
   function resetEducatieProjectForm() {
@@ -1126,25 +1216,47 @@ export default function App() {
     })
   }
 
-  function projectTaakVoorOpslag(project, taakId) {
+  function projectRegels(project) {
+    if (Array.isArray(project.projecten) && project.projecten.length > 0) return project.projecten
+    return [{ id: project.id, naam: project.naam || project.titel || 'Project' }]
+  }
+
+  function projectTitel(project) {
+    if (project.type === 'excel-lijst' || project.bestandNaam) {
+      return project.titel || `Projectlijst - ${project.bestandNaam || 'Excelbestand'}`
+    }
+    return project.titel || project.naam || 'Project'
+  }
+
+  function projectStatus(project) {
+    if (project.status) return project.status
+    if (project.week || project.geplandeWeek) return 'ingepland'
+    return 'nieuw'
+  }
+
+  function projectTaakVoorOpslag(project, rij, index, week, dag) {
+    const aangemaakt = project.aangemaakt || new Date().toISOString()
+    const taakId = rij.taakId || `${project.id}-project-${rij.id || index}`
     return {
       id: taakId,
-      titel: `Project: ${project.naam}`,
+      titel: `Project: ${rij.naam || project.naam || 'Project'}`,
       omschrijving: project.toelichting,
       reden: '',
       aantal: '',
       tijd: '',
       van: project.van,
       naar: project.naar,
-      week: project.week,
-      dag: project.dag,
+      week,
+      dag,
       prioriteit: 'normaal',
       status: 'gepland',
-      aangemaakt: project.aangemaakt,
+      aangemaakt,
       door: rol,
       bron: 'educatie-project',
       educatieProjectId: project.id,
-      log: [{ a: 'aangemaakt uit educatie project', d: rol, w: project.aangemaakt }],
+      educatieProjectLijstId: project.id,
+      educatieProjectRijId: rij.id || `${index}`,
+      log: [{ a: 'aangemaakt uit educatie projectlijst', d: rol, w: aangemaakt }],
     }
   }
 
@@ -1157,53 +1269,71 @@ export default function App() {
     if (!educatieProjectForm.van || !educatieProjectForm.naar || namen.length === 0) return
 
     const nu = new Date().toISOString()
-    const nieuweProjecten = namen.map((naam, index) => ({
-      id: educatieProjectForm.editId || `${Date.now()}-${index}`,
-      taakId: educatieProjectForm.editId
-        ? educatieProjecten.find((item) => item.id === educatieProjectForm.editId)?.taakId || `${Date.now()}-project-${index}`
-        : `${Date.now()}-project-${index}`,
-      naam,
-      week: educatieProjectForm.week,
-      dag: !educatieProjectForm.week || educatieProjectForm.dag === 'flexibel' ? null : Number(educatieProjectForm.dag),
+    const bestaand = educatieProjecten.find((item) => item.id === educatieProjectForm.editId)
+    const formulierDag = !educatieProjectForm.week || educatieProjectForm.dag === 'flexibel' ? null : Number(educatieProjectForm.dag)
+    const bewerkingMetPlanning = Boolean(educatieProjectForm.editId && educatieProjectForm.week)
+    const project = {
+      id: educatieProjectForm.editId || `${nu}-projectlijst`,
+      type: educatieProjectForm.mode === 'excel' ? 'excel-lijst' : 'project',
+      titel:
+        educatieProjectForm.mode === 'excel'
+          ? `Projectlijst - ${educatieProjectForm.bestandNaam || 'Excelbestand'}`
+          : namen[0],
+      naam: namen[0],
+      projecten: namen.map((naam, index) => ({
+        id: bestaand?.projecten?.[index]?.id || `${nu}-${index}`,
+        taakId: bestaand?.projecten?.[index]?.taakId || `${nu}-project-${index}`,
+        naam,
+      })),
       van: educatieProjectForm.van,
       naar: educatieProjectForm.naar,
       toelichting: educatieProjectForm.toelichting.trim(),
       bestandNaam: educatieProjectForm.mode === 'excel' ? educatieProjectForm.bestandNaam : '',
-      aangemaakt: nu,
-    }))
+      status: educatieProjectForm.editId
+        ? bewerkingMetPlanning && bestaand?.status !== 'voltooid'
+          ? 'ingepland'
+          : bestaand?.status || 'nieuw'
+        : 'nieuw',
+      geplandeWeek: educatieProjectForm.editId ? educatieProjectForm.week : '',
+      geplandeDag: educatieProjectForm.editId ? formulierDag : null,
+      aangemaakt: bestaand?.aangemaakt || nu,
+      bijgewerkt: nu,
+    }
 
     if (educatieProjectForm.editId) {
-      const project = nieuweProjecten[0]
       setEducatieProjecten((prev) => prev.map((item) => (item.id === project.id ? { ...item, ...project, aangemaakt: item.aangemaakt } : item)))
       setTaken((prev) => {
-        const zonderProjectTaak = prev.filter((taak) => taak.educatieProjectId !== project.id)
-        return project.week ? [...zonderProjectTaak, projectTaakVoorOpslag(project, project.taakId)] : zonderProjectTaak
+        if (!project.geplandeWeek || projectStatus(project) === 'verwijderd') return prev.filter((taak) => taak.educatieProjectLijstId !== project.id && taak.educatieProjectId !== project.id)
+        const zonderProjectTaken = prev.filter((taak) => taak.educatieProjectLijstId !== project.id && taak.educatieProjectId !== project.id)
+        return [
+          ...zonderProjectTaken,
+          ...projectRegels(project).map((rij, index) =>
+            projectTaakVoorOpslag(project, rij, index, project.geplandeWeek, project.geplandeDag),
+          ),
+        ]
       })
-      setProjectMelding(project.week ? 'Project gewijzigd en in de planning gezet.' : 'Project gewijzigd.')
+      setProjectMelding('Project bijgewerkt.')
     } else {
-      setEducatieProjecten((prev) => [...prev, ...nieuweProjecten])
-      const projectenMetWeek = nieuweProjecten.filter((project) => project.week)
-      if (projectenMetWeek.length > 0) {
-        setTaken((prev) => [...prev, ...projectenMetWeek.map((project) => projectTaakVoorOpslag(project, project.taakId))])
-      }
+      setEducatieProjecten((prev) => [...prev, project])
       setProjectMelding(
-        projectenMetWeek.length
-          ? `${nieuweProjecten.length} project(en) toegevoegd. ${projectenMetWeek.length} in de planning gezet.`
-          : `${nieuweProjecten.length} project(en) toegevoegd. Nog niet ingepland.`,
+        educatieProjectForm.mode === 'excel'
+          ? `${namen.length} project(en) opgeslagen als projectlijst. Deze staat nu als mapje bij Aanvragen.`
+          : 'Project opgeslagen. Deze staat nu bij Aanvragen.',
       )
     }
     resetEducatieProjectForm()
   }
 
   function bewerkEducatieProject(project) {
+    const regels = projectRegels(project)
     setEducatieProjectForm({
-      mode: 'handmatig',
+      mode: project.type === 'excel-lijst' || project.bestandNaam ? 'excel' : 'handmatig',
       editId: project.id,
       naam: project.naam || '',
       bestandNaam: project.bestandNaam || '',
-      projectNamen: [],
-      week: project.week || '',
-      dag: project.dag === null || project.dag === undefined ? 'flexibel' : String(project.dag),
+      projectNamen: project.type === 'excel-lijst' || project.bestandNaam ? regels : [],
+      week: project.geplandeWeek || project.week || '',
+      dag: project.geplandeDag === null || project.geplandeDag === undefined ? 'flexibel' : String(project.geplandeDag),
       van: project.van || 'School 7 Educatie',
       naar: project.naar || '',
       toelichting: project.toelichting || '',
@@ -1213,9 +1343,58 @@ export default function App() {
   }
 
   function verwijderEducatieProject(id) {
-    const project = educatieProjecten.find((item) => item.id === id)
-    setEducatieProjecten((prev) => prev.filter((item) => item.id !== id))
-    if (project?.taakId) setTaken((prev) => prev.filter((taak) => taak.id !== project.taakId))
+    const nu = new Date().toISOString()
+    setEducatieProjecten((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, vorigeStatus: projectStatus(item), status: 'verwijderd', verwijderdOp: nu, bijgewerkt: nu }
+          : item,
+      ),
+    )
+    setTaken((prev) =>
+      prev.map((taak) =>
+        taak.educatieProjectLijstId === id || taak.educatieProjectId === id
+          ? {
+              ...taak,
+              vorigeStatus: taak.status === 'verwijderd' ? taak.vorigeStatus || 'gepland' : taak.status,
+              status: 'verwijderd',
+              verwijderdOp: nu,
+              log: [...(taak.log || []), { a: 'verwijderd met projectlijst', d: rol, w: nu }],
+            }
+          : taak,
+      ),
+    )
+    setProjectMelding('Project verplaatst naar Verwijderd.')
+  }
+
+  function herstelEducatieProject(id) {
+    const nu = new Date().toISOString()
+    setEducatieProjecten((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              status: item.vorigeStatus || (item.geplandeWeek ? 'ingepland' : 'nieuw'),
+              vorigeStatus: null,
+              verwijderdOp: null,
+              bijgewerkt: nu,
+            }
+          : item,
+      ),
+    )
+    setTaken((prev) =>
+      prev.map((taak) =>
+        taak.educatieProjectLijstId === id || taak.educatieProjectId === id
+          ? {
+              ...taak,
+              status: taak.vorigeStatus || 'gepland',
+              vorigeStatus: null,
+              verwijderdOp: null,
+              log: [...(taak.log || []), { a: 'hersteld met projectlijst', d: rol, w: nu }],
+            }
+          : taak,
+      ),
+    )
   }
 
   function verwijderAanvraag(id, notitie = '') {
@@ -1457,6 +1636,7 @@ export default function App() {
     setEducatieUitvoer({
       id: groep.id,
       titel: groep.titel,
+      type: groep.type || 'educatie',
       taken: groep.taken,
       geselecteerd: groep.taken
         .filter((taak) => taak.status !== 'afgerond')
@@ -1485,19 +1665,29 @@ export default function App() {
           ? {
               ...taak,
               status: 'afgerond',
-              log: [...(taak.log || []), { a: 'bulk afgerond educatie', d: rol, w: new Date().toISOString() }],
+              log: [...(taak.log || []), { a: `bulk afgerond ${educatieUitvoer.type || 'educatie'}`, d: rol, w: new Date().toISOString() }],
             }
           : taak,
       ),
     )
     if (allesKlaar) {
-      setEducatieLijsten((prev) =>
-        prev.map((lijst) =>
-          lijst.id === educatieUitvoer.id
-            ? { ...lijst, status: 'voltooid', voltooidOp: new Date().toISOString(), bijgewerkt: new Date().toISOString() }
-            : lijst,
-        ),
-      )
+      if (educatieUitvoer.type === 'project') {
+        setEducatieProjecten((prev) =>
+          prev.map((project) =>
+            project.id === educatieUitvoer.id
+              ? { ...project, status: 'voltooid', voltooidOp: new Date().toISOString(), bijgewerkt: new Date().toISOString() }
+              : project,
+          ),
+        )
+      } else {
+        setEducatieLijsten((prev) =>
+          prev.map((lijst) =>
+            lijst.id === educatieUitvoer.id
+              ? { ...lijst, status: 'voltooid', voltooidOp: new Date().toISOString(), bijgewerkt: new Date().toISOString() }
+              : lijst,
+          ),
+        )
+      }
     }
     setEducatieUitvoer(null)
   }
@@ -1572,18 +1762,36 @@ export default function App() {
     })
   }
 
+  function automatischeLijstWaarschuwingen() {
+    const educatie = educatieLijsten
+      .filter((lijst) => lijst.status === 'ingepland' && lijst.geplandeWeek)
+      .map((lijst) => ({
+        id: `educatie-${lijst.id}`,
+        week: lijst.geplandeWeek,
+        dag: null,
+        reden: `drukke week door ${lijst.titel || 'Educatie lijst'} (${(lijst.rijen || []).length} regels)`,
+        automatisch: true,
+        educatie: true,
+      }))
+    const projecten = educatieProjecten
+      .filter((project) => projectStatus(project) === 'ingepland' && (project.geplandeWeek || project.week))
+      .map((project) => ({
+        id: `project-${project.id}`,
+        week: project.geplandeWeek || project.week,
+        dag: null,
+        reden: `drukke week door ${projectTitel(project)} (${projectRegels(project).length} regels)`,
+        automatisch: true,
+        project: true,
+      }))
+    return [...educatie, ...projecten]
+  }
+
   function blokkadeVoorWeek(wk) {
     const handmatig = geblokt.find((item) => item.week === wk && (item.dag === null || item.dag === undefined))
     if (handmatig) return handmatig
 
-    const educatieLijst = educatieLijsten.find((lijst) => lijst.status === 'ingepland' && lijst.geplandeWeek === wk)
-    if (educatieLijst) {
-      return {
-        week: wk,
-        reden: `drukke week door ${educatieLijst.titel || 'Educatie lijst'} (${(educatieLijst.rijen || []).length} regels)`,
-        educatie: true,
-      }
-    }
+    const lijstWaarschuwing = automatischeLijstWaarschuwingen().find((item) => item.week === wk)
+    if (lijstWaarschuwing) return lijstWaarschuwing
 
     return automatischeBlokkade(wk)
   }
@@ -1695,7 +1903,7 @@ export default function App() {
       taak.aangemaakt ? fmt(new Date(taak.aangemaakt)) : '',
     ])
 
-    const exportDashboard = maakDashboardData(taken, aanvragen, rapp, geblokt)
+    const exportDashboard = maakDashboardData(taken, aanvragen, rapp, geblokt, automatischeLijstWaarschuwingen())
     const dashboardRows = [
       ['Periode', exportDashboard.periodeLabel],
       [],
@@ -1759,7 +1967,9 @@ export default function App() {
   }
 
   const nieuweAanvragenAantal =
-    aanvragen.filter((item) => item.status === 'nieuw').length + educatieLijsten.filter((item) => item.status === 'nieuw').length
+    aanvragen.filter((item) => item.status === 'nieuw').length +
+    educatieLijsten.filter((item) => item.status === 'nieuw').length +
+    educatieProjecten.filter((item) => projectStatus(item) === 'nieuw').length
   const infoNodigAantal = aanvragen.filter(
     (item) => aanvraagZichtbaarVoorAanvrager(item) && item.status === 'info',
   ).length
@@ -2035,7 +2245,25 @@ export default function App() {
         return groepen
       }, {}),
   )
-  const weekTakenAlleenWeekLos = weekTakenAlleenWeek.filter((taak) => !taak.educatieLijstId)
+  const projectWeekGroepen = Object.values(
+    weekTakenAlleenWeek
+      .filter((taak) => taak.educatieProjectLijstId || taak.educatieProjectId)
+      .reduce((groepen, taak) => {
+        const groepId = taak.educatieProjectLijstId || taak.educatieProjectId
+        if (!groepen[groepId]) {
+          const project = educatieProjecten.find((item) => item.id === groepId)
+          groepen[groepId] = {
+            id: groepId,
+            type: 'project',
+            titel: project ? projectTitel(project) : 'Projectlijst',
+            taken: [],
+          }
+        }
+        groepen[groepId].taken.push(taak)
+        return groepen
+      }, {}),
+  )
+  const weekTakenAlleenWeekLos = weekTakenAlleenWeek.filter((taak) => !taak.educatieLijstId && !taak.educatieProjectLijstId && !taak.educatieProjectId)
   const weekTakenMetDag = weekTaken.filter((taak) => taak.dag !== null && taak.dag !== undefined)
   const effectieveMobielePlanningDag = Math.min(mobielePlanningDag, dagData.length - 1)
   const zichtbareWeekDagen = isMobiel ? dagData.filter((_, di) => di === effectieveMobielePlanningDag) : dagData
@@ -2068,8 +2296,18 @@ export default function App() {
   const gezochteVerwijderdeTaken = filterTakenOpPeriode(filterTakenOpZoekterm(verwijderdeTaken.slice().sort(sortTaken), taakZoekterm))
   const takenPerMaand = groepeerTakenPerMaand(gezochteActieveTaken)
   const verwijderdeTakenPerMaand = groepeerTakenPerMaand(gezochteVerwijderdeTaken)
-  const dashboardData = tab === 'rapportage' && rapportWeergave === 'dashboard' ? maakDashboardData(taken, aanvragen, rapp, geblokt) : null
+  const dashboardData = tab === 'rapportage' && rapportWeergave === 'dashboard' ? maakDashboardData(taken, aanvragen, rapp, geblokt, automatischeLijstWaarschuwingen()) : null
   const rappData = tab === 'rapportage' && rapportWeergave === 'rapportage' && rapportZichtbaar ? maakRapportData(taken, rapp) : null
+  const educatieLijstStatus = (lijst) => lijst.status || 'nieuw'
+  const projectLijstStatus = (project) => projectStatus(project)
+  const lijstZichtbaarVoorStatus = (item, status, statusFn) => {
+    const itemStatus = statusFn(item)
+    if (itemStatus !== status) return false
+    if (status !== 'verwijderd' || !item.verwijderdOp) return true
+    return !isOuderDanMaanden({ aangemaakt: item.verwijderdOp }, 1)
+  }
+  const educatieLijstenVoorTab = educatieLijsten.filter((lijst) => lijstZichtbaarVoorStatus(lijst, bertAanvragenTab, educatieLijstStatus))
+  const projectLijstenVoorTab = educatieProjecten.filter((project) => lijstZichtbaarVoorStatus(project, bertAanvragenTab, projectLijstStatus))
   const breedFormGrid = isMobiel ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))'
   const paginaPadding = isMobiel ? 10 : 20
   const planningNietVandaag =
@@ -3649,7 +3887,7 @@ export default function App() {
                     {aanvraagMelding}
                   </div>
                 )}
-                {educatieLijsten.length > 0 && (
+                {educatieLijstenVoorTab.length > 0 && (
                   <div
                     style={{
                       border: '1px solid #DDE7F2',
@@ -3669,10 +3907,10 @@ export default function App() {
                       }}
                     >
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#1F2937' }}>Educatie lijsten</div>
-                      <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 650 }}>{educatieLijsten.length}</div>
+                      <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 650 }}>{educatieLijstenVoorTab.length}</div>
                     </div>
                     <div style={{ display: 'grid', gap: 10, padding: 10 }}>
-                      {educatieLijsten.map((lijst) => (
+                      {educatieLijstenVoorTab.map((lijst) => (
                         <div
                           key={lijst.id}
                           style={{
@@ -3692,15 +3930,15 @@ export default function App() {
                               <span
                                 style={{
                                   fontSize: 11,
-                                  color: lijst.status === 'voltooid' || lijst.status === 'ingepland' ? '#065F46' : '#2255CC',
-                                  background: lijst.status === 'voltooid' || lijst.status === 'ingepland' ? '#ECFDF5' : '#EEF4FF',
-                                  border: `1px solid ${lijst.status === 'voltooid' || lijst.status === 'ingepland' ? '#A7F3D0' : '#BFDBFE'}`,
+                                  color: lijst.status === 'verwijderd' ? '#991B1B' : lijst.status === 'voltooid' || lijst.status === 'ingepland' ? '#065F46' : '#2255CC',
+                                  background: lijst.status === 'verwijderd' ? '#FEF2F2' : lijst.status === 'voltooid' || lijst.status === 'ingepland' ? '#ECFDF5' : '#EEF4FF',
+                                  border: `1px solid ${lijst.status === 'verwijderd' ? '#FECACA' : lijst.status === 'voltooid' || lijst.status === 'ingepland' ? '#A7F3D0' : '#BFDBFE'}`,
                                   borderRadius: 999,
                                   padding: '2px 7px',
                                   fontWeight: 700,
                                 }}
                               >
-                                {lijst.status === 'voltooid' ? 'Voltooid' : lijst.status === 'ingepland' ? 'Ingepland' : 'Nieuw'}
+                                {lijst.status === 'verwijderd' ? 'Verwijderd' : lijst.status === 'voltooid' ? 'Voltooid' : lijst.status === 'ingepland' ? 'Ingepland' : 'Nieuw'}
                               </span>
                             </div>
                             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
@@ -3713,30 +3951,123 @@ export default function App() {
                             )}
                           </div>
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                            {lijst.status !== 'ingepland' && (
+                            {!['ingepland', 'voltooid', 'verwijderd'].includes(lijst.status) && (
                               <Btn size="touch" variant="success" onClick={() => openPlanEducatieLijst(lijst)}>
                                 Plan lijst in
                               </Btn>
                             )}
-                            <Btn size="touch" variant="ghost" onClick={() => bewerkEducatieLijst(lijst)}>
+                            {lijst.status !== 'verwijderd' && <Btn size="touch" variant="ghost" onClick={() => bewerkEducatieLijst(lijst)}>
                               Bewerken
-                            </Btn>
-                            <Btn
+                            </Btn>}
+                            {lijst.status === 'verwijderd' ? (
+                              <Btn size="touch" variant="ghost" onClick={() => herstelEducatieLijst(lijst.id)}>
+                                Herstel
+                              </Btn>
+                            ) : (
+                              <Btn
                               size="touch"
                               variant="danger"
                               onClick={() => {
                                 if (window.confirm('Educatie lijst verwijderen?')) verwijderEducatieLijst(lijst.id)
                               }}
-                            >
-                              Verwijder
-                            </Btn>
+                              >
+                                Verwijder
+                              </Btn>
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
-                {aanvragen.length === 0 && educatieLijsten.length === 0 && (
+                {projectLijstenVoorTab.length > 0 && (
+                  <div
+                    style={{
+                      border: '1px solid #DDE7F2',
+                      borderRadius: 10,
+                      background: '#F8FBFF',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '10px 12px',
+                        borderBottom: '1px solid #DDE7F2',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1F2937' }}>Projectlijsten</div>
+                      <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 650 }}>{projectLijstenVoorTab.length}</div>
+                    </div>
+                    <div style={{ display: 'grid', gap: 10, padding: 10 }}>
+                      {projectLijstenVoorTab.map((project) => (
+                        <div
+                          key={project.id}
+                          style={{
+                            border: '1px solid #E5E9F0',
+                            borderRadius: 8,
+                            background: '#fff',
+                            padding: '12px 14px',
+                            display: 'grid',
+                            gap: 10,
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 14, fontWeight: 750, color: '#111827' }}>
+                                {projectTitel(project)}
+                              </span>
+                              <AanvraagPill status={projectLijstStatus(project)} />
+                            </div>
+                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                              {projectRegels(project).length} regels | {project.van} naar {project.naar}
+                            </div>
+                            {project.geplandeWeek && (
+                              <div style={{ fontSize: 12, color: '#065F46', marginTop: 3, fontWeight: 650 }}>
+                                Gepland: {weekNr(project.geplandeWeek)}
+                                {project.geplandeDag === null || project.geplandeDag === undefined ? ' | hele week' : ` | ${dagLabel(project.geplandeDag)}`}
+                              </div>
+                            )}
+                            {project.toelichting && (
+                              <div style={{ fontSize: 12, color: '#374151', marginTop: 6 }}>{project.toelichting}</div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            {!['ingepland', 'voltooid', 'verwijderd'].includes(projectLijstStatus(project)) && (
+                              <Btn size="touch" variant="success" onClick={() => openPlanProjectLijst(project)}>
+                                Plan project in
+                              </Btn>
+                            )}
+                            {projectLijstStatus(project) !== 'verwijderd' && (
+                              <Btn size="touch" variant="ghost" onClick={() => bewerkEducatieProject(project)}>
+                                Bewerken
+                              </Btn>
+                            )}
+                            {projectLijstStatus(project) === 'verwijderd' ? (
+                              <Btn size="touch" variant="ghost" onClick={() => herstelEducatieProject(project.id)}>
+                                Herstel
+                              </Btn>
+                            ) : (
+                              <Btn
+                                size="touch"
+                                variant="danger"
+                                onClick={() => {
+                                  if (window.confirm('Project verwijderen?')) verwijderEducatieProject(project.id)
+                                }}
+                              >
+                                Verwijder
+                              </Btn>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {aanvragen.length === 0 && educatieLijsten.length === 0 && educatieProjecten.length === 0 && (
                   <div style={{ textAlign: 'center', padding: 32, color: '#9CA3AF', fontSize: 13 }}>
                     Nog geen aanvragen ontvangen.
                   </div>
@@ -3756,17 +4087,21 @@ export default function App() {
                       if (status !== 'verwijderd' || !item.verwijderdOp) return true
                       return Date.now() - new Date(item.verwijderdOp).getTime() <= 30 * 24 * 60 * 60 * 1000
                     })
+                  const mapjesVoorGroep = (status) =>
+                    educatieLijsten.filter((lijst) => lijstZichtbaarVoorStatus(lijst, status, educatieLijstStatus)).length +
+                    educatieProjecten.filter((project) => lijstZichtbaarVoorStatus(project, status, projectLijstStatus)).length
                   const actieveGroep = groepen.find((groep) => groep.status === bertAanvragenTab) || groepen[0]
                   const items = zichtbareItemsVoorGroep(actieveGroep.status)
                     .slice()
                     .sort(sortAanvragen)
+                  const actieveMapjesAantal = mapjesVoorGroep(actieveGroep.status)
                   const ingeklapt = actieveGroep.status === 'verwijderd' && !toonVerwijderd
 
                   return (
                     <>
                     <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3, width: 'fit-content', maxWidth: '100%', flexWrap: 'wrap' }}>
                       {groepen.map((groep) => {
-                        const aantal = zichtbareItemsVoorGroep(groep.status).length
+                        const aantal = zichtbareItemsVoorGroep(groep.status).length + mapjesVoorGroep(groep.status)
                         const actief = bertAanvragenTab === groep.status
 
                         return (
@@ -3811,7 +4146,7 @@ export default function App() {
                       >
                         <div style={{ fontSize: 13, fontWeight: 650, color: AANVRAAG_STATUS[actieveGroep.status]?.color || '#374151' }}>{actieveGroep.titel}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ fontSize: 12, color: AANVRAAG_STATUS[actieveGroep.status]?.color || '#6B7280', fontWeight: 650 }}>{items.length}</div>
+                          <div style={{ fontSize: 12, color: AANVRAAG_STATUS[actieveGroep.status]?.color || '#6B7280', fontWeight: 650 }}>{items.length + actieveMapjesAantal}</div>
                           {actieveGroep.status === 'verwijderd' && items.length > 0 && (
                             <Btn variant="ghost" onClick={() => setToonVerwijderd((prev) => !prev)}>
                               {toonVerwijderd ? 'Verberg' : 'Toon'}
@@ -3833,7 +4168,7 @@ export default function App() {
                           Verwijderde aanvragen van de laatste 30 dagen zijn verborgen. Gebruik Toon om ze terug te halen.
                           </div>
                         )}
-                      {!ingeklapt && items.length === 0 && (
+                      {!ingeklapt && items.length === 0 && actieveMapjesAantal === 0 && (
                         <div
                           style={{
                             padding: '14px 16px',
@@ -4517,8 +4852,8 @@ export default function App() {
               {gebloktNu && (
                 <div
                   style={{
-                    background: '#FFF7ED',
-                    border: '1px solid #FED7AA',
+                    background: weekBlokkade?.educatie || weekBlokkade?.project ? '#ECFDF5' : '#FFF7ED',
+                    border: `1px solid ${weekBlokkade?.educatie || weekBlokkade?.project ? '#A7F3D0' : '#FED7AA'}`,
                     borderRadius: 10,
                     padding: '11px 16px',
                     marginBottom: 14,
@@ -4528,7 +4863,7 @@ export default function App() {
                   }}
                 >
                   <span style={{ fontSize: 15 }}>Let op</span>
-                  <span style={{ fontSize: 13, color: '#92400E' }}>
+                  <span style={{ fontSize: 13, color: weekBlokkade?.educatie || weekBlokkade?.project ? '#065F46' : '#92400E' }}>
                     <strong>Drukke periode</strong> -{' '}
                     {weekBlokkade?.reden || 'geen reden opgegeven'}
                   </span>
@@ -4539,9 +4874,10 @@ export default function App() {
                 <Card style={{ marginBottom: 10 }}>
                   <CardHead title="Weektaken" sub={`${weekTakenAlleenWeek.length} zonder vaste dag`} />
                   <div style={{ padding: isMobiel ? 10 : 12, display: 'grid', gap: 8 }}>
-                    {educatieWeekGroepen.map((groep) => {
+                    {[...educatieWeekGroepen, ...projectWeekGroepen].map((groep) => {
                       const openAantal = groep.taken.filter((taak) => taak.status !== 'afgerond').length
                       const afgerondAantal = groep.taken.length - openAantal
+                      const groepNaam = groep.type === 'project' ? 'projectlijst' : 'Educatie lijst'
 
                       return (
                         <div
@@ -4578,8 +4914,8 @@ export default function App() {
                               <Btn
                                 variant="danger"
                                 onClick={() => {
-                                  if (window.confirm('Deze hele Educatie lijst uit de planning verwijderen?')) {
-                                    groep.taken.forEach((taak) => verwijderTaak(taak.id, 'Educatie lijst verwijderd uit planning'))
+                                  if (window.confirm(`Deze hele ${groepNaam} uit de planning verwijderen?`)) {
+                                    groep.taken.forEach((taak) => verwijderTaak(taak.id, `${groepNaam} verwijderd uit planning`))
                                   }
                                 }}
                               >
@@ -4657,8 +4993,27 @@ export default function App() {
                 {zichtbareWeekDagen.map((dag) => {
                   const di = dagData.findIndex((item) => isoDag(item) === isoDag(dag))
                   const dt = weekTakenMetDag.filter((taak) => Number(taak.dag) === di)
-                  const openDt = dt.filter((taak) => taak.status !== 'afgerond')
-                  const afgerondDt = dt.filter((taak) => taak.status === 'afgerond')
+                  const dagProjectGroepen = Object.values(
+                    dt
+                      .filter((taak) => taak.educatieProjectLijstId || taak.educatieProjectId)
+                      .reduce((groepen, taak) => {
+                        const groepId = taak.educatieProjectLijstId || taak.educatieProjectId
+                        if (!groepen[groepId]) {
+                          const project = educatieProjecten.find((item) => item.id === groepId)
+                          groepen[groepId] = {
+                            id: groepId,
+                            type: 'project',
+                            titel: project ? projectTitel(project) : 'Projectlijst',
+                            taken: [],
+                          }
+                        }
+                        groepen[groepId].taken.push(taak)
+                        return groepen
+                      }, {}),
+                  )
+                  const dtLos = dt.filter((taak) => !taak.educatieProjectLijstId && !taak.educatieProjectId)
+                  const openDt = dtLos.filter((taak) => taak.status !== 'afgerond')
+                  const afgerondDt = dtLos.filter((taak) => taak.status === 'afgerond')
                   const zichtbareTaken = isMobiel ? openDt : [...openDt, ...afgerondDt]
                   const dagWaarschuwing = blokkadeVoorDag(week, di)
                   const renderTaak = (taak) => {
@@ -4778,9 +5133,9 @@ export default function App() {
                             <span
                               title={dagWaarschuwing.reden || 'Drukke periode'}
                               style={{
-                                background: '#FFF7ED',
-                                color: '#92400E',
-                                border: '1px solid #FED7AA',
+                                background: dagWaarschuwing.educatie || dagWaarschuwing.project ? '#ECFDF5' : '#FFF7ED',
+                                color: dagWaarschuwing.educatie || dagWaarschuwing.project ? '#065F46' : '#92400E',
+                                border: `1px solid ${dagWaarschuwing.educatie || dagWaarschuwing.project ? '#A7F3D0' : '#FED7AA'}`,
                                 fontSize: 10,
                                 fontWeight: 700,
                                 borderRadius: 10,
@@ -4810,11 +5165,46 @@ export default function App() {
                             Geen extra taken
                           </div>
                         )}
-                        {dt.length > 0 && openDt.length === 0 && isMobiel && (
+                        {dt.length > 0 && openDt.length === 0 && dagProjectGroepen.length === 0 && isMobiel && (
                           <div style={{ padding: '6px 4px 12px', fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
                             Geen open taken
                           </div>
                         )}
+                        {dagProjectGroepen.map((groep) => {
+                          const openAantal = groep.taken.filter((taak) => taak.status !== 'afgerond').length
+                          const afgerondAantal = groep.taken.length - openAantal
+
+                          return (
+                            <div
+                              key={groep.id}
+                              style={{
+                                background: openAantal ? '#ECFDF5' : '#F9FAFB',
+                                border: '1px solid #A7F3D0',
+                                borderRadius: 8,
+                                borderLeft: `3px solid ${openAantal ? '#1F7A4D' : '#10B981'}`,
+                                padding: isMobiel ? '10px 11px' : '8px 9px',
+                                marginBottom: isMobiel ? 8 : 5,
+                              }}
+                            >
+                              <div style={{ fontSize: isMobiel ? 13 : 11, fontWeight: 750, color: '#111827' }}>{groep.titel}</div>
+                              <div style={{ fontSize: isMobiel ? 12 : 10, color: '#065F46', marginTop: 3 }}>
+                                {groep.taken.length} regels | {openAantal} open{afgerondAantal ? ` | ${afgerondAantal} klaar` : ''}
+                              </div>
+                              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                                {rol === ROLES.transporteur && openAantal > 0 && (
+                                  <Btn size="touch" variant="success" onClick={() => openEducatieUitvoer(groep)}>
+                                    Uitvoeren
+                                  </Btn>
+                                )}
+                                {rol === ROLES.transporteur && openAantal === 0 && (
+                                  <Btn variant="ghost" onClick={() => openEducatieUitvoer(groep)}>
+                                    Bekijken
+                                  </Btn>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
                         {zichtbareTaken.map(renderTaak)}
                         {isMobiel && afgerondDt.length > 0 && (
                           <button
@@ -5177,7 +5567,7 @@ export default function App() {
                                         width: 5,
                                         height: 5,
                                         borderRadius: '50%',
-                                        background: '#F59E0B',
+                                        background: waarschuwing.educatie || waarschuwing.project ? '#10B981' : '#F59E0B',
                                       }}
                                     />
                                   )}
@@ -5189,6 +5579,16 @@ export default function App() {
                       )}
                       <div style={{ fontSize: 11, color: '#6B7280', marginTop: 6 }}>
                         Gekozen: {aanvraagWeekLabel(nieuw.week)}{nieuw.alleenWeek ? '' : ` | ${dagLabel(nieuw.dag)}`}
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <DrukteWaarschuwing
+                          waarschuwing={
+                            nieuw.alleenWeek
+                              ? blokkadeVoorWeek(nieuw.week)
+                              : blokkadeVoorDag(nieuw.week, nieuw.dag)
+                          }
+                          compact
+                        />
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -6843,60 +7243,64 @@ export default function App() {
             style={{
               background: '#fff',
               borderRadius: 14,
-              padding: 24,
+              padding: 0,
               width: '100%',
               maxWidth: 520,
               maxHeight: '86vh',
-              overflow: 'auto',
+              overflow: 'hidden',
               boxShadow: '0 20px 60px rgba(0,0,0,.15)',
               boxSizing: 'border-box',
+              display: 'grid',
+              gridTemplateRows: 'auto minmax(0, 1fr) auto',
             }}
           >
-            <div style={{ fontSize: 16, fontWeight: 750, color: '#111827', marginBottom: 4 }}>
-              Educatie uitvoeren
+            <div style={{ padding: '20px 22px 12px' }}>
+              <div style={{ fontSize: 16, fontWeight: 750, color: '#111827', marginBottom: 4 }}>
+                {educatieUitvoer.type === 'project' ? 'Project uitvoeren' : 'Educatie uitvoeren'}
+              </div>
+              <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 12 }}>
+                Vink uit wat niet is uitgevoerd. De aangevinkte regels worden daarna als afgerond gezet.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEducatieUitvoer((prev) =>
+                      prev ? { ...prev, geselecteerd: prev.taken.filter((taak) => taak.status !== 'afgerond').map((taak) => taak.id) } : prev,
+                    )
+                  }
+                  style={{
+                    border: '1px solid #E5E9F0',
+                    background: '#F3F4F6',
+                    color: '#374151',
+                    borderRadius: 8,
+                    padding: '7px 10px',
+                    fontSize: 12,
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Alles selecteren
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEducatieUitvoer((prev) => (prev ? { ...prev, geselecteerd: [] } : prev))}
+                  style={{
+                    border: '1px solid #E5E9F0',
+                    background: '#fff',
+                    color: '#6B7280',
+                    borderRadius: 8,
+                    padding: '7px 10px',
+                    fontSize: 12,
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Alles uitzetten
+                </button>
+              </div>
             </div>
-            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 14 }}>
-              Vink uit wat niet is uitgevoerd. De aangevinkte regels worden daarna als afgerond gezet.
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-              <button
-                type="button"
-                onClick={() =>
-                  setEducatieUitvoer((prev) =>
-                    prev ? { ...prev, geselecteerd: prev.taken.filter((taak) => taak.status !== 'afgerond').map((taak) => taak.id) } : prev,
-                  )
-                }
-                style={{
-                  border: '1px solid #E5E9F0',
-                  background: '#F3F4F6',
-                  color: '#374151',
-                  borderRadius: 8,
-                  padding: '7px 10px',
-                  fontSize: 12,
-                  fontWeight: 650,
-                  cursor: 'pointer',
-                }}
-              >
-                Alles selecteren
-              </button>
-              <button
-                type="button"
-                onClick={() => setEducatieUitvoer((prev) => (prev ? { ...prev, geselecteerd: [] } : prev))}
-                style={{
-                  border: '1px solid #E5E9F0',
-                  background: '#fff',
-                  color: '#6B7280',
-                  borderRadius: 8,
-                  padding: '7px 10px',
-                  fontSize: 12,
-                  fontWeight: 650,
-                  cursor: 'pointer',
-                }}
-              >
-                Alles uitzetten
-              </button>
-            </div>
-            <div style={{ border: '1px solid #E5E9F0', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+            <div style={{ borderTop: '1px solid #F1F5F9', borderBottom: '1px solid #F1F5F9', overflow: 'auto', maxHeight: '46vh' }}>
               {educatieUitvoer.taken.map((taak, index) => {
                 const klaar = taak.status === 'afgerond'
                 const checked = klaar || educatieUitvoer.geselecteerd.includes(taak.id)
@@ -6937,7 +7341,7 @@ export default function App() {
                 )
               })}
             </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: '14px 22px 20px', background: '#fff' }}>
               <button
                 type="button"
                 onClick={rondEducatieUitvoerAf}
@@ -7526,6 +7930,19 @@ export default function App() {
                   style={inp}
                 />
               </div>
+              <div>
+                <Label>Dag of week</Label>
+                <select
+                  value={planD === null || planD === undefined ? 'week' : String(planD)}
+                  onChange={(e) => setPlanD(e.target.value === 'week' ? null : Number(e.target.value))}
+                  style={inp}
+                >
+                  <option value="week">Hele week</option>
+                  {DAGEN_KORT.map((dag, index) => (
+                    <option key={dag} value={index}>{dag}</option>
+                  ))}
+                </select>
+              </div>
               <div
                 style={{
                   background: '#FFF7ED',
@@ -7537,11 +7954,11 @@ export default function App() {
                   lineHeight: 1.4,
                 }}
               >
-                Deze Educatie lijst wordt per week ingepland en telt daarna automatisch als drukke week bij nieuwe
+                Deze Educatie lijst wordt als mapje ingepland en telt daarna automatisch als drukke week bij nieuwe
                 aanvragen.
               </div>
               <div style={{ fontSize: 11, color: '#6B7280' }}>
-                Gekozen: {planW ? weekNr(planW) : 'kies een week'}
+                Gekozen: {planW ? weekNr(planW) : 'kies een week'}{planD === null || planD === undefined ? ' | hele week' : ` | ${dagLabel(planD)}`}
               </div>
               <DrukteWaarschuwing waarschuwing={blokkadeVoorWeek(planW)} compact />
             </div>
@@ -7564,6 +7981,119 @@ export default function App() {
               </button>
               <button
                 onClick={() => setPlanEducatieLijst(null)}
+                style={{
+                  flex: 1,
+                  background: '#F3F4F6',
+                  color: '#374151',
+                  border: '1px solid #E5E9F0',
+                  borderRadius: 8,
+                  padding: '9px 0',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Annuleer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {planProjectLijst && (
+        <div
+          onClick={() => setPlanProjectLijst(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 210,
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 14,
+              padding: 24,
+              width: '100%',
+              maxWidth: 460,
+              boxShadow: '0 20px 60px rgba(0,0,0,.15)',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 4 }}>
+              Projectlijst inplannen
+            </div>
+            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 12 }}>
+              {projectTitel(planProjectLijst)} | {projectRegels(planProjectLijst).length} regels
+            </div>
+            <div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
+              <div>
+                <Label>Week uitvoeren</Label>
+                <input
+                  type="week"
+                  value={planW}
+                  onChange={(e) => setPlanW(e.target.value)}
+                  style={inp}
+                />
+              </div>
+              <div>
+                <Label>Dag of week</Label>
+                <select
+                  value={planD === null || planD === undefined ? 'week' : String(planD)}
+                  onChange={(e) => setPlanD(e.target.value === 'week' ? null : Number(e.target.value))}
+                  style={inp}
+                >
+                  <option value="week">Hele week</option>
+                  {DAGEN_KORT.map((dag, index) => (
+                    <option key={dag} value={index}>{dag}</option>
+                  ))}
+                </select>
+              </div>
+              <div
+                style={{
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  borderRadius: 8,
+                  padding: '9px 11px',
+                  fontSize: 12,
+                  color: '#065F46',
+                  lineHeight: 1.4,
+                }}
+              >
+                Deze projectlijst wordt als mapje ingepland en telt daarna automatisch als drukke week bij nieuwe
+                aanvragen.
+              </div>
+              <div style={{ fontSize: 11, color: '#6B7280' }}>
+                Gekozen: {planW ? weekNr(planW) : 'kies een week'}{planD === null || planD === undefined ? ' | hele week' : ` | ${dagLabel(planD)}`}
+              </div>
+              <DrukteWaarschuwing waarschuwing={blokkadeVoorWeek(planW)} compact />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={zetProjectLijstDoor}
+                style={{
+                  flex: 1,
+                  background: '#1F7A4D',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '9px 0',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Project inplannen
+              </button>
+              <button
+                onClick={() => setPlanProjectLijst(null)}
                 style={{
                   flex: 1,
                   background: '#F3F4F6',

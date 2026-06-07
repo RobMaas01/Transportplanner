@@ -817,7 +817,7 @@ export function EducatieProjectenLayout({
               cursor: projectKlaar ? 'pointer' : 'not-allowed',
             }}
           >
-            {educatieProjectForm.editId ? 'Project opslaan' : 'Project toevoegen'}
+            {educatieProjectForm.editId ? 'Projectlijst opslaan' : 'Projectlijst toevoegen'}
           </button>
           {educatieProjectForm.editId && (
             <button
@@ -860,19 +860,25 @@ export function EducatieProjectenLayout({
       </Card>
 
       <Card>
-        <CardHead title="Toegevoegde projecten" sub={`${educatieProjecten.length} project(en)`} />
+        <CardHead title="Toegevoegde projectlijsten" sub={`${educatieProjecten.length} lijst(en)`} />
         <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gap: 10 }}>
           {educatieProjecten.length === 0 && (
-            <div style={{ color: '#9CA3AF', fontSize: 13, padding: '10px 2px' }}>Nog geen projecten toegevoegd.</div>
+            <div style={{ color: '#9CA3AF', fontSize: 13, padding: '10px 2px' }}>Nog geen projectlijsten toegevoegd.</div>
           )}
           {educatieProjecten.map((project) => (
             <div key={project.id} style={{ border: '1px solid #E5E9F0', borderRadius: 8, padding: '10px 12px', display: 'grid', gap: 7 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{project.naam}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
+                {project.titel || project.naam || project.bestandNaam || 'Projectlijst'}
+              </div>
               <div style={{ fontSize: 11, color: '#6B7280' }}>
-                {project.week
-                  ? `${project.week} | ${project.dag === null ? 'flexibel' : DAGEN_KORT[Number(project.dag)]} | `
+                {project.geplandeWeek || project.week
+                  ? `${project.geplandeWeek || project.week} | ${(project.geplandeDag ?? project.dag) === null || (project.geplandeDag ?? project.dag) === undefined ? 'hele week' : DAGEN_KORT[Number(project.geplandeDag ?? project.dag)]} | `
                   : 'Nog niet ingepland | '}
                 {project.van} naar {project.naar}
+              </div>
+              <div style={{ fontSize: 11, color: '#6B7280' }}>
+                {(project.projecten || [{ naam: project.naam }]).filter((item) => item?.naam).length} regel(s)
+                {project.status ? ` | ${project.status}` : ''}
               </div>
               {project.toelichting && <div style={{ fontSize: 12, color: '#374151' }}>{project.toelichting}</div>}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -921,16 +927,20 @@ export function EducatieProjectenLayout({
 
 export function DrukteWaarschuwing({ waarschuwing, compact = false }) {
   if (!waarschuwing) return null
+  const lijstDrukte = waarschuwing.educatie || waarschuwing.project
+  const kleuren = lijstDrukte
+    ? { bg: '#ECFDF5', border: '#A7F3D0', color: '#065F46' }
+    : { bg: '#FFF7ED', border: '#FED7AA', color: '#92400E' }
 
   return (
     <div
       style={{
-        background: '#FFF7ED',
-        border: '1px solid #FED7AA',
+        background: kleuren.bg,
+        border: `1px solid ${kleuren.border}`,
         borderRadius: 8,
         padding: compact ? '7px 9px' : '9px 11px',
         fontSize: 12,
-        color: '#92400E',
+        color: kleuren.color,
         fontWeight: compact ? 500 : 600,
       }}
     >
