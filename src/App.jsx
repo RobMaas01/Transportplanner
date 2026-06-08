@@ -3942,11 +3942,6 @@ export default function App() {
                                 Plan lijst in
                               </Btn>
                             )}
-                            {lijst.status === 'ingepland' && (
-                              <Btn size="touch" variant="ghost" onClick={() => openPlanEducatieLijst(lijst)}>
-                                Wijzigen
-                              </Btn>
-                            )}
                             {lijst.status === 'verwijderd' ? (
                               <Btn size="touch" variant="ghost" onClick={() => herstelEducatieLijst(lijst.id)}>
                                 Herstel
@@ -4027,11 +4022,6 @@ export default function App() {
                             {!['ingepland', 'voltooid', 'verwijderd'].includes(projectLijstStatus(project)) && (
                               <Btn size="touch" variant="success" onClick={() => openPlanProjectLijst(project)}>
                                 Plan project in
-                              </Btn>
-                            )}
-                            {projectLijstStatus(project) === 'ingepland' && (
-                              <Btn size="touch" variant="ghost" onClick={() => openPlanProjectLijst(project)}>
-                                Wijzigen
                               </Btn>
                             )}
                             {projectLijstStatus(project) === 'verwijderd' ? (
