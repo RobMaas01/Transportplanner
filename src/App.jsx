@@ -188,7 +188,6 @@ export default function App() {
   const [verplaatsMaand, setVerplaatsMaand] = useState(new Date().toISOString().slice(0, 7))
   const [blokMaand, setBlokMaand] = useState(new Date().toISOString().slice(0, 7))
   const [planMaand, setPlanMaand] = useState(new Date().toISOString().slice(0, 7))
-  const [toonVerwijderd, setToonVerwijderd] = useState(false)
   const [toonVerwijderdeTaken, setToonVerwijderdeTaken] = useState(false)
   const [taakZoekterm, setTaakZoekterm] = useState('')
   const [taakJaarFilter, setTaakJaarFilter] = useState('alle')
@@ -1063,28 +1062,9 @@ export default function App() {
   }
 
   function verwijderEducatieLijst(id) {
-    const nu = new Date().toISOString()
-    setEducatieLijsten((prev) =>
-      prev.map((lijst) =>
-        lijst.id === id
-          ? { ...lijst, vorigeStatus: lijst.status || 'nieuw', status: 'verwijderd', verwijderdOp: nu, bijgewerkt: nu }
-          : lijst,
-      ),
-    )
-    setTaken((prev) =>
-      prev.map((taak) =>
-        taak.educatieLijstId === id
-          ? {
-              ...taak,
-              vorigeStatus: taak.status === 'verwijderd' ? taak.vorigeStatus || 'gepland' : taak.status,
-              status: 'verwijderd',
-              verwijderdOp: nu,
-              log: [...(taak.log || []), { a: 'verwijderd met Educatie lijst', d: rol, w: nu }],
-            }
-          : taak,
-      ),
-    )
-    setEducatieMelding('Educatie lijst verplaatst naar Verwijderd.')
+    setEducatieLijsten((prev) => prev.filter((lijst) => lijst.id !== id))
+    setTaken((prev) => prev.filter((taak) => taak.educatieLijstId !== id))
+    setEducatieMelding('Educatie lijst definitief verwijderd.')
   }
 
   function herstelEducatieLijst(id) {
@@ -4170,7 +4150,7 @@ export default function App() {
                     .slice()
                     .sort(sortAanvragen)
                   const actieveMapjesAantal = mapjesVoorGroep(actieveGroep.status)
-                  const ingeklapt = actieveGroep.status === 'verwijderd' && !toonVerwijderd
+                  const ingeklapt = false
 
                   return (
                     <>
@@ -4222,27 +4202,8 @@ export default function App() {
                         <div style={{ fontSize: 13, fontWeight: 650, color: AANVRAAG_STATUS[actieveGroep.status]?.color || '#374151' }}>{actieveGroep.titel}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ fontSize: 12, color: AANVRAAG_STATUS[actieveGroep.status]?.color || '#6B7280', fontWeight: 650 }}>{items.length + actieveMapjesAantal}</div>
-                          {actieveGroep.status === 'verwijderd' && items.length > 0 && (
-                            <Btn variant="ghost" onClick={() => setToonVerwijderd((prev) => !prev)}>
-                              {toonVerwijderd ? 'Verberg' : 'Toon'}
-                            </Btn>
-                          )}
                         </div>
                       </div>
-                      {ingeklapt && (
-                        <div
-                          style={{
-                            border: '1px dashed #E5E9F0',
-                            borderRadius: 0,
-                            padding: '12px 14px',
-                            color: '#6B7280',
-                            fontSize: 12,
-                            background: '#fff',
-                          }}
-                        >
-                          Verwijderde aanvragen van de laatste 30 dagen zijn verborgen. Gebruik Toon om ze terug te halen.
-                          </div>
-                        )}
                       {!ingeklapt && items.length === 0 && actieveMapjesAantal === 0 && (
                         <div
                           style={{

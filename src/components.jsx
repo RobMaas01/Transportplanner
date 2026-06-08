@@ -573,7 +573,7 @@ export function EducatieImportLayout({
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm('Educatie lijst verwijderen?')) onDeleteList(lijst.id)
+                    if (window.confirm('Definitief verwijderen? Deze Educatie lijst kan niet meer worden teruggehaald.')) onDeleteList(lijst.id)
                   }}
                   style={{
                     border: '1px solid #FECACA',
