@@ -719,7 +719,6 @@ export function EducatieProjectenLayout({
                   editId: null,
                   naam: '',
                   bestandNaam: '',
-                  projectNamen: [],
                   week: '',
                   dag: 'flexibel',
                   van: 'School 7 Educatie',

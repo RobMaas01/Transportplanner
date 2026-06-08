@@ -317,7 +317,6 @@ export default function App() {
     editId: null,
     naam: '',
     bestandNaam: '',
-    projectNamen: [],
     week: '',
     dag: 'flexibel',
     van: 'School 7 Educatie',
@@ -1210,7 +1209,6 @@ export default function App() {
       editId: null,
       naam: '',
       bestandNaam: '',
-      projectNamen: [],
       week: '',
       dag: 'flexibel',
       van: 'School 7 Educatie',
@@ -1225,9 +1223,6 @@ export default function App() {
   }
 
   function projectTitel(project) {
-    if (project.type === 'excel-lijst' || project.bestandNaam) {
-      return project.titel || `Projectlijst - ${project.bestandNaam || 'Excelbestand'}`
-    }
     return project.titel || project.naam || 'Project'
   }
 
@@ -1264,10 +1259,7 @@ export default function App() {
   }
 
   function slaEducatieProjectenOp() {
-    const namen =
-      educatieProjectForm.mode === 'excel'
-        ? (educatieProjectForm.projectNamen || []).map((item) => item.naam.trim()).filter(Boolean)
-        : [educatieProjectForm.naam.trim()].filter(Boolean)
+    const namen = [educatieProjectForm.naam.trim()].filter(Boolean)
 
     if (!educatieProjectForm.van || !educatieProjectForm.naar || namen.length === 0) return
 
@@ -1315,11 +1307,7 @@ export default function App() {
       setProjectMelding('Project bijgewerkt.')
     } else {
       setEducatieProjecten((prev) => [...prev, project])
-      setProjectMelding(
-        educatieProjectForm.mode === 'excel'
-          ? `${namen.length} project(en) opgeslagen als projectlijst. Deze staat nu als mapje bij Aanvragen.`
-          : 'Project opgeslagen. Deze staat nu bij Aanvragen.',
-      )
+      setProjectMelding('Project opgeslagen. Deze staat nu bij Aanvragen.')
     }
     resetEducatieProjectForm()
   }
@@ -1330,7 +1318,6 @@ export default function App() {
       editId: project.id,
       naam: project.naam || '',
       bestandNaam: project.bestandNaam || '',
-      projectNamen: [],
       week: project.geplandeWeek || project.week || '',
       dag: project.geplandeDag === null || project.geplandeDag === undefined ? 'flexibel' : String(project.geplandeDag),
       van: project.van || 'School 7 Educatie',
