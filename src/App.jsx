@@ -2762,8 +2762,7 @@ export default function App() {
           ) : (
             <>
               <img src={logo} alt="KopGroep Bibliotheken" style={{ width: '100%', height: 'auto', marginBottom: 10 }} />
-              <div style={{ color: '#3A2A22', fontSize: 13, fontWeight: 700 }}>Transportplanning</div>
-              <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 3 }}>KopGroep Bibliotheken</div>
+              <div style={{ color: '#3A2A22', fontSize: 13, fontWeight: 600 }}>Transportplanning</div>
               <div style={{ position: 'relative', marginTop: 12 }}>
                 <button
                   type="button"
