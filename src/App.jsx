@@ -6293,7 +6293,6 @@ export default function App() {
                 <CardHead title="Automatische vakantiewaarschuwingen" sub="Regio Noord" />
                 <div style={{ padding: 16, maxHeight: 420, overflowY: 'auto' }}>
                   {automatischeBlokkades()
-                    .filter((item) => getMaandag(item.week) >= getMaandag(vandaag()))
                     .map((item) => (
                       <div
                         key={`${item.week}-${item.reden}`}
@@ -6311,6 +6310,11 @@ export default function App() {
                         <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{item.reden}</div>
                       </div>
                     ))}
+                  {automatischeBlokkades().length === 0 && (
+                    <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                      Geen automatische vakantiewaarschuwingen.
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>
