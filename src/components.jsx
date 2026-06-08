@@ -261,6 +261,10 @@ export function EducatieImportLayout({
 }) {
   const rijen = educatieImport.rijen || []
   const isBewerking = Boolean(educatieImport.editId)
+  const groepen = [
+    { key: 'school', titel: 'Scholen', items: rijen.filter((item) => item.type !== 'Kinderopvang') },
+    { key: 'kinderopvang', titel: 'Kinderopvang', items: rijen.filter((item) => item.type === 'Kinderopvang') },
+  ].filter((groep) => groep.items.length > 0)
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: breedFormGrid, gap: isMobiel ? 12 : 18 }}>
@@ -411,53 +415,72 @@ export function EducatieImportLayout({
               >
                 Controlelijst ({rijen.length})
               </div>
-              <div style={{ display: 'grid', maxHeight: 260, overflow: 'auto' }}>
-                {rijen.map((item, index) => (
-                  <div
-                    key={`${item.sheet}-${item.rij}-${index}`}
-                    style={{
-                      padding: '9px 11px',
-                      borderBottom: index === rijen.length - 1 ? 'none' : '1px solid #F1F5F9',
-                      display: 'grid',
-                      gap: 2,
-                    }}
-                  >
-                    <div style={{ display: 'grid', gap: 6 }}>
-                      <input
-                        value={item.titelWeergave || ''}
-                        onChange={(e) => onUpdateRow(item.id, 'titelWeergave', e.target.value)}
-                        style={{ ...inp, fontSize: 12, minHeight: 34 }}
-                        aria-label="Titel educatieregel"
-                      />
-                      <input
-                        value={item.bestemming || ''}
-                        onChange={(e) => onUpdateRow(item.id, 'bestemming', e.target.value)}
-                        placeholder="Bestemming"
-                        style={{ ...inp, fontSize: 12, minHeight: 34 }}
-                        aria-label="Bestemming educatieregel"
-                      />
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                        <div style={{ fontSize: 11, color: '#6B7280' }}>
-                          {item.groep ? `Groep ${item.groep}` : item.type || 'Educatie'}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteRow(item.id)}
-                          style={{
-                            border: '1px solid #FECACA',
-                            background: '#FEF2F2',
-                            color: '#991B1B',
-                            borderRadius: 7,
-                            padding: '5px 8px',
-                            fontSize: 11,
-                            fontWeight: 650,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Verwijder regel
-                        </button>
-                      </div>
+              <div style={{ display: 'grid', maxHeight: 300, overflow: 'auto' }}>
+                {groepen.map((groep) => (
+                  <div key={groep.key}>
+                    <div
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 1,
+                        padding: '8px 11px',
+                        background: groep.key === 'kinderopvang' ? '#ECFDF5' : '#EEF4FF',
+                        borderBottom: '1px solid #E5E9F0',
+                        fontSize: 12,
+                        fontWeight: 750,
+                        color: groep.key === 'kinderopvang' ? '#065F46' : '#2255CC',
+                      }}
+                    >
+                      {groep.titel} ({groep.items.length})
                     </div>
+                    {groep.items.map((item, index) => (
+                      <div
+                        key={`${item.sheet}-${item.rij}-${index}`}
+                        style={{
+                          padding: '9px 11px',
+                          borderBottom: '1px solid #F1F5F9',
+                          display: 'grid',
+                          gap: 2,
+                        }}
+                      >
+                        <div style={{ display: 'grid', gap: 6 }}>
+                          <input
+                            value={item.titelWeergave || ''}
+                            onChange={(e) => onUpdateRow(item.id, 'titelWeergave', e.target.value)}
+                            style={{ ...inp, fontSize: 12, minHeight: 34 }}
+                            aria-label="Titel educatieregel"
+                          />
+                          <input
+                            value={item.bestemming || ''}
+                            onChange={(e) => onUpdateRow(item.id, 'bestemming', e.target.value)}
+                            placeholder="Bestemming"
+                            style={{ ...inp, fontSize: 12, minHeight: 34 }}
+                            aria-label="Bestemming educatieregel"
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <div style={{ fontSize: 11, color: '#6B7280' }}>
+                              {[item.richting, item.groep ? `Groep ${item.groep}` : '', item.onderwerp].filter(Boolean).join(' | ') || item.type || 'Educatie'}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onDeleteRow(item.id)}
+                              style={{
+                                border: '1px solid #FECACA',
+                                background: '#FEF2F2',
+                                color: '#991B1B',
+                                borderRadius: 7,
+                                padding: '5px 8px',
+                                fontSize: 11,
+                                fontWeight: 650,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Verwijder regel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
