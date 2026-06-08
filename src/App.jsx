@@ -313,7 +313,7 @@ export default function App() {
   })
   const [educatieMelding, setEducatieMelding] = useState('')
   const [educatieProjectForm, setEducatieProjectForm] = useState({
-    mode: 'excel',
+    mode: 'handmatig',
     editId: null,
     naam: '',
     bestandNaam: '',
@@ -1126,16 +1126,19 @@ export default function App() {
 
   function openPlanEducatieLijst(lijst) {
     setPlanEducatieLijst(lijst)
-    setPlanW(vandaag())
-    setPlanD(null)
-    setPlanMaand(new Date().toISOString().slice(0, 7))
+    const doelWeek = lijst.geplandeWeek || vandaag()
+    setPlanW(doelWeek)
+    setPlanD(lijst.geplandeDag === null || lijst.geplandeDag === undefined ? null : Number(lijst.geplandeDag))
+    setPlanMaand(isoDag(getMaandag(doelWeek)).slice(0, 7))
   }
 
   function openPlanProjectLijst(project) {
     setPlanProjectLijst(project)
-    setPlanW(project.geplandeWeek || vandaag())
-    setPlanD(project.geplandeDag === null || project.geplandeDag === undefined ? null : Number(project.geplandeDag))
-    setPlanMaand(new Date().toISOString().slice(0, 7))
+    const doelWeek = project.geplandeWeek || project.week || vandaag()
+    setPlanW(doelWeek)
+    const doelDag = project.geplandeDag ?? project.dag
+    setPlanD(doelDag === null || doelDag === undefined ? null : Number(doelDag))
+    setPlanMaand(isoDag(getMaandag(doelWeek)).slice(0, 7))
   }
 
   function zetEducatieLijstDoor() {
@@ -1203,7 +1206,7 @@ export default function App() {
 
   function resetEducatieProjectForm() {
     setEducatieProjectForm({
-      mode: 'excel',
+      mode: 'handmatig',
       editId: null,
       naam: '',
       bestandNaam: '',
@@ -1274,11 +1277,8 @@ export default function App() {
     const bewerkingMetPlanning = Boolean(educatieProjectForm.editId && educatieProjectForm.week)
     const project = {
       id: educatieProjectForm.editId || `${nu}-projectlijst`,
-      type: educatieProjectForm.mode === 'excel' ? 'excel-lijst' : 'project',
-      titel:
-        educatieProjectForm.mode === 'excel'
-          ? `Projectlijst - ${educatieProjectForm.bestandNaam || 'Excelbestand'}`
-          : namen[0],
+      type: 'project',
+      titel: namen[0],
       naam: namen[0],
       projecten: namen.map((naam, index) => ({
         id: bestaand?.projecten?.[index]?.id || `${nu}-${index}`,
@@ -1288,7 +1288,7 @@ export default function App() {
       van: educatieProjectForm.van,
       naar: educatieProjectForm.naar,
       toelichting: educatieProjectForm.toelichting.trim(),
-      bestandNaam: educatieProjectForm.mode === 'excel' ? educatieProjectForm.bestandNaam : '',
+      bestandNaam: '',
       status: educatieProjectForm.editId
         ? bewerkingMetPlanning && bestaand?.status !== 'voltooid'
           ? 'ingepland'
@@ -1325,13 +1325,12 @@ export default function App() {
   }
 
   function bewerkEducatieProject(project) {
-    const regels = projectRegels(project)
     setEducatieProjectForm({
-      mode: project.type === 'excel-lijst' || project.bestandNaam ? 'excel' : 'handmatig',
+      mode: 'handmatig',
       editId: project.id,
       naam: project.naam || '',
       bestandNaam: project.bestandNaam || '',
-      projectNamen: project.type === 'excel-lijst' || project.bestandNaam ? regels : [],
+      projectNamen: [],
       week: project.geplandeWeek || project.week || '',
       dag: project.geplandeDag === null || project.geplandeDag === undefined ? 'flexibel' : String(project.geplandeDag),
       van: project.van || 'School 7 Educatie',
@@ -3956,9 +3955,11 @@ export default function App() {
                                 Plan lijst in
                               </Btn>
                             )}
-                            {lijst.status !== 'verwijderd' && <Btn size="touch" variant="ghost" onClick={() => bewerkEducatieLijst(lijst)}>
-                              Bewerken
-                            </Btn>}
+                            {lijst.status === 'ingepland' && (
+                              <Btn size="touch" variant="ghost" onClick={() => openPlanEducatieLijst(lijst)}>
+                                Wijzigen
+                              </Btn>
+                            )}
                             {lijst.status === 'verwijderd' ? (
                               <Btn size="touch" variant="ghost" onClick={() => herstelEducatieLijst(lijst.id)}>
                                 Herstel
@@ -4041,9 +4042,9 @@ export default function App() {
                                 Plan project in
                               </Btn>
                             )}
-                            {projectLijstStatus(project) !== 'verwijderd' && (
-                              <Btn size="touch" variant="ghost" onClick={() => bewerkEducatieProject(project)}>
-                                Bewerken
+                            {projectLijstStatus(project) === 'ingepland' && (
+                              <Btn size="touch" variant="ghost" onClick={() => openPlanProjectLijst(project)}>
+                                Wijzigen
                               </Btn>
                             )}
                             {projectLijstStatus(project) === 'verwijderd' ? (

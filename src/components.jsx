@@ -1,5 +1,5 @@
 import { AANVRAAG_STATUS, DAGEN_KORT, STATUS, VESTIGINGEN } from './constants'
-import { leesEducatieExcel, leesProjectenExcel } from './educatieImport'
+import { leesEducatieExcel } from './educatieImport'
 import { inp } from './uiStyles'
 import { maandLabel, verschuifMaand } from './utils'
 
@@ -608,138 +608,29 @@ export function EducatieProjectenLayout({
   setEducatieProjectForm,
   setProjectMelding,
 }) {
-  const projectNamen = educatieProjectForm.projectNamen || []
   const locatieOpties = ['School 7 Educatie', ...VESTIGINGEN]
   const projectKlaar =
     educatieProjectForm.van &&
     educatieProjectForm.naar &&
-    (educatieProjectForm.mode === 'excel'
-      ? projectNamen.some((item) => item.naam.trim())
-      : educatieProjectForm.naam.trim())
+    educatieProjectForm.naam.trim()
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: isMobiel ? '1fr' : 'minmax(0, 1.2fr) minmax(320px, .8fr)', gap: isMobiel ? 12 : 18 }}>
       <Card>
-        <CardHead title="Projecten" sub="Excel importeren of handmatig invoeren" />
+        <CardHead title="Projecten" sub="Handmatig invoeren" />
         <div style={{ padding: isMobiel ? 12 : 16, display: 'grid', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 3, background: '#F3F4F6', borderRadius: 8, padding: 3, width: 'fit-content', maxWidth: '100%', flexWrap: 'wrap' }}>
-            {[
-              { key: 'excel', label: 'Excelbestand importeren' },
-              { key: 'handmatig', label: 'Handmatig invoeren' },
-            ].map((item) => {
-              const actief = educatieProjectForm.mode === item.key
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => {
-                    setEducatieProjectForm((prev) => ({ ...prev, mode: item.key }))
-                    setProjectMelding('')
-                  }}
-                  style={{
-                    border: 'none',
-                    borderRadius: 6,
-                    padding: '7px 12px',
-                    fontSize: 12,
-                    fontWeight: actief ? 700 : 600,
-                    cursor: 'pointer',
-                    background: actief ? '#fff' : 'transparent',
-                    color: actief ? '#111827' : '#6B7280',
-                    boxShadow: actief ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
-                  }}
-                >
-                  {item.label}
-                </button>
-              )
-            })}
+          <div>
+            <Label required>Naam project</Label>
+            <input
+              value={educatieProjectForm.naam}
+              onChange={(e) => {
+                setEducatieProjectForm((prev) => ({ ...prev, naam: e.target.value }))
+                setProjectMelding('')
+              }}
+              placeholder="Bijv. Kinderboekenweek"
+              style={inp}
+            />
           </div>
-
-          {educatieProjectForm.mode === 'excel' ? (
-            <div>
-              <Label>Excelbestand</Label>
-              <label
-                style={{
-                  border: '1px dashed #CBD5E1',
-                  borderRadius: 10,
-                  padding: '16px 14px',
-                  background: '#FCFCFD',
-                  display: 'grid',
-                  gap: 6,
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
-                  {educatieProjectForm.bestandNaam || 'Kies Excelbestand'}
-                </span>
-                <span style={{ fontSize: 12, color: '#6B7280' }}>Projectnamen worden uit het bestand gelezen.</span>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={async (e) => {
-                    const bestand = e.target.files?.[0]
-                    setProjectMelding('')
-                    if (!bestand) {
-                      setEducatieProjectForm((prev) => ({ ...prev, bestandNaam: '', projectNamen: [] }))
-                      return
-                    }
-                    try {
-                      const projecten = await leesProjectenExcel(bestand)
-                      setEducatieProjectForm((prev) => ({
-                        ...prev,
-                        bestandNaam: bestand.name,
-                        projectNamen: projecten,
-                      }))
-                      setProjectMelding(projecten.length ? `${projecten.length} projecten gevonden.` : 'Geen projectnamen gevonden.')
-                    } catch (error) {
-                      console.error('Projectbestand kon niet worden gelezen.', error)
-                      setEducatieProjectForm((prev) => ({ ...prev, bestandNaam: bestand.name, projectNamen: [] }))
-                      setProjectMelding('Dit Excelbestand kon niet worden gelezen.')
-                    }
-                  }}
-                  style={{ display: 'none' }}
-                />
-              </label>
-            </div>
-          ) : (
-            <div>
-              <Label required>Naam project</Label>
-              <input
-                value={educatieProjectForm.naam}
-                onChange={(e) => {
-                  setEducatieProjectForm((prev) => ({ ...prev, naam: e.target.value }))
-                  setProjectMelding('')
-                }}
-                placeholder="Bijv. Kinderboekenweek"
-                style={inp}
-              />
-            </div>
-          )}
-
-          {educatieProjectForm.mode === 'excel' && projectNamen.length > 0 && (
-            <div style={{ border: '1px solid #E5E9F0', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
-              <div style={{ padding: '9px 11px', background: '#F8F9FC', borderBottom: '1px solid #E5E9F0', fontSize: 12, fontWeight: 700, color: '#374151' }}>
-                Projecten ({projectNamen.length})
-              </div>
-              <div style={{ display: 'grid', maxHeight: 220, overflow: 'auto' }}>
-                {projectNamen.map((project, index) => (
-                  <div key={project.id} style={{ padding: '8px 10px', borderBottom: index === projectNamen.length - 1 ? 'none' : '1px solid #F1F5F9' }}>
-                    <input
-                      value={project.naam}
-                      onChange={(e) =>
-                        setEducatieProjectForm((prev) => ({
-                          ...prev,
-                          projectNamen: (prev.projectNamen || []).map((item) =>
-                            item.id === project.id ? { ...item, naam: e.target.value } : item,
-                          ),
-                        }))
-                      }
-                      style={{ ...inp, fontSize: 12, minHeight: 34 }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobiel ? '1fr' : '1fr 1fr', gap: 10 }}>
             <div>
@@ -824,7 +715,7 @@ export function EducatieProjectenLayout({
               type="button"
               onClick={() => {
                 setEducatieProjectForm({
-                  mode: 'excel',
+                  mode: 'handmatig',
                   editId: null,
                   naam: '',
                   bestandNaam: '',
