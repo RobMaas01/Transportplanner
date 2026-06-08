@@ -1356,28 +1356,11 @@ export default function App() {
   }
 
   function verwijderEducatieProject(id) {
-    const nu = new Date().toISOString()
-    setEducatieProjecten((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, vorigeStatus: projectStatus(item), status: 'verwijderd', verwijderdOp: nu, bijgewerkt: nu }
-          : item,
-      ),
-    )
+    setEducatieProjecten((prev) => prev.filter((item) => item.id !== id))
     setTaken((prev) =>
-      prev.map((taak) =>
-        taak.educatieProjectLijstId === id || taak.educatieProjectId === id
-          ? {
-              ...taak,
-              vorigeStatus: taak.status === 'verwijderd' ? taak.vorigeStatus || 'gepland' : taak.status,
-              status: 'verwijderd',
-              verwijderdOp: nu,
-              log: [...(taak.log || []), { a: 'verwijderd met projectlijst', d: rol, w: nu }],
-            }
-          : taak,
-      ),
+      prev.filter((taak) => taak.educatieProjectLijstId !== id && taak.educatieProjectId !== id),
     )
-    setProjectMelding('Project verplaatst naar Verwijderd.')
+    setProjectMelding('Project definitief verwijderd.')
   }
 
   function herstelEducatieProject(id) {
@@ -4154,7 +4137,7 @@ export default function App() {
               breedFormGrid={breedFormGrid}
               educatieImport={educatieImport}
               educatieImportKlaar={educatieImportKlaar}
-              educatieLijsten={educatieLijsten}
+              educatieLijsten={educatieLijsten.filter((lijst) => lijst.status !== 'verwijderd')}
               educatieMelding={educatieMelding}
               isMobiel={isMobiel}
               onDeleteList={verwijderEducatieLijst}
@@ -4170,7 +4153,7 @@ export default function App() {
           {tab === 'educatie-projecten' && rol === ROLES.educatie && (
             <EducatieProjectenLayout
               educatieProjectForm={educatieProjectForm}
-              educatieProjecten={educatieProjecten}
+              educatieProjecten={educatieProjecten.filter((project) => projectStatus(project) !== 'verwijderd')}
               isMobiel={isMobiel}
               onDeleteProject={verwijderEducatieProject}
               onEditProject={bewerkEducatieProject}
