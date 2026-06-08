@@ -3212,7 +3212,7 @@ export default function App() {
               </span>
             </button>
           )}
-          {tab === 'aanvraag' && (rol === ROLES.aanvrager || rol === ROLES.transporteur) && (
+          {tab === 'aanvraag' && rol === ROLES.aanvrager && (
             <div>
               {aanvraagBevestigd && rol === ROLES.aanvrager ? (
                 <Card>
