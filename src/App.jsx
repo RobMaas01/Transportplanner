@@ -1809,14 +1809,15 @@ export default function App() {
       .forEach((taak) => {
         const isProject = Boolean(taak.educatieProjectLijstId || taak.educatieProjectId)
         const bronId = taak.educatieLijstId || taak.educatieProjectLijstId || taak.educatieProjectId
-        const sleutel = `${isProject ? 'project' : 'educatie'}-${bronId}-${taak.week}`
+        const dag = taak.dag === null || taak.dag === undefined ? null : Number(taak.dag)
+        const sleutel = `${isProject ? 'project' : 'educatie'}-${bronId}-${taak.week}-${dag ?? 'week'}`
         if (!groepen[sleutel]) {
           const lijst = !isProject ? educatieLijsten.find((item) => item.id === bronId) : null
           const project = isProject ? educatieProjecten.find((item) => item.id === bronId) : null
           groepen[sleutel] = {
             id: sleutel,
             week: taak.week,
-            dag: null,
+            dag,
             titel: isProject ? projectTitel(project || {}) : lijst?.titel || 'Educatie lijst',
             aantal: 0,
             automatisch: true,
@@ -1829,7 +1830,7 @@ export default function App() {
 
     return Object.values(groepen).map((item) => ({
       ...item,
-      reden: `drukke week door ${item.titel} (${item.aantal} regels)`,
+      reden: `${item.dag === null || item.dag === undefined ? 'drukke week' : `drukke dag (${DAGEN[item.dag]})`} door ${item.titel} (${item.aantal} regels)`,
     }))
   }
 
@@ -1837,14 +1838,20 @@ export default function App() {
     const handmatig = geblokt.find((item) => item.week === wk && (item.dag === null || item.dag === undefined))
     if (handmatig) return handmatig
 
-    const lijstWaarschuwing = automatischeLijstWaarschuwingen().find((item) => item.week === wk)
+    const lijstWaarschuwing = automatischeLijstWaarschuwingen().find((item) => item.week === wk && (item.dag === null || item.dag === undefined))
     if (lijstWaarschuwing) return lijstWaarschuwing
 
     return automatischeBlokkade(wk)
   }
 
   function blokkadeVoorDag(wk, dag) {
-    return geblokt.find((item) => item.week === wk && Number(item.dag) === Number(dag)) || blokkadeVoorWeek(wk)
+    const handmatigDag = geblokt.find((item) => item.week === wk && Number(item.dag) === Number(dag))
+    if (handmatigDag) return handmatigDag
+
+    const lijstDag = automatischeLijstWaarschuwingen().find((item) => item.week === wk && Number(item.dag) === Number(dag))
+    if (lijstDag) return lijstDag
+
+    return blokkadeVoorWeek(wk)
   }
 
   function xmlWaarde(value) {
@@ -6267,6 +6274,7 @@ export default function App() {
                       >
                         <div style={{ fontSize: 13, fontWeight: 650, color: '#065F46' }}>
                           {weekNr(item.week)} - {weekRange(item.week)}
+                          {item.dag !== null && item.dag !== undefined ? ` | ${DAGEN[item.dag]}` : ''}
                         </div>
                         <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>
                           {item.reden}
