@@ -1685,6 +1685,7 @@ export default function App() {
     if (!educatieUitvoer) return
     const ids = new Set(educatieUitvoer.geselecteerd)
     if (ids.size === 0) return
+    const nu = new Date().toISOString()
     const allesKlaar = educatieUitvoer.taken.every((taak) => taak.status === 'afgerond' || ids.has(taak.id))
     setTaken((prev) =>
       prev.map((taak) =>
@@ -1692,7 +1693,7 @@ export default function App() {
           ? {
               ...taak,
               status: 'afgerond',
-              log: [...(taak.log || []), { a: `bulk afgerond ${educatieUitvoer.type || 'educatie'}`, d: rol, w: new Date().toISOString() }],
+              log: [...(taak.log || []), { a: `bulk afgerond ${educatieUitvoer.type || 'educatie'}`, d: rol, w: nu }],
             }
           : taak,
       ),
@@ -1702,7 +1703,7 @@ export default function App() {
         setEducatieProjecten((prev) =>
           prev.map((project) =>
             project.id === educatieUitvoer.id
-              ? { ...project, status: 'voltooid', voltooidOp: new Date().toISOString(), bijgewerkt: new Date().toISOString() }
+              ? { ...project, status: 'voltooid', voltooidOp: nu, bijgewerkt: nu }
               : project,
           ),
         )
@@ -1710,13 +1711,53 @@ export default function App() {
         setEducatieLijsten((prev) =>
           prev.map((lijst) =>
             lijst.id === educatieUitvoer.id
-              ? { ...lijst, status: 'voltooid', voltooidOp: new Date().toISOString(), bijgewerkt: new Date().toISOString() }
+              ? { ...lijst, status: 'voltooid', voltooidOp: nu, bijgewerkt: nu }
               : lijst,
           ),
         )
       }
     }
     setEducatieUitvoer(null)
+  }
+
+  function zetEducatieUitvoerTerug() {
+    if (!educatieUitvoer) return
+    const ids = new Set(educatieUitvoer.geselecteerd)
+    if (ids.size === 0) return
+    const nu = new Date().toISOString()
+
+    setTaken((prev) =>
+      prev.map((taak) =>
+        ids.has(taak.id)
+          ? {
+              ...taak,
+              status: 'gepland',
+              log: [...(taak.log || []), { a: `bulk teruggezet ${educatieUitvoer.type || 'educatie'}`, d: rol, w: nu }],
+            }
+          : taak,
+      ),
+    )
+
+    if (educatieUitvoer.type === 'project') {
+      setEducatieProjecten((prev) =>
+        prev.map((project) =>
+          project.id === educatieUitvoer.id
+            ? { ...project, status: 'ingepland', voltooidOp: null, bijgewerkt: nu }
+            : project,
+        ),
+      )
+    } else {
+      setEducatieLijsten((prev) =>
+        prev.map((lijst) =>
+          lijst.id === educatieUitvoer.id
+            ? { ...lijst, status: 'ingepland', voltooidOp: null, bijgewerkt: nu }
+            : lijst,
+        ),
+      )
+    }
+
+    setEducatieUitvoer(null)
+    setAanvraagMelding(`${ids.size} regel${ids.size === 1 ? '' : 's'} teruggezet naar de planning.`)
   }
 
   function verplaats() {
@@ -7344,14 +7385,14 @@ export default function App() {
                 {educatieUitvoer.type === 'project' ? 'Project uitvoeren' : 'Educatie uitvoeren'}
               </div>
               <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 12 }}>
-                Vink uit wat niet is uitgevoerd. De aangevinkte regels worden daarna als afgerond gezet.
+                Selecteer de regels waar het om gaat. Kies daarna afronden of terugzetten.
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() =>
                     setEducatieUitvoer((prev) =>
-                      prev ? { ...prev, geselecteerd: prev.taken.filter((taak) => taak.status !== 'afgerond').map((taak) => taak.id) } : prev,
+                      prev ? { ...prev, geselecteerd: prev.taken.map((taak) => taak.id) } : prev,
                     )
                   }
                   style={{
@@ -7388,7 +7429,7 @@ export default function App() {
             <div style={{ borderTop: '1px solid #F1F5F9', borderBottom: '1px solid #F1F5F9', overflow: 'auto', maxHeight: '46vh' }}>
               {educatieUitvoer.taken.map((taak, index) => {
                 const klaar = taak.status === 'afgerond'
-                const checked = klaar || educatieUitvoer.geselecteerd.includes(taak.id)
+                const checked = educatieUitvoer.geselecteerd.includes(taak.id)
 
                 return (
                   <label
@@ -7401,13 +7442,12 @@ export default function App() {
                       padding: '10px 12px',
                       borderBottom: index === educatieUitvoer.taken.length - 1 ? 'none' : '1px solid #F1F5F9',
                       background: klaar ? '#F9FAFB' : '#fff',
-                      cursor: klaar ? 'default' : 'pointer',
+                      cursor: 'pointer',
                     }}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
-                      disabled={klaar}
                       onChange={() => toggleEducatieUitvoerTaak(taak.id)}
                       style={{ marginTop: 2 }}
                     />
@@ -7445,6 +7485,25 @@ export default function App() {
                 }}
               >
                 Definitief afronden
+              </button>
+              <button
+                type="button"
+                onClick={zetEducatieUitvoerTerug}
+                disabled={educatieUitvoer.geselecteerd.length === 0}
+                style={{
+                  flex: 1,
+                  minWidth: 150,
+                  background: educatieUitvoer.geselecteerd.length ? '#EFF6FF' : '#F3F4F6',
+                  color: educatieUitvoer.geselecteerd.length ? '#1D4ED8' : '#9CA3AF',
+                  border: `1px solid ${educatieUitvoer.geselecteerd.length ? '#BFDBFE' : '#E5E9F0'}`,
+                  borderRadius: 8,
+                  padding: '10px 0',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: educatieUitvoer.geselecteerd.length ? 'pointer' : 'not-allowed',
+                }}
+              >
+                Terugzetten
               </button>
               <button
                 type="button"
