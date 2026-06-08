@@ -288,6 +288,7 @@ export default function App() {
   const [planEducatieLijst, setPlanEducatieLijst] = useState(null)
   const [planProjectLijst, setPlanProjectLijst] = useState(null)
   const [educatieUitvoer, setEducatieUitvoer] = useState(null)
+  const [educatieVerplaats, setEducatieVerplaats] = useState(null)
   const [infoAanvraag, setInfoAanvraag] = useState(null)
   const [infoNotitie, setInfoNotitie] = useState('')
   const [verplW, setVerplW] = useState('')
@@ -1640,6 +1641,59 @@ export default function App() {
     })
   }
 
+  function openEducatieVerplaats(groep) {
+    const eerste = groep.taken[0]
+    const doelWeek = eerste?.week || week
+    const doelDag = eerste?.dag === null || eerste?.dag === undefined ? vandaagDagIndex() : Number(eerste.dag)
+    setEducatieVerplaats({
+      id: groep.id,
+      titel: groep.titel,
+      type: groep.type || 'educatie',
+      taken: groep.taken,
+      geselecteerd: groep.taken
+        .filter((taak) => taak.status !== 'afgerond')
+        .map((taak) => taak.id),
+    })
+    setVerplW(doelWeek)
+    setVerplD(Math.max(0, Math.min(6, doelDag)))
+    setVerplaatsMaand(isoDag(getMaandag(doelWeek)).slice(0, 7))
+  }
+
+  function toggleEducatieVerplaatsTaak(id) {
+    setEducatieVerplaats((prev) => {
+      if (!prev) return prev
+      const geselecteerd = prev.geselecteerd.includes(id)
+        ? prev.geselecteerd.filter((item) => item !== id)
+        : [...prev.geselecteerd, id]
+      return { ...prev, geselecteerd }
+    })
+  }
+
+  function verplaatsEducatieSelectie() {
+    if (!educatieVerplaats || !verplW || educatieVerplaats.geselecteerd.length === 0) return
+    const ids = new Set(educatieVerplaats.geselecteerd)
+    const nu = new Date().toISOString()
+
+    setTaken((prev) =>
+      prev.map((taak) =>
+        ids.has(taak.id)
+          ? {
+              ...taak,
+              week: verplW,
+              dag: verplD,
+              status: taak.status === 'afgerond' ? taak.status : 'verplaatst',
+              log: [...(taak.log || []), { a: `bulk verplaatst->${verplW}`, d: rol, w: nu }],
+            }
+          : taak,
+      ),
+    )
+    setWeek(verplW)
+    if (isMobiel) setMobielePlanningDag(Math.max(0, Math.min(6, Number(verplD || 0))))
+    setPlanningWeergave('week')
+    setEducatieVerplaats(null)
+    setAanvraagMelding(`${ids.size} regel${ids.size === 1 ? '' : 's'} verplaatst.`)
+  }
+
   function rondEducatieUitvoerAf() {
     if (!educatieUitvoer) return
     const ids = new Set(educatieUitvoer.geselecteerd)
@@ -1749,27 +1803,34 @@ export default function App() {
   }
 
   function automatischeLijstWaarschuwingen() {
-    const educatie = educatieLijsten
-      .filter((lijst) => lijst.status === 'ingepland' && lijst.geplandeWeek)
-      .map((lijst) => ({
-        id: `educatie-${lijst.id}`,
-        week: lijst.geplandeWeek,
-        dag: null,
-        reden: `drukke week door ${lijst.titel || 'Educatie lijst'} (${(lijst.rijen || []).length} regels)`,
-        automatisch: true,
-        educatie: true,
-      }))
-    const projecten = educatieProjecten
-      .filter((project) => projectStatus(project) === 'ingepland' && (project.geplandeWeek || project.week))
-      .map((project) => ({
-        id: `project-${project.id}`,
-        week: project.geplandeWeek || project.week,
-        dag: null,
-        reden: `drukke week door ${projectTitel(project)} (${projectRegels(project).length} regels)`,
-        automatisch: true,
-        project: true,
-      }))
-    return [...educatie, ...projecten]
+    const groepen = {}
+    taken
+      .filter((taak) => taak.status !== 'verwijderd' && (taak.educatieLijstId || taak.educatieProjectLijstId || taak.educatieProjectId))
+      .forEach((taak) => {
+        const isProject = Boolean(taak.educatieProjectLijstId || taak.educatieProjectId)
+        const bronId = taak.educatieLijstId || taak.educatieProjectLijstId || taak.educatieProjectId
+        const sleutel = `${isProject ? 'project' : 'educatie'}-${bronId}-${taak.week}`
+        if (!groepen[sleutel]) {
+          const lijst = !isProject ? educatieLijsten.find((item) => item.id === bronId) : null
+          const project = isProject ? educatieProjecten.find((item) => item.id === bronId) : null
+          groepen[sleutel] = {
+            id: sleutel,
+            week: taak.week,
+            dag: null,
+            titel: isProject ? projectTitel(project || {}) : lijst?.titel || 'Educatie lijst',
+            aantal: 0,
+            automatisch: true,
+            educatie: !isProject,
+            project: isProject,
+          }
+        }
+        groepen[sleutel].aantal += 1
+      })
+
+    return Object.values(groepen).map((item) => ({
+      ...item,
+      reden: `drukke week door ${item.titel} (${item.aantal} regels)`,
+    }))
   }
 
   function blokkadeVoorWeek(wk) {
@@ -4883,6 +4944,11 @@ export default function App() {
                                 Uitvoeren
                               </Btn>
                             )}
+                            {rol === ROLES.transporteur && openAantal > 0 && (
+                              <Btn size="touch" variant="ghost" onClick={() => openEducatieVerplaats(groep)}>
+                                Verplaats
+                              </Btn>
+                            )}
                             {rol === ROLES.transporteur && openAantal === 0 && (
                               <Btn variant="ghost" onClick={() => openEducatieUitvoer(groep)}>
                                 Bekijken
@@ -4971,25 +5037,28 @@ export default function App() {
                 {zichtbareWeekDagen.map((dag) => {
                   const di = dagData.findIndex((item) => isoDag(item) === isoDag(dag))
                   const dt = weekTakenMetDag.filter((taak) => Number(taak.dag) === di)
-                  const dagProjectGroepen = Object.values(
+                  const dagLijstGroepen = Object.values(
                     dt
-                      .filter((taak) => taak.educatieProjectLijstId || taak.educatieProjectId)
+                      .filter((taak) => taak.educatieLijstId || taak.educatieProjectLijstId || taak.educatieProjectId)
                       .reduce((groepen, taak) => {
-                        const groepId = taak.educatieProjectLijstId || taak.educatieProjectId
-                        if (!groepen[groepId]) {
-                          const project = educatieProjecten.find((item) => item.id === groepId)
-                          groepen[groepId] = {
+                        const isProject = Boolean(taak.educatieProjectLijstId || taak.educatieProjectId)
+                        const groepId = taak.educatieLijstId || taak.educatieProjectLijstId || taak.educatieProjectId
+                        const sleutel = `${isProject ? 'project' : 'educatie'}-${groepId}`
+                        if (!groepen[sleutel]) {
+                          const project = isProject ? educatieProjecten.find((item) => item.id === groepId) : null
+                          const lijst = !isProject ? educatieLijsten.find((item) => item.id === groepId) : null
+                          groepen[sleutel] = {
                             id: groepId,
-                            type: 'project',
-                            titel: project ? projectTitel(project) : 'Projectlijst',
+                            type: isProject ? 'project' : 'educatie',
+                            titel: isProject ? project ? projectTitel(project) : 'Projectlijst' : lijst?.titel || 'Educatie lijst',
                             taken: [],
                           }
                         }
-                        groepen[groepId].taken.push(taak)
+                        groepen[sleutel].taken.push(taak)
                         return groepen
                       }, {}),
                   )
-                  const dtLos = dt.filter((taak) => !taak.educatieProjectLijstId && !taak.educatieProjectId)
+                  const dtLos = dt.filter((taak) => !taak.educatieLijstId && !taak.educatieProjectLijstId && !taak.educatieProjectId)
                   const openDt = dtLos.filter((taak) => taak.status !== 'afgerond')
                   const afgerondDt = dtLos.filter((taak) => taak.status === 'afgerond')
                   const zichtbareTaken = isMobiel ? openDt : [...openDt, ...afgerondDt]
@@ -5143,12 +5212,12 @@ export default function App() {
                             Geen extra taken
                           </div>
                         )}
-                        {dt.length > 0 && openDt.length === 0 && dagProjectGroepen.length === 0 && isMobiel && (
+                        {dt.length > 0 && openDt.length === 0 && dagLijstGroepen.length === 0 && isMobiel && (
                           <div style={{ padding: '6px 4px 12px', fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
                             Geen open taken
                           </div>
                         )}
-                        {dagProjectGroepen.map((groep) => {
+                        {dagLijstGroepen.map((groep) => {
                           const openAantal = groep.taken.filter((taak) => taak.status !== 'afgerond').length
                           const afgerondAantal = groep.taken.length - openAantal
 
@@ -5172,6 +5241,11 @@ export default function App() {
                                 {rol === ROLES.transporteur && openAantal > 0 && (
                                   <Btn size="touch" variant="success" onClick={() => openEducatieUitvoer(groep)}>
                                     Uitvoeren
+                                  </Btn>
+                                )}
+                                {rol === ROLES.transporteur && openAantal > 0 && (
+                                  <Btn size="touch" variant="ghost" onClick={() => openEducatieVerplaats(groep)}>
+                                    Verplaats
                                   </Btn>
                                 )}
                                 {rol === ROLES.transporteur && openAantal === 0 && (
@@ -6171,6 +6245,39 @@ export default function App() {
                       </Btn>
                     </div>
                   ))}
+                </div>
+              </Card>
+
+              <Card>
+                <CardHead title="Automatische druktemeldingen" sub="Educatie en projecten" />
+                <div style={{ padding: 16, maxHeight: 420, overflowY: 'auto' }}>
+                  {automatischeLijstWaarschuwingen()
+                    .filter((item) => getMaandag(item.week) >= getMaandag(vandaag()))
+                    .sort((a, b) => getMaandag(a.week) - getMaandag(b.week))
+                    .map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          background: '#ECFDF5',
+                          border: '1px solid #A7F3D0',
+                          borderRadius: 10,
+                          padding: '10px 12px',
+                          marginBottom: 8,
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 650, color: '#065F46' }}>
+                          {weekNr(item.week)} - {weekRange(item.week)}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>
+                          {item.reden}
+                        </div>
+                      </div>
+                    ))}
+                  {automatischeLijstWaarschuwingen().filter((item) => getMaandag(item.week) >= getMaandag(vandaag())).length === 0 && (
+                    <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                      Geen automatische druktemeldingen door educatie of projecten.
+                    </div>
+                  )}
                 </div>
               </Card>
 
@@ -7342,6 +7449,253 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setEducatieUitvoer(null)}
+                style={{
+                  flex: 1,
+                  minWidth: 150,
+                  background: '#F3F4F6',
+                  color: '#374151',
+                  border: '1px solid #E5E9F0',
+                  borderRadius: 8,
+                  padding: '10px 0',
+                  fontSize: 13,
+                  fontWeight: 650,
+                  cursor: 'pointer',
+                }}
+              >
+                Annuleer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {educatieVerplaats && (
+        <div
+          onClick={() => setEducatieVerplaats(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 216,
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 14,
+              padding: 0,
+              width: '100%',
+              maxWidth: 560,
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              boxShadow: '0 20px 60px rgba(0,0,0,.15)',
+              boxSizing: 'border-box',
+              display: 'grid',
+              gridTemplateRows: 'auto minmax(0, 1fr) auto',
+            }}
+          >
+            <div style={{ padding: '20px 22px 12px' }}>
+              <div style={{ fontSize: 16, fontWeight: 750, color: '#111827', marginBottom: 4 }}>
+                {educatieVerplaats.type === 'project' ? 'Projectregels verplaatsen' : 'Educatieregels verplaatsen'}
+              </div>
+              <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 12 }}>
+                Vink aan welke regels naar een andere dag moeten.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEducatieVerplaats((prev) =>
+                      prev ? { ...prev, geselecteerd: prev.taken.filter((taak) => taak.status !== 'afgerond').map((taak) => taak.id) } : prev,
+                    )
+                  }
+                  style={{
+                    border: '1px solid #E5E9F0',
+                    background: '#F3F4F6',
+                    color: '#374151',
+                    borderRadius: 8,
+                    padding: '7px 10px',
+                    fontSize: 12,
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Alles selecteren
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEducatieVerplaats((prev) => (prev ? { ...prev, geselecteerd: [] } : prev))}
+                  style={{
+                    border: '1px solid #E5E9F0',
+                    background: '#fff',
+                    color: '#6B7280',
+                    borderRadius: 8,
+                    padding: '7px 10px',
+                    fontSize: 12,
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Alles uitzetten
+                </button>
+              </div>
+            </div>
+            <div style={{ borderTop: '1px solid #F1F5F9', borderBottom: '1px solid #F1F5F9', overflow: 'auto', maxHeight: '52vh', padding: 14, display: 'grid', gap: 12 }}>
+              <div style={{ border: '1px solid #E5E9F0', borderRadius: 10, overflow: 'hidden' }}>
+                {educatieVerplaats.taken.map((taak, index) => {
+                  const klaar = taak.status === 'afgerond'
+                  const checked = educatieVerplaats.geselecteerd.includes(taak.id)
+
+                  return (
+                    <label
+                      key={taak.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'auto 1fr',
+                        gap: 10,
+                        alignItems: 'start',
+                        padding: '9px 11px',
+                        borderBottom: index === educatieVerplaats.taken.length - 1 ? 'none' : '1px solid #F1F5F9',
+                        background: klaar ? '#F9FAFB' : '#fff',
+                        cursor: klaar ? 'default' : 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={klaar}
+                        onChange={() => toggleEducatieVerplaatsTaak(taak.id)}
+                        style={{ marginTop: 2 }}
+                      />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: klaar ? '#6B7280' : '#111827' }}>
+                          {taak.titel}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                          Nu: {weekNr(taak.week)} | {taak.dag === null || taak.dag === undefined ? 'hele week' : dagLabel(taak.dag)}
+                          {taak.naar ? ` | Naar ${taak.naar}` : ''}
+                        </div>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+              <div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      kiesDagMetWeekendCheck(vandaag(), vandaagDagIndex(), () => {
+                        setVerplW(vandaag())
+                        setVerplD(vandaagDagIndex())
+                        setVerplaatsMaand(new Date().toISOString().slice(0, 7))
+                      })
+                    }}
+                    style={{
+                      background: verplW === vandaag() && Number(verplD) === vandaagDagIndex() ? '#EA6A1F' : '#F3F4F6',
+                      color: verplW === vandaag() && Number(verplD) === vandaagDagIndex() ? '#fff' : '#374151',
+                      border: verplW === vandaag() && Number(verplD) === vandaagDagIndex() ? 'none' : '1px solid #E5E9F0',
+                      borderRadius: 8,
+                      padding: '8px 12px',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Vandaag
+                  </button>
+                  <MonthNav value={verplaatsMaand} onChange={setVerplaatsMaand} />
+                </div>
+                <div style={{ border: '1px solid #E5E9F0', borderRadius: 8, padding: 10, background: '#F8F9FC' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 5, marginBottom: 5 }}>
+                    {['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'].map((dag) => (
+                      <div key={dag} style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textAlign: 'center' }}>
+                        {dag}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 5 }}>
+                    {maandDagen(verplaatsMaand).map((dag) => {
+                      const selected = verplW === dag.week && Number(verplD) === dag.dagIndex
+                      const waarschuwing = blokkadeVoorDag(dag.week, dag.dagIndex)
+
+                      return (
+                        <button
+                          key={`lijst-verplaats-${dag.iso}`}
+                          type="button"
+                          onClick={() => {
+                            kiesDagMetWeekendCheck(dag.week, dag.dagIndex, () => {
+                              setVerplW(dag.week)
+                              setVerplD(dag.dagIndex)
+                            })
+                          }}
+                          style={{
+                            minHeight: 38,
+                            border: selected ? '1px solid #EA6A1F' : '1px solid #E5E9F0',
+                            borderRadius: 7,
+                            background: selected ? '#FFF7ED' : dag.inMaand ? '#fff' : '#F8F9FC',
+                            color: '#111827',
+                            opacity: dag.inMaand ? 1 : 0.55,
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: selected ? 800 : 600,
+                            position: 'relative',
+                          }}
+                        >
+                          {dag.date.getDate()}
+                          {waarschuwing && (
+                            <span
+                              title={`Let op: ${waarschuwing.reden || 'drukke periode'}`}
+                              style={{
+                                position: 'absolute',
+                                right: 4,
+                                top: 4,
+                                width: 5,
+                                height: 5,
+                                borderRadius: '50%',
+                                background: waarschuwing.educatie || waarschuwing.project ? '#10B981' : '#F59E0B',
+                              }}
+                            />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: '#6B7280', marginTop: 6 }}>
+                  Naar: {verplW ? `${weekNr(verplW)} | ${dagLabel(verplD)}` : 'kies een dag'}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: '14px 22px 20px', background: '#fff' }}>
+              <button
+                type="button"
+                onClick={verplaatsEducatieSelectie}
+                disabled={educatieVerplaats.geselecteerd.length === 0}
+                style={{
+                  flex: 1,
+                  minWidth: 150,
+                  background: educatieVerplaats.geselecteerd.length ? '#2563EB' : '#E5E7EB',
+                  color: educatieVerplaats.geselecteerd.length ? '#fff' : '#9CA3AF',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '10px 0',
+                  fontSize: 13,
+                  fontWeight: 750,
+                  cursor: educatieVerplaats.geselecteerd.length ? 'pointer' : 'not-allowed',
+                }}
+              >
+                Verplaats selectie
+              </button>
+              <button
+                type="button"
+                onClick={() => setEducatieVerplaats(null)}
                 style={{
                   flex: 1,
                   minWidth: 150,
