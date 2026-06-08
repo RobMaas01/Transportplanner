@@ -96,7 +96,7 @@ function laadSessie() {
     const veiligeTab =
       rol === ROLES.aanvrager && !['aanvraag', 'aanvraagstatus'].includes(tab)
         ? 'aanvraag'
-        : rol === ROLES.transporteur && !['planning', 'aanvragen', 'toevoegen', 'drukte', 'aanvraag', 'alletaken', 'rapportage'].includes(tab)
+        : rol === ROLES.transporteur && !['planning', 'aanvragen', 'toevoegen', 'drukte', 'alletaken', 'rapportage'].includes(tab)
           ? 'planning'
           : rol === ROLES.educatie && !['educatie-import', 'educatie-projecten'].includes(tab)
             ? 'educatie-import'
@@ -2137,10 +2137,7 @@ export default function App() {
             border: '#BBF7D0',
             active: '#1F7A4D',
             color: '#166534',
-            tabs: [
-              { k: 'aanvraag', l: 'Aanvraag invoeren' },
-              ...zichtbareNavTabs.filter((item) => ['alletaken', 'rapportage'].includes(item.k)),
-            ],
+            tabs: zichtbareNavTabs.filter((item) => ['alletaken', 'rapportage'].includes(item.k)),
           },
         ].filter((groep) => groep.tabs.length > 0)
       : rol === ROLES.educatie
@@ -2451,9 +2448,7 @@ export default function App() {
     if (isMobiel) {
       const mobieleHelp = {
         aanvraag: [
-          rol === ROLES.transporteur
-            ? ['Aanvraag invoeren', 'Voer een aanvraag in namens iemand.']
-            : ['Transportaanvraag', 'Geef door wat vervoerd moet worden.'],
+          ['Transportaanvraag', 'Geef door wat vervoerd moet worden.'],
           rol === ROLES.transporteur
             ? ['Druktemelding', 'Geef drukte of afwezigheid door.']
             : ['Prive', 'Alleen zichtbaar voor Registratie en beheer.'],
@@ -2507,7 +2502,6 @@ export default function App() {
       ['Aanvragen', 'Plan aanvragen in of vraag meer info.'],
       ['Taak toevoegen', 'Zet een taak direct in de planning.'],
       ['Druktemelding', 'Geef drukte of afwezigheid door.'],
-      ['Aanvraag invoeren', 'Voer een aanvraag in namens iemand.'],
       ['Overzicht', 'Zoek, wijzig of herstel taken.'],
       ['Rapportage', 'Maak een overzicht voor administratie.'],
     ]
@@ -5554,7 +5548,7 @@ export default function App() {
                       fontWeight: 400,
                     }}
                   >
-                    <span style={{ fontWeight: 600 }}>!</span> Deze taak komt meteen in de planning. Gebruik Aanvraag invoeren als iets eerst nog beoordeeld of ingepland moet worden.
+                    <span style={{ fontWeight: 600 }}>!</span> Deze taak komt meteen in de planning. Wissel naar Aanvrager als iets eerst nog beoordeeld of ingepland moet worden.
                   </div>
                   {taakMelding && (
                     <div
