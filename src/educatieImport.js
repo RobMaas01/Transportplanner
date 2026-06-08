@@ -1,5 +1,3 @@
-import * as XLSX from 'xlsx'
-
 function schoon(value) {
   return String(value ?? '').trim()
 }
@@ -121,68 +119,68 @@ function routeVoorRij(item) {
   return { van: 'School 7 Educatie', naar: bestemming }
 }
 
-export function leesEducatieExcel(bestand) {
-  return bestand.arrayBuffer().then((buffer) => {
-    const workbook = XLSX.read(buffer, { type: 'array' })
-    const rowsBySheet = {}
-    workbook.SheetNames.forEach((sheetNaam) => {
-      rowsBySheet[sheetNaam] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetNaam], { header: 1, defval: '' })
-    })
-    const richting = richtingUitTekst(`${bestand?.name || ''} ${tekstUitWerkboek(workbook, rowsBySheet)}`)
-    const rijen = []
+export async function leesEducatieExcel(bestand) {
+  const XLSX = await import('xlsx')
+  const buffer = await bestand.arrayBuffer()
+  const workbook = XLSX.read(buffer, { type: 'array' })
+  const rowsBySheet = {}
+  workbook.SheetNames.forEach((sheetNaam) => {
+    rowsBySheet[sheetNaam] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetNaam], { header: 1, defval: '' })
+  })
+  const richting = richtingUitTekst(`${bestand?.name || ''} ${tekstUitWerkboek(workbook, rowsBySheet)}`)
+  const rijen = []
 
-    workbook.SheetNames.forEach((sheetNaam) => {
-      const rows = rowsBySheet[sheetNaam]
-      const headerIndex = vindHeaderRij(rows)
-      if (headerIndex < 0) return
+  workbook.SheetNames.forEach((sheetNaam) => {
+    const rows = rowsBySheet[sheetNaam]
+    const headerIndex = vindHeaderRij(rows)
+    if (headerIndex < 0) return
 
-      const headers = rows[headerIndex].map(schoon)
-      const isKinderopvang = headers.map(sleutel).includes('speelzalen')
-      let sectie = startSectie(rows, headerIndex)
+    const headers = rows[headerIndex].map(schoon)
+    const isKinderopvang = headers.map(sleutel).includes('speelzalen')
+    let sectie = startSectie(rows, headerIndex)
 
-      rows.slice(headerIndex + 1).forEach((row, index) => {
-        const nieuweSectie = sectieUitRij(row)
-        if (nieuweSectie) {
-          sectie = nieuweSectie
-          return
-        }
+    rows.slice(headerIndex + 1).forEach((row, index) => {
+      const nieuweSectie = sectieUitRij(row)
+      if (nieuweSectie) {
+        sectie = nieuweSectie
+        return
+      }
 
-        const item = {
-          soort: cel(row, headers, ['Soort']) || (isKinderopvang ? schoon(row[0]) : ''),
-          thema: cel(row, headers, ['Thema']),
-          titel: cel(row, headers, ['Titel']),
-          groep: cel(row, headers, ['Groep']),
-          leerlingenaantal: cel(row, headers, ['Leerlingenaantal']),
-          school: cel(row, headers, ['School']),
-          plaats: cel(row, headers, ['Plaats']),
-          speelzaal: cel(row, headers, ['Speelzalen', 'Speelzaal']),
-          afhaallocatie: cel(row, headers, ['Afhaallocatie', 'Afhaallocaties']),
-          sheet: sheetNaam,
-          rij: headerIndex + index + 2,
-          type: isKinderopvang ? 'Kinderopvang' : 'Schoollijst',
-          sectie,
-          richting,
-        }
+      const item = {
+        soort: cel(row, headers, ['Soort']) || (isKinderopvang ? schoon(row[0]) : ''),
+        thema: cel(row, headers, ['Thema']),
+        titel: cel(row, headers, ['Titel']),
+        groep: cel(row, headers, ['Groep']),
+        leerlingenaantal: cel(row, headers, ['Leerlingenaantal']),
+        school: cel(row, headers, ['School']),
+        plaats: cel(row, headers, ['Plaats']),
+        speelzaal: cel(row, headers, ['Speelzalen', 'Speelzaal']),
+        afhaallocatie: cel(row, headers, ['Afhaallocatie', 'Afhaallocaties']),
+        sheet: sheetNaam,
+        rij: headerIndex + index + 2,
+        type: isKinderopvang ? 'Kinderopvang' : 'Schoollijst',
+        sectie,
+        richting,
+      }
 
-        if (isLegeOfOpmerkingRij(item)) return
+      if (isLegeOfOpmerkingRij(item)) return
 
-        const bestemming = bestemmingLabel(item)
-        const route = routeVoorRij({ ...item, bestemming })
+      const bestemming = bestemmingLabel(item)
+      const route = routeVoorRij({ ...item, bestemming })
 
-        rijen.push({
-          ...item,
-          id: `${sheetNaam}-${item.rij}-${rijen.length}`,
-          onderwerp: onderwerpLabel(item),
-          bestemming,
-          van: route.van,
-          naar: route.naar,
-          titelWeergave: titelLabel({ ...item, bestemming }),
-        })
+      rijen.push({
+        ...item,
+        id: `${sheetNaam}-${item.rij}-${rijen.length}`,
+        onderwerp: onderwerpLabel(item),
+        bestemming,
+        van: route.van,
+        naar: route.naar,
+        titelWeergave: titelLabel({ ...item, bestemming }),
       })
     })
-
-    return rijen
   })
+
+  return rijen
 }
 
 export function maakEducatieLijst(rijen, { schooljaar, periode, bestandNaam, toelichting = '', bestaandId = null }) {
