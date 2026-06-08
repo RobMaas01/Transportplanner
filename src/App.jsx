@@ -1483,6 +1483,10 @@ export default function App() {
     setTaken((prev) => prev.filter((taak) => taak.id !== id))
   }
 
+  function definitiefVerwijderEducatieProject(id) {
+    verwijderEducatieProject(id)
+  }
+
   function voerVerwijderenUit() {
     if (!bevestigVerwijderen) return
 
@@ -1501,6 +1505,8 @@ export default function App() {
 
     if (bevestigDefinitiefVerwijderen.type === 'aanvraag') {
       definitiefVerwijderAanvraag(bevestigDefinitiefVerwijderen.item.id)
+    } else if (bevestigDefinitiefVerwijderen.type === 'educatie-project') {
+      definitiefVerwijderEducatieProject(bevestigDefinitiefVerwijderen.item.id)
     } else {
       definitiefVerwijderTaak(bevestigDefinitiefVerwijderen.item.id)
     }
@@ -4312,9 +4318,18 @@ export default function App() {
                               </Btn>
                             )}
                             {projectLijstStatus(project) === 'verwijderd' ? (
-                              <Btn size="touch" variant="ghost" onClick={() => herstelEducatieProject(project.id)}>
-                                Herstel
-                              </Btn>
+                              <>
+                                <Btn size="touch" variant="success" onClick={() => herstelEducatieProject(project.id)}>
+                                  Herstel
+                                </Btn>
+                                <Btn
+                                  size="touch"
+                                  variant="danger"
+                                  onClick={() => setBevestigDefinitiefVerwijderen({ type: 'educatie-project', item: project })}
+                                >
+                                  Definitief verwijderen
+                                </Btn>
+                              </>
                             ) : (
                               <Btn
                                 size="touch"
@@ -8344,7 +8359,7 @@ export default function App() {
               Definitief verwijderen?
             </div>
             <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.45, marginBottom: 18 }}>
-              "{bevestigDefinitiefVerwijderen.item.titel}" wordt echt verwijderd en kan daarna niet meer worden
+              "{projectTitel(bevestigDefinitiefVerwijderen.item)}" wordt echt verwijderd en kan daarna niet meer worden
               teruggehaald.
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
