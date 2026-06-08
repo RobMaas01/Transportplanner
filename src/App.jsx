@@ -170,6 +170,7 @@ export default function App() {
         : sessie.tab,
   )
   const [menuOpen, setMenuOpen] = useState(false)
+  const [rolMenuOpen, setRolMenuOpen] = useState(false)
   const [toevoegenTab, setToevoegenTab] = useState('taak')
   const [taken, setTaken] = useState(lokaal.taken)
   const [aanvragen, setAanvragen] = useState(lokaal.aanvragen)
@@ -203,6 +204,7 @@ export default function App() {
       setIsMobiel(mobiel)
       if (mobiel) setTab((huidigeTab) => (huidigeTab === 'rapportage' ? 'planning' : huidigeTab))
       if (!mobiel) setMenuOpen(false)
+      setRolMenuOpen(false)
     }
     window.addEventListener('resize', updateScherm)
     return () => window.removeEventListener('resize', updateScherm)
@@ -359,6 +361,7 @@ export default function App() {
     setTab('planning')
     setHelpOpen(false)
     setMenuOpen(false)
+    setRolMenuOpen(false)
     try {
       localStorage.removeItem('bb_rol')
       localStorage.removeItem('bb_tab')
@@ -424,6 +427,7 @@ export default function App() {
     }
     setTab(nieuweTab)
     setMenuOpen(false)
+    setRolMenuOpen(false)
   }
 
   function kiesDagMetWeekendCheck(weekKeuze, dagKeuze, actie) {
@@ -669,6 +673,7 @@ export default function App() {
       setPlanningWeergave('week')
       setPinErr('')
       setToonBertPin(false)
+      setRolMenuOpen(false)
       try {
         localStorage.setItem('bb_login_at', String(Date.now()))
       } catch {
@@ -691,6 +696,9 @@ export default function App() {
     setAanvraagBevestigd(false)
     setRol(ROLES.aanvrager)
     setTab('aanvraag')
+    setMenuOpen(false)
+    setRolMenuOpen(false)
+    setHelpOpen(false)
     setPin('')
     setPinErr('')
     setToonBertPin(false)
@@ -700,10 +708,41 @@ export default function App() {
     setRol(ROLES.educatie)
     setTab('educatie-import')
     setMenuOpen(false)
+    setRolMenuOpen(false)
     setHelpOpen(false)
     setPin('')
     setPinErr('')
     setToonBertPin(false)
+  }
+
+  function vraagBeheerLogin() {
+    setToonBertPin(true)
+    setRolMenuOpen(false)
+    setMenuOpen(false)
+    setHelpOpen(false)
+    setPin('')
+    setPinErr('')
+    try {
+      localStorage.removeItem('bb_login_at')
+    } catch {
+      // Geen probleem als de browser dit blokkeert.
+    }
+  }
+
+  function wisselRol(nieuweRol) {
+    if (nieuweRol === rol && nieuweRol !== ROLES.transporteur) {
+      setRolMenuOpen(false)
+      return
+    }
+    if (nieuweRol === ROLES.aanvrager) {
+      startAanvraag()
+      return
+    }
+    if (nieuweRol === ROLES.educatie) {
+      startEducatie()
+      return
+    }
+    if (nieuweRol === ROLES.transporteur) vraagBeheerLogin()
   }
 
   function vestigingSelectWaarde(value, overigActief = false) {
@@ -2124,6 +2163,12 @@ export default function App() {
       : rol === ROLES.educatie
         ? [{ titel: '', tabs: zichtbareNavTabs }]
       : [{ titel: '', tabs: zichtbareNavTabs }]
+  const rolOpties = [
+    { k: ROLES.aanvrager, l: 'Aanvrager', sub: 'Transportaanvraag indienen' },
+    { k: ROLES.educatie, l: 'Educatie', sub: 'Schoollijsten en projecten' },
+    { k: ROLES.transporteur, l: 'Registratie en beheer', sub: 'Pincode nodig' },
+  ]
+  const huidigeRolLabel = rolOpties.find((item) => item.k === rol)?.l || 'Rol kiezen'
 
   const pagina = {
     planning: 'Weekplanning',
@@ -2226,11 +2271,7 @@ export default function App() {
               Educatie
             </button>
             <button
-              onClick={() => {
-                setToonBertPin(true)
-                setPin('')
-                setPinErr('')
-              }}
+              onClick={vraagBeheerLogin}
               style={{
                 width: '100%',
                 background: '#1F7A4D',
@@ -2740,14 +2781,157 @@ export default function App() {
               <img src={logo} alt="KopGroep Bibliotheken" style={{ width: '100%', height: 'auto', marginBottom: 10 }} />
               <div style={{ color: '#3A2A22', fontSize: 13, fontWeight: 700 }}>Transportplanning</div>
               <div style={{ color: '#9A5A2E', fontSize: 11, marginTop: 3 }}>KopGroep Bibliotheken</div>
+              <div style={{ position: 'relative', marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRolMenuOpen((open) => !open)
+                    setMenuOpen(false)
+                  }}
+                  style={{
+                    width: '100%',
+                    border: '1px solid #F5C99D',
+                    background: '#fff',
+                    color: '#7C4A2A',
+                    borderRadius: 8,
+                    padding: '8px 9px',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    textAlign: 'left',
+                  }}
+                >
+                  <span>
+                    <span style={{ display: 'block', fontSize: 10, fontWeight: 650, color: '#9A5A2E' }}>Rol</span>
+                    {huidigeRolLabel}
+                  </span>
+                  <span aria-hidden="true">v</span>
+                </button>
+                {rolMenuOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      top: 'calc(100% + 6px)',
+                      zIndex: 90,
+                      background: '#fff',
+                      border: '1px solid #FED7AA',
+                      borderRadius: 10,
+                      boxShadow: '0 12px 28px rgba(124, 74, 42, .16)',
+                      padding: 6,
+                      display: 'grid',
+                      gap: 4,
+                    }}
+                  >
+                    {rolOpties.map((item) => {
+                      const actief = rol === item.k
+                      return (
+                        <button
+                          key={item.k}
+                          type="button"
+                          onClick={() => wisselRol(item.k)}
+                          style={{
+                            textAlign: 'left',
+                            border: actief ? '1px solid #EA6A1F' : '1px solid transparent',
+                            background: actief ? '#FFF7ED' : '#fff',
+                            color: actief ? '#9A3412' : '#374151',
+                            borderRadius: 8,
+                            padding: '8px 9px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <span style={{ display: 'block', fontSize: 12, fontWeight: 800 }}>{item.l}</span>
+                          <span style={{ display: 'block', fontSize: 10, color: actief ? '#B45309' : '#6B7280', marginTop: 2 }}>
+                            {actief ? 'Huidige rol' : item.sub}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
         {isMobiel ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '8px 12px 8px 4px' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, padding: '8px 12px 8px 4px' }}>
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setRolMenuOpen((open) => !open)
+                  setMenuOpen(false)
+                }}
+                style={{
+                  minWidth: 126,
+                  background: '#fff',
+                  border: '1px solid #FED7AA',
+                  color: '#7C4A2A',
+                  borderRadius: 8,
+                  padding: '9px 10px',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                {huidigeRolLabel} <span aria-hidden="true">v</span>
+              </button>
+              {rolMenuOpen && (
+                <div
+                  style={{
+                    position: 'fixed',
+                    left: 12,
+                    right: 12,
+                    top: 62,
+                    zIndex: 75,
+                    background: '#fff',
+                    border: '1px solid #FED7AA',
+                    borderRadius: 10,
+                    boxShadow: '0 16px 38px rgba(124, 74, 42, .18)',
+                    padding: 7,
+                    display: 'grid',
+                    gap: 5,
+                  }}
+                >
+                  {rolOpties.map((item) => {
+                    const actief = rol === item.k
+                    return (
+                      <button
+                        key={item.k}
+                        type="button"
+                        onClick={() => wisselRol(item.k)}
+                        style={{
+                          textAlign: 'left',
+                          border: actief ? '1px solid #EA6A1F' : '1px solid #E5E9F0',
+                          background: actief ? '#FFF7ED' : '#fff',
+                          color: actief ? '#9A3412' : '#374151',
+                          borderRadius: 8,
+                          padding: '10px 11px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span style={{ display: 'block', fontSize: 13, fontWeight: 800 }}>{item.l}</span>
+                        <span style={{ display: 'block', fontSize: 11, color: actief ? '#B45309' : '#6B7280', marginTop: 2 }}>
+                          {actief ? 'Huidige rol' : item.sub}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
             <button
               type="button"
-              onClick={() => setMenuOpen((open) => !open)}
+              onClick={() => {
+                setMenuOpen((open) => !open)
+                setRolMenuOpen(false)
+              }}
               style={{
                 position: 'relative',
                 minWidth: 136,
