@@ -193,6 +193,7 @@ export const LOKALE_KEYS = {
   meld: 'm5',
   educatieLijsten: 'e5',
   educatieProjecten: 'p5',
+  verborgenAutoDrukte: 'vad5',
 }
 
 export function laadLokaleState() {
@@ -203,6 +204,7 @@ export function laadLokaleState() {
     meld: laadLokaal(LOKALE_KEYS.meld, []),
     educatieLijsten: laadLokaal(LOKALE_KEYS.educatieLijsten, []),
     educatieProjecten: laadLokaal(LOKALE_KEYS.educatieProjecten, []),
+    verborgenAutoDrukte: laadLokaal(LOKALE_KEYS.verborgenAutoDrukte, []),
   }
 }
 

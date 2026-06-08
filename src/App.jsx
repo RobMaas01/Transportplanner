@@ -119,6 +119,7 @@ function maakStateSnapshot(state) {
       meld: state?.meld || [],
       educatieLijsten: state?.educatieLijsten || [],
       educatieProjecten: state?.educatieProjecten || [],
+      verborgenAutoDrukte: state?.verborgenAutoDrukte || [],
     })
   } catch {
     return ''
@@ -173,6 +174,7 @@ export default function App() {
   const [taken, setTaken] = useState(lokaal.taken)
   const [aanvragen, setAanvragen] = useState(lokaal.aanvragen)
   const [geblokt, setGeblokt] = useState(lokaal.geblokt)
+  const [verborgenAutoDrukte, setVerborgenAutoDrukte] = useState(lokaal.verborgenAutoDrukte)
   const [educatieLijsten, setEducatieLijsten] = useState(lokaal.educatieLijsten)
   const [educatieProjecten, setEducatieProjecten] = useState(lokaal.educatieProjecten)
   const [week, setWeek] = useState(vandaag())
@@ -470,6 +472,7 @@ export default function App() {
     setTaken(data?.taken || [])
     setAanvragen(data?.aanvragen || [])
     setGeblokt(data?.geblokt || [])
+    setVerborgenAutoDrukte(data?.verborgenAutoDrukte || [])
     setMeld(data?.meld || [])
     setEducatieLijsten(data?.educatieLijsten || [])
     setEducatieProjecten(data?.educatieProjecten || [])
@@ -552,6 +555,10 @@ export default function App() {
   }, [geblokt])
 
   useEffect(() => {
+    localStorage.setItem('vad5', JSON.stringify(verborgenAutoDrukte))
+  }, [verborgenAutoDrukte])
+
+  useEffect(() => {
     localStorage.setItem('m5', JSON.stringify(meld))
   }, [meld])
 
@@ -565,7 +572,7 @@ export default function App() {
 
   useEffect(() => {
     if (!centraleOpslagActief.current || !centraleOpslagGeladen.current) return undefined
-    const state = { taken, aanvragen, geblokt, meld, educatieLijsten, educatieProjecten }
+    const state = { taken, aanvragen, geblokt, meld, educatieLijsten, educatieProjecten, verborgenAutoDrukte }
     huidigeStateSnapshot.current = maakStateSnapshot(state)
     if (skipVolgendeCentraleOpslag.current) {
       skipVolgendeCentraleOpslag.current = false
@@ -585,7 +592,7 @@ export default function App() {
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [taken, aanvragen, geblokt, meld, educatieLijsten, educatieProjecten])
+  }, [taken, aanvragen, geblokt, meld, educatieLijsten, educatieProjecten, verborgenAutoDrukte])
 
   useEffect(() => {
     if (!supabaseConfigured) return undefined
@@ -1828,10 +1835,32 @@ export default function App() {
         groepen[sleutel].aantal += 1
       })
 
-    return Object.values(groepen).map((item) => ({
+    return Object.values(groepen)
+      .map((item) => ({
+        ...item,
+        reden: `${item.dag === null || item.dag === undefined ? 'drukke week' : `drukke dag (${DAGEN[item.dag]})`} door ${item.titel} (${item.aantal} regels)`,
+      }))
+      .filter((item) => !verborgenAutoDrukte.includes(item.id))
+  }
+
+  function automatischeDruktemeldingenVoorOverzicht() {
+    const lijstMeldingen = automatischeLijstWaarschuwingen().map((item) => ({
       ...item,
-      reden: `${item.dag === null || item.dag === undefined ? 'drukke week' : `drukke dag (${DAGEN[item.dag]})`} door ${item.titel} (${item.aantal} regels)`,
+      soort: item.project ? 'Project' : 'Educatie',
+      verwijderbaar: true,
     }))
+    const vakantieMeldingen = automatischeBlokkades().map((item) => ({
+      ...item,
+      id: `regio-noord-${item.week}-${item.reden}`,
+      dag: null,
+      automatisch: true,
+      vakantie: true,
+      soort: 'Regio Noord',
+      verwijderbaar: false,
+    }))
+    return [...lijstMeldingen, ...vakantieMeldingen].sort(
+      (a, b) => getMaandag(a.week) - getMaandag(b.week) || Number(a.dag ?? -1) - Number(b.dag ?? -1),
+    )
   }
 
   function blokkadeVoorWeek(wk) {
@@ -6256,65 +6285,54 @@ export default function App() {
               </Card>
 
               <Card>
-                <CardHead title="Automatische druktemeldingen" sub="Educatie en projecten" />
-                <div style={{ padding: 16, maxHeight: 420, overflowY: 'auto' }}>
-                  {automatischeLijstWaarschuwingen()
-                    .filter((item) => getMaandag(item.week) >= getMaandag(vandaag()))
-                    .sort((a, b) => getMaandag(a.week) - getMaandag(b.week))
-                    .map((item) => (
+                <CardHead title="Automatische druktemeldingen" sub="Educatie, projecten en Regio Noord" />
+                <div style={{ padding: 16, maxHeight: 520, overflowY: 'auto' }}>
+                  {automatischeDruktemeldingenVoorOverzicht().length === 0 && (
+                    <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                      Geen automatische druktemeldingen.
+                    </div>
+                  )}
+                  {automatischeDruktemeldingenVoorOverzicht().map((item) => {
+                    const lijstDrukte = item.educatie || item.project
+                    const kleuren = lijstDrukte
+                      ? { bg: '#ECFDF5', border: '#A7F3D0', title: '#065F46', text: '#047857' }
+                      : { bg: '#F8F9FC', border: '#E5E9F0', title: '#374151', text: '#6B7280' }
+
+                    return (
                       <div
                         key={item.id}
                         style={{
-                          background: '#ECFDF5',
-                          border: '1px solid #A7F3D0',
+                          background: kleuren.bg,
+                          border: `1px solid ${kleuren.border}`,
                           borderRadius: 10,
                           padding: '10px 12px',
                           marginBottom: 8,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12,
                         }}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 650, color: '#065F46' }}>
-                          {weekNr(item.week)} - {weekRange(item.week)}
-                          {item.dag !== null && item.dag !== undefined ? ` | ${DAGEN[item.dag]}` : ''}
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 650, color: kleuren.title }}>
+                            {weekNr(item.week)} - {weekRange(item.week)}
+                            {item.dag !== null && item.dag !== undefined ? ` | ${DAGEN[item.dag]}` : ''}
+                            {' | '}
+                            {item.soort}
+                          </div>
+                          <div style={{ fontSize: 12, color: kleuren.text, marginTop: 2 }}>{item.reden}</div>
                         </div>
-                        <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>
-                          {item.reden}
-                        </div>
+                        {item.verwijderbaar && (
+                          <Btn
+                            variant="danger"
+                            onClick={() => setVerborgenAutoDrukte((prev) => [...new Set([...prev, item.id])])}
+                          >
+                            Melding verwijderen
+                          </Btn>
+                        )}
                       </div>
-                    ))}
-                  {automatischeLijstWaarschuwingen().filter((item) => getMaandag(item.week) >= getMaandag(vandaag())).length === 0 && (
-                    <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
-                      Geen automatische druktemeldingen door educatie of projecten.
-                    </div>
-                  )}
-                </div>
-              </Card>
-
-              <Card>
-                <CardHead title="Automatische vakantiewaarschuwingen" sub="Regio Noord" />
-                <div style={{ padding: 16, maxHeight: 420, overflowY: 'auto' }}>
-                  {automatischeBlokkades()
-                    .map((item) => (
-                      <div
-                        key={`${item.week}-${item.reden}`}
-                        style={{
-                          background: '#F8F9FC',
-                          border: '1px solid #E5E9F0',
-                          borderRadius: 10,
-                          padding: '10px 12px',
-                          marginBottom: 8,
-                        }}
-                      >
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
-                          {weekNr(item.week)} - {weekRange(item.week)}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{item.reden}</div>
-                      </div>
-                    ))}
-                  {automatischeBlokkades().length === 0 && (
-                    <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
-                      Geen automatische vakantiewaarschuwingen.
-                    </div>
-                  )}
+                    )
+                  })}
                 </div>
               </Card>
             </div>
@@ -6724,38 +6742,47 @@ export default function App() {
                         {dashboardData.piekWaarschuwingen.length === 0 && (
                           <div style={{ fontSize: 12, color: '#9CA3AF' }}>Geen piekwaarschuwingen in deze periode.</div>
                         )}
-                        {dashboardData.piekWaarschuwingen.map((item) => (
-                          <div
-                            key={item.id || `${item.week}-${item.dag ?? 'week'}`}
-                            style={{
-                              background: item.automatisch ? '#F8FAFC' : '#FFF7ED',
-                              border: item.automatisch ? '1px solid #CBD5E1' : '1px solid #FED7AA',
-                              borderRadius: 8,
-                              padding: '9px 10px',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 12, fontWeight: 800, color: item.automatisch ? '#475569' : '#9A3412' }}>
-                                {weekNr(item.week)} | {item.dag === null || item.dag === undefined ? 'Hele week' : dagLabel(item.dag)}
-                              </span>
-                              <span
-                                style={{
-                                  borderRadius: 999,
-                                  padding: '2px 7px',
-                                  fontSize: 10,
-                                  fontWeight: 800,
-                                  background: item.automatisch ? '#E2E8F0' : '#FED7AA',
-                                  color: item.automatisch ? '#334155' : '#9A3412',
-                                }}
-                              >
-                                {item.automatisch ? 'Automatisch' : 'Handmatig'}
-                              </span>
+                        {dashboardData.piekWaarschuwingen.map((item) => {
+                          const lijstDrukte = item.educatie || item.project
+                          const kleuren = lijstDrukte
+                            ? { bg: '#ECFDF5', border: '#A7F3D0', text: '#065F46', chipBg: '#D1FAE5', chipText: '#047857' }
+                            : item.automatisch
+                              ? { bg: '#F8FAFC', border: '#CBD5E1', text: '#475569', chipBg: '#E2E8F0', chipText: '#334155' }
+                              : { bg: '#FFF7ED', border: '#FED7AA', text: '#9A3412', chipBg: '#FED7AA', chipText: '#9A3412' }
+
+                          return (
+                            <div
+                              key={item.id || `${item.week}-${item.dag ?? 'week'}`}
+                              style={{
+                                background: kleuren.bg,
+                                border: `1px solid ${kleuren.border}`,
+                                borderRadius: 8,
+                                padding: '9px 10px',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 12, fontWeight: 800, color: kleuren.text }}>
+                                  {weekNr(item.week)} | {item.dag === null || item.dag === undefined ? 'Hele week' : dagLabel(item.dag)}
+                                </span>
+                                <span
+                                  style={{
+                                    borderRadius: 999,
+                                    padding: '2px 7px',
+                                    fontSize: 10,
+                                    fontWeight: 800,
+                                    background: kleuren.chipBg,
+                                    color: kleuren.chipText,
+                                  }}
+                                >
+                                  {lijstDrukte ? (item.project ? 'Project' : 'Educatie') : item.automatisch ? 'Automatisch' : 'Handmatig'}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 12, color: lijstDrukte ? '#047857' : item.automatisch ? '#64748B' : '#7C4A2A', marginTop: 3 }}>
+                                {item.reden || 'Geen reden ingevuld'}
+                              </div>
                             </div>
-                            <div style={{ fontSize: 12, color: item.automatisch ? '#64748B' : '#7C4A2A', marginTop: 3 }}>
-                              {item.reden || 'Geen reden ingevuld'}
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </Card>
                   </div>
