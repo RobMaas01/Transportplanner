@@ -5901,9 +5901,23 @@ export default function App() {
                           {gezochteVerwijderdeTaken.length}
                         </span>
                       </div>
-                      <Btn variant="ghost" onClick={() => setToonVerwijderdeTaken((prev) => !prev)}>
-                        {toonVerwijderdeTaken ? 'Verberg verwijderde taken' : 'Toon verwijderde taken'}
-                      </Btn>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {toonVerwijderdeTaken && verwijderdeTaken.length > 0 && (
+                          <Btn
+                            variant="danger"
+                            onClick={() => {
+                              if (window.confirm('Alle verwijderde taken definitief verwijderen? Dit kan niet worden teruggehaald.')) {
+                                setTaken((prev) => prev.filter((taak) => taak.status !== 'verwijderd'))
+                              }
+                            }}
+                          >
+                            Alles definitief verwijderen
+                          </Btn>
+                        )}
+                        <Btn variant="ghost" onClick={() => setToonVerwijderdeTaken((prev) => !prev)}>
+                          {toonVerwijderdeTaken ? 'Verberg verwijderde taken' : 'Toon verwijderde taken'}
+                        </Btn>
+                      </div>
                     </div>
                     {!toonVerwijderdeTaken ? (
                       <div style={{ padding: '12px 14px', fontSize: 12, color: '#6B7280', background: '#fff' }}>
