@@ -2796,7 +2796,7 @@ export default function App() {
                     borderRadius: 8,
                     padding: '8px 9px',
                     fontSize: 12,
-                    fontWeight: 800,
+                    fontWeight: 500,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -2806,7 +2806,7 @@ export default function App() {
                   }}
                 >
                   <span>
-                    <span style={{ display: 'block', fontSize: 10, fontWeight: 650, color: '#9A5A2E' }}>Rol</span>
+                    <span style={{ display: 'block', fontSize: 10, fontWeight: 400, color: '#9A5A2E' }}>Rol</span>
                     {huidigeRolLabel}
                   </span>
                   <span aria-hidden="true">v</span>
@@ -2845,7 +2845,7 @@ export default function App() {
                             cursor: 'pointer',
                           }}
                         >
-                          <span style={{ display: 'block', fontSize: 12, fontWeight: 800 }}>{item.l}</span>
+                          <span style={{ display: 'block', fontSize: 12, fontWeight: 500 }}>{item.l}</span>
                           <span style={{ display: 'block', fontSize: 10, color: actief ? '#B45309' : '#6B7280', marginTop: 2 }}>
                             {actief ? 'Huidige rol' : item.sub}
                           </span>
@@ -2875,7 +2875,7 @@ export default function App() {
                   borderRadius: 8,
                   padding: '9px 10px',
                   fontSize: 12,
-                  fontWeight: 800,
+                  fontWeight: 500,
                   cursor: 'pointer',
                   textAlign: 'left',
                 }}
@@ -2916,7 +2916,7 @@ export default function App() {
                           cursor: 'pointer',
                         }}
                       >
-                        <span style={{ display: 'block', fontSize: 13, fontWeight: 800 }}>{item.l}</span>
+                        <span style={{ display: 'block', fontSize: 13, fontWeight: 500 }}>{item.l}</span>
                         <span style={{ display: 'block', fontSize: 11, color: actief ? '#B45309' : '#6B7280', marginTop: 2 }}>
                           {actief ? 'Huidige rol' : item.sub}
                         </span>
@@ -7323,6 +7323,78 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {toonBertPin && (
+        <div
+          onClick={() => setToonBertPin(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 240,
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 14,
+              padding: 24,
+              width: '100%',
+              maxWidth: 320,
+              boxShadow: '0 20px 60px rgba(0,0,0,.15)',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#111827', marginBottom: 4 }}>Registratie en beheer</div>
+            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14 }}>
+              Voor Boekenbode, leidinggevende en administratie.
+            </div>
+            <input
+              type="password"
+              inputMode="numeric"
+              autoFocus
+              maxLength={4}
+              value={pin}
+              onChange={(e) => {
+                const next = e.target.value.replace(/\D/g, '').slice(0, 4)
+                setPin(next)
+                setPinErr('')
+                if (next.length === 4) login(next)
+              }}
+              placeholder="Pincode"
+              style={{ ...inp, textAlign: 'center', letterSpacing: 4, fontSize: 18, marginBottom: 10 }}
+            />
+            {pinErr && <div style={{ fontSize: 12, color: '#DC2626', marginBottom: 10 }}>{pinErr}</div>}
+            <button
+              type="button"
+              onClick={() => {
+                setToonBertPin(false)
+                setPin('')
+                setPinErr('')
+              }}
+              style={{
+                width: '100%',
+                background: '#F3F4F6',
+                color: '#374151',
+                border: '1px solid #E5E9F0',
+                borderRadius: 8,
+                padding: '9px 0',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Annuleer
+            </button>
+          </div>
+        </div>
+      )}
 
       {helpOpen && (
         <div
