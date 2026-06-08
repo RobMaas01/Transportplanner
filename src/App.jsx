@@ -5258,6 +5258,7 @@ export default function App() {
                         {dagLijstGroepen.map((groep) => {
                           const openAantal = groep.taken.filter((taak) => taak.status !== 'afgerond').length
                           const afgerondAantal = groep.taken.length - openAantal
+                          const groepNaam = groep.type === 'project' ? 'projectlijst' : 'Educatie lijst'
 
                           return (
                             <div
@@ -5289,6 +5290,18 @@ export default function App() {
                                 {rol === ROLES.transporteur && openAantal === 0 && (
                                   <Btn variant="ghost" onClick={() => openEducatieUitvoer(groep)}>
                                     Bekijken
+                                  </Btn>
+                                )}
+                                {rol === ROLES.transporteur && (
+                                  <Btn
+                                    variant="danger"
+                                    onClick={() => {
+                                      if (window.confirm(`Deze hele ${groepNaam} uit de planning verwijderen?`)) {
+                                        groep.taken.forEach((taak) => verwijderTaak(taak.id, `${groepNaam} verwijderd uit planning`))
+                                      }
+                                    }}
+                                  >
+                                    Verwijder
                                   </Btn>
                                 )}
                               </div>
