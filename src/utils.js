@@ -1,4 +1,4 @@
-import { DAGEN, SCHOOLVAKANTIES_NOORD, STATUS } from './constants'
+import { DAGEN, SCHOOLVAKANTIES_NOORD, STATUS } from './constants.js'
 
 export function getWeekKey(date) {
   const d = new Date(date)

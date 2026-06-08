@@ -7,6 +7,7 @@
     "dev": "vite",
     "dev:test": "vite --mode test",
     "export:testdata": "node scripts/export-test-data.mjs",
+    "test": "node --test",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

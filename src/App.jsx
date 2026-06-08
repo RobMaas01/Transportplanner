@@ -6,7 +6,6 @@ import {
   AANVRAAG_STATUS,
   DAGEN,
   DAGEN_KORT,
-  PIN_BERT,
   ROLES,
   STATUS,
   TAAK_SUGGESTIES,
@@ -29,6 +28,15 @@ import {
   ZelfdeVestigingWaarschuwing,
 } from './components'
 import { inp } from './uiStyles'
+import {
+  isBeheerPinJuist,
+  maakTaakUitAanvraag,
+  markeerAanvraagIngepland,
+  verwijderEducatieLijstItems,
+  verwijderEducatieLijstTaken,
+  verwijderEducatieProjectItems,
+  verwijderEducatieProjectTaken,
+} from './appFlowLogic'
 import { bewaarCentraleState, isLegeState, laadCentraleState, localTestMode, supabaseConfigured } from './dataStore'
 import { maakEducatieLijst, maakTakenUitEducatieLijst } from './educatieImport'
 import {
@@ -667,7 +675,7 @@ export default function App() {
   }, [aanvraagMelding])
 
   function login(code = pin) {
-    if (code === PIN_BERT) {
+    if (isBeheerPinJuist(code)) {
       setRol(ROLES.transporteur)
       setTab('planning')
       setPlanningWeergave('week')
@@ -1101,8 +1109,8 @@ export default function App() {
   }
 
   function verwijderEducatieLijst(id) {
-    setEducatieLijsten((prev) => prev.filter((lijst) => lijst.id !== id))
-    setTaken((prev) => prev.filter((taak) => taak.educatieLijstId !== id))
+    setEducatieLijsten((prev) => verwijderEducatieLijstItems(prev, id))
+    setTaken((prev) => verwijderEducatieLijstTaken(prev, id))
     setEducatieMelding('Educatie lijst definitief verwijderd.')
   }
 
@@ -1356,10 +1364,8 @@ export default function App() {
   }
 
   function verwijderEducatieProject(id) {
-    setEducatieProjecten((prev) => prev.filter((item) => item.id !== id))
-    setTaken((prev) =>
-      prev.filter((taak) => taak.educatieProjectLijstId !== id && taak.educatieProjectId !== id),
-    )
+    setEducatieProjecten((prev) => verwijderEducatieProjectItems(prev, id))
+    setTaken((prev) => verwijderEducatieProjectTaken(prev, id))
     setProjectMelding('Project definitief verwijderd.')
   }
 
@@ -1540,38 +1546,13 @@ export default function App() {
     const item = planAanvraag
     setTaken((prev) => [
       ...prev,
-      {
-        id: Date.now().toString(),
-        titel: item.titel,
-        omschrijving: item.omschrijving,
-        reden: item.reden || '',
-        aantal: item.aantal || '',
-        tijd: item.tijd || '',
-        van: item.van,
-        naar: item.naar,
-        week: planW,
-        dag: planD,
-        prioriteit: item.prioriteit,
-        status: 'gepland',
-        aangemaakt: new Date().toISOString(),
-        door: rol,
-        bron: 'aanvraag',
-        aanvraagId: item.id,
-        log: [{ a: 'aangemaakt uit aanvraag', d: rol, w: new Date().toISOString() }],
-      },
+      maakTaakUitAanvraag(item, { week: planW, dag: planD, door: rol }),
     ])
 
     setAanvragen((prev) =>
       prev.map((aanv) =>
         aanv.id === item.id
-          ? {
-              ...aanv,
-              status: 'ingepland',
-              geplandeWeek: planW,
-              geplandeDag: planD,
-              behandeld: new Date().toISOString(),
-              log: [...aanv.log, { a: 'doorgezet naar planning', d: rol, w: new Date().toISOString() }],
-            }
+          ? markeerAanvraagIngepland(aanv, { week: planW, dag: planD, door: rol })
           : aanv,
       ),
     )
