@@ -79,11 +79,13 @@ export function weekOptieLabel(wk) {
 
 export function aanvraagWeekLabel(wk) {
   if (wk === 'zsm') return 'Zo snel mogelijk'
+  if (wk === 'zelf') return 'Geen vaste datum'
   return weekOptieLabel(wk)
 }
 
 export function aanvraagMomentLabel(item) {
   if (!item || item.week === 'zsm') return 'Zo snel mogelijk'
+  if (item.week === 'zelf') return 'Geen vaste datum'
   if (Number(item.dag) < 0) return `${aanvraagWeekLabel(item.week)}, dag flexibel`
   return `${aanvraagWeekLabel(item.week)}, ${dagLabel(item.dag)}`
 }
@@ -469,7 +471,7 @@ function taakInRapportPeriode(taak, rapp) {
 
 function aanvraagInRapportPeriode(aanvraag, rapp) {
   if (aanvraag.status === 'verwijderd') return false
-  if (aanvraag.week === 'zsm') return true
+  if (['zsm', 'zelf'].includes(aanvraag.week)) return true
   const aanvraagDatum = getMaandag(aanvraag.week)
   if (rapp.type === 'week') return aanvraag.week === rapp.week
   if (rapp.type === 'maand') return isoDag(aanvraagDatum).slice(0, 7) === rapp.maand

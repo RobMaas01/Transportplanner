@@ -906,7 +906,7 @@ export default function App() {
     if (!aanvraag.aanvrager.trim()) errors.aanvrager = 'Vul de naam van de aanvrager in.'
     if (!aanvraag.titel.trim()) errors.titel = 'Vul in wat er moet gebeuren.'
     if (aanvraag.titel !== 'Garage' && !aanvraag.van && !aanvraag.naar) errors.route = 'Kies minimaal een van de vestigingen bij van of naar.'
-    if (aanvraag.week !== 'zsm') {
+    if (!['zsm', 'zelf'].includes(aanvraag.week)) {
       if (Number(aanvraag.dag) >= 0) {
         const gekozenDatum = getMaandag(aanvraag.week)
         gekozenDatum.setDate(gekozenDatum.getDate() + Number(aanvraag.dag))
@@ -974,7 +974,7 @@ export default function App() {
   }
 
   function bewerkAanvraag(item) {
-    if (item.week && item.week !== 'zsm') {
+    if (item.week && !['zsm', 'zelf'].includes(item.week)) {
       setAanvraagMaand(isoDag(getMaandag(item.week)).slice(0, 7))
     }
     setAanvraag({
@@ -1505,7 +1505,7 @@ export default function App() {
   }
 
   function openPlanAanvraag(item) {
-    const doelWeek = item.week === 'zsm' ? week : item.week
+    const doelWeek = ['zsm', 'zelf'].includes(item.week) ? week : item.week
     setPlanAanvraag(item)
     setPlanW(doelWeek)
     setPlanD(Number(item.dag) >= 0 ? Number(item.dag) : 0)
@@ -3541,6 +3541,32 @@ export default function App() {
                         >
                           Zo snel mogelijk
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAanvraag((prev) => ({ ...prev, week: 'zelf', dag: -1 }))
+                            setZsmBewustGekozen(false)
+                            setAanvraagMaand(new Date().toISOString().slice(0, 7))
+                            setAanvraagErrors((prev) => {
+                              const next = { ...prev }
+                              delete next.wanneer
+                              return next
+                            })
+                          }}
+                          style={{
+                            background: aanvraag.week === 'zelf' ? '#ECFDF5' : '#F3F4F6',
+                            color: aanvraag.week === 'zelf' ? '#065F46' : '#374151',
+                            border: aanvraag.week === 'zelf' ? '2px solid #10B981' : '1px solid #E5E9F0',
+                            borderRadius: 8,
+                            padding: aanvraag.week === 'zelf' ? '7px 11px' : '8px 12px',
+                            fontSize: 12,
+                            fontWeight: aanvraag.week === 'zelf' ? 750 : 600,
+                            cursor: 'pointer',
+                            boxShadow: aanvraag.week === 'zelf' ? '0 2px 6px rgba(16, 185, 129, .14)' : 'none',
+                          }}
+                        >
+                          Geen vaste datum
+                        </button>
                         <MonthNav value={aanvraagMaand} onChange={setAanvraagMaand} />
                       </div>
                       <div
@@ -3643,7 +3669,7 @@ export default function App() {
                       >
                         <input
                           type="checkbox"
-                          checked={aanvraag.week !== 'zsm' && Number(aanvraag.dag) < 0}
+                          checked={!['zsm', 'zelf'].includes(aanvraag.week) && Number(aanvraag.dag) < 0}
                           onChange={(e) => {
                             if (e.target.checked) {
                               const eersteWerkdag = maandDagen(aanvraagMaand).find(
@@ -3653,7 +3679,7 @@ export default function App() {
                               setAanvraag((prev) => ({
                                 ...prev,
                                 week:
-                                  prev.week === 'zsm' ||
+                                  ['zsm', 'zelf'].includes(prev.week) ||
                                   !weekWerkdagen(prev.week).some((dag) => !isVerledenDatum(dag))
                                     ? eersteWerkdag.week
                                     : prev.week,
@@ -3684,9 +3710,11 @@ export default function App() {
                       <div style={{ fontSize: 11, color: '#6B7280', marginTop: 6 }}>
                         {aanvraag.week === 'zsm'
                           ? 'De Boekenbode plant deze zo snel mogelijk in.'
+                          : aanvraag.week === 'zelf'
+                            ? 'Geen vaste datum: beheer plant deze wanneer het past.'
                           : `Voorkeur: ${aanvraagMomentLabel(aanvraag)}.`}
                       </div>
-                      {aanvraag.week !== 'zsm' && (
+                      {!['zsm', 'zelf'].includes(aanvraag.week) && (
                         <div style={{ marginTop: 8 }}>
                           <DrukteWaarschuwing
                             waarschuwing={
@@ -8633,7 +8661,7 @@ export default function App() {
                   {maandDagen(planMaand).map((dag) => {
                     const selected = planW === dag.week && Number(planD) === dag.dagIndex
                     const aanvraagDag =
-                      planAanvraag.week !== 'zsm' &&
+                      !['zsm', 'zelf'].includes(planAanvraag.week) &&
                       planAanvraag.week === dag.week &&
                       (Number(planAanvraag.dag) === dag.dagIndex || Number(planAanvraag.dag) < 0)
                     const waarschuwing = blokkadeVoorDag(dag.week, dag.dagIndex)
